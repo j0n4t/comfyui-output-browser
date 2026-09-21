@@ -1,0 +1,756 @@
+import { app } from "../../scripts/app.js";
+
+const BROWSER_CSS = /*css*/ `
+    #cfob-root {
+      --bg: #18181b; --panel: #27272a; --panel-hover: #3f3f46; --border: #3f3f46; --text: #f4f4f5; --text-muted: #a1a1aa;
+      --highlight: #0284c7; --highlight-hover: #0369a1; --link: #38bdf8; --string: #fde047; --key: #38bdf8; --success: #22c55e;
+      position: fixed; inset: 0; z-index: 9999; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); 
+      margin: 0; padding: 0; display: none; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+    #cfob-root * { box-sizing: border-box; }
+    #cfob-root .top-bar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
+    #cfob-root .logo-group { display: flex; align-items: center; gap: 10px; }
+    #cfob-root .logo-group h1 { font-size: 18px; margin: 0; color: #fff; white-space: nowrap; }
+    #cfob-root .actions-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
+    #cfob-root .btn { background: var(--panel-hover); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+    #cfob-root .btn:hover { background: #52525b; border-color: #71717a; }
+    #cfob-root .btn-primary { background: var(--highlight); border-color: var(--highlight); color: #fff; }
+    #cfob-root .btn-primary:hover { background: var(--highlight-hover); border-color: var(--highlight-hover); }
+    #cfob-root .btn-danger { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
+    #cfob-root .btn-danger:hover { background: #991b1b; }
+    #cfob-root .btn-xs { padding: 3px 6px; font-size: 11px; border-radius: 4px; }
+    #cfob-root .search-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; flex: 1; min-width: 150px; max-width: 350px; }
+    #cfob-root .search-input:focus { outline: none; border-color: var(--highlight); }
+    #cfob-root .view-toggles { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    #cfob-root .view-btn { background: transparent; color: var(--text-muted); border: none; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; border-right: 1px solid var(--border); }
+    #cfob-root .view-btn:last-child { border-right: none; }
+    #cfob-root .view-btn:hover, #cfob-root .view-btn.active { background: var(--panel-hover); color: var(--highlight); }
+    #cfob-root .main-container { flex: 1; overflow-y: auto; padding: 20px; position: relative; }
+    #cfob-root .drop-overlay { position: absolute; inset: 20px; border: 2px dashed var(--highlight); border-radius: 12px; background: rgba(2, 132, 199, 0.08); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
+    #cfob-root .main-container.dragover .drop-overlay { opacity: 1; pointer-events: all; }
+    #cfob-root .image-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+    #cfob-root .card-content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    #cfob-root .card-header { padding: 10px 14px; background: #202023; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    #cfob-root .card-filename { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    #cfob-root .card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
+    #cfob-root .card-toggle-bar { display: none;background: #202023;border-top: 1px solid var(--border);padding: 8px 14px;font-size: 11px;font-weight: 600;color: var(--text-muted);justify-content: space-between;align-items: center;cursor: pointer;transition: background 0.15s, color 0.15s; }
+    #cfob-root .card-toggle-bar:hover {background: var(--panel-hover);color: #fff; }
+    #cfob-root .card-toggle-bar .toggle-icon {transition: transform 0.2s ease; }
+    #cfob-root .image-card.expanded .card-toggle-bar .toggle-icon {transform: rotate(180deg);}
+    #cfob-root .gallery-container { display: grid; gap: 20px; align-items: start; }
+    #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+    #cfob-root .gallery-container.view-grid .image-card { flex-direction: column; }
+    #cfob-root .gallery-container.view-grid .card-preview { width: 100%; height: 240px; background: #111; object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--border); }
+    #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    #cfob-root .gallery-container.view-compact .image-card { flex-direction: column; border-radius: 6px; }
+    #cfob-root .gallery-container.view-compact .card-preview { width: 100%; height: 150px; background: #111; object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--border); }
+    #cfob-root .gallery-container.view-compact .card-header { padding: 8px 10px; }
+    #cfob-root .gallery-container.view-compact .card-body { display: none; }
+    #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
+    #cfob-root .gallery-container.view-list .image-card { flex-direction: row; }
+    #cfob-root .gallery-container.view-list .card-preview { width: 280px; height: 100%; min-height: 180px; max-height: 280px; background: #111; object-fit: contain; cursor: pointer; border-right: 1px solid var(--border); }
+    #cfob-root .gallery-container.view-list .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    #cfob-root .field-row { display: flex; flex-direction: column; gap: 4px; background: #1e1e21; border: 1px solid #333; padding: 8px 10px; border-radius: 6px; }
+    #cfob-root .field-label { font-size: 11px; font-weight: 700; color: var(--key); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
+    #cfob-root .field-value-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    #cfob-root .field-value { color: var(--text); word-break: break-word; white-space: pre-wrap; max-height: 120px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 12px; flex: 1; }
+    #cfob-root .field-value.empty { color: #666; font-style: italic; }
+    #cfob-root .icon-btn { background: transparent; color: var(--text-muted); border: none; padding: 3px 5px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    #cfob-root .icon-btn:hover { background: #333; color: #fff; }
+    #cfob-root .nodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+    #cfob-root .node-card { background: #18181b; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    #cfob-root .node-header { background: #27272a; padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    #cfob-root .node-title { font-weight: 600; color: #fff; font-size: 14px; }
+    #cfob-root .node-title small { color: var(--text-muted); font-weight: 400; font-size: 11px; display: block; }
+    #cfob-root .node-id { background: #3f3f46; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-family: monospace; color: #fff; }
+    #cfob-root .node-body { padding: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+    #cfob-root .input-row { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #27272a; padding-bottom: 6px; }
+    #cfob-root .input-row:last-child { border-bottom: none; padding-bottom: 0; }
+    #cfob-root .input-header { display: flex; justify-content: space-between; align-items: center; }
+    #cfob-root .input-name { color: var(--key); font-weight: 600; font-size: 11px; }
+    #cfob-root .input-value-wrapper { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; background: #202023; padding: 6px; border-radius: 4px; border: 1px solid #2d2d30; }
+    #cfob-root .input-value-text { color: var(--string); font-family: monospace; font-size: 11px; word-break: break-word; white-space: pre-wrap; max-height: 120px; overflow-y: auto; flex: 1; }
+    #cfob-root .input-actions { display: flex; gap: 4px; align-items: center; }
+    #cfob-root .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 10005; padding: 20px; }
+    #cfob-root .modal-overlay.active { display: flex; }
+    #cfob-root .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+    #cfob-root .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    #cfob-root .modal-header h3 { margin: 0; font-size: 16px; color: #fff; }
+    #cfob-root .modal-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+    #cfob-root .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: #202023; }
+    #cfob-root .config-field-item { background: #1e1e21; border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    #cfob-root .config-field-header { display: flex; gap: 10px; align-items: center; }
+    #cfob-root .config-input, #cfob-root .config-paths-textarea { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-size: 13px; }
+    #cfob-root .config-input:focus { outline: none; border-color: var(--highlight); }
+    #cfob-root .config-paths-textarea { font-family: monospace; resize: vertical; height: 60px; font-size: 12px; }
+    #cfob-root .popover-menu { position: fixed; background: #2a2a2e; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.6); padding: 6px; z-index: 10020; display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+    #cfob-root .popover-header { font-size: 10px; font-weight: 700; color: var(--text-muted); padding: 4px 8px; text-transform: uppercase; }
+    #cfob-root .popover-item { padding: 6px 10px; font-size: 12px; color: #fff; background: transparent; border: none; text-align: left; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+    #cfob-root .popover-item:hover { background: var(--highlight); }
+    #cfob-root .tabs { display: flex; border-bottom: 1px solid var(--border); gap: 2px; }
+    #cfob-root .tab { padding: 8px 16px; cursor: pointer; background: var(--bg); border-radius: 6px 6px 0 0; font-size: 13px; }
+    #cfob-root .tab.active { background: var(--highlight); color: #fff; }
+    #cfob-root .tab-content { display: none; padding-top: 10px; }
+    #cfob-root .tab-content.active { display: block; }
+    #cfob-root .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+    #cfob-root .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; stroke: #52525b; }
+    #cfob-root .toast { position: fixed; bottom: 20px; right: 20px; background: var(--highlight); color: #fff; padding: 10px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10030; opacity: 0; transform: translateY(10px); transition: all 0.2s ease; pointer-events: none; }
+    #cfob-root .toast.show { opacity: 1; transform: translateY(0); }
+    #cfob-root #fullViewModal { padding: 0; z-index: 10010; }
+    #cfob-root .full-view-layout { display: flex; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.95); }
+    #cfob-root .full-view-layout .field-value { max-height: 100%; resize: vertical; }
+    #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+    #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    #cfob-root .full-view-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 15px 25px; background: linear-gradient(rgba(0,0,0,0.8), transparent); display: flex; justify-content: space-between; align-items: center; color: #fff; z-index: 10; }
+    #cfob-root .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: white; border: none; padding: 20px 15px; cursor: pointer; font-size: 24px; transition: 0.2s; z-index: 10; }
+    #cfob-root .nav-btn:hover { background: rgba(0,0,0,0.9); }
+    #cfob-root .prev-btn { left: 0; border-radius: 0 6px 6px 0; }
+    #cfob-root .next-btn { right: 0; border-radius: 6px 0 0 6px; }
+    #cfob-root .full-view-sidebar { width: 360px; min-width: 360px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; }
+    #cfob-root .full-view-sidebar.collapsed { width: 0; min-width: 0; border-left: none; }
+    #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 15px 20px; background: #202023; }
+    #cfob-root .sidebar-header { border-bottom: 1px solid var(--border); }
+    #cfob-root .sidebar-footer { border-top: 1px solid var(--border); }
+    #cfob-root .sidebar-body { padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+    @media (max-width: 1024px) {
+      #cfob-root .btn span { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      #cfob-root .top-bar { flex-direction: column; align-items: stretch; padding: 10px; gap: 10px; }
+      #cfob-root .logo-group { width: 100%; justify-content: space-between; }
+      #cfob-root .actions-group { width: 100%; justify-content: stretch; gap: 8px; }
+      #cfob-root .search-input { max-width: none; width: 100%; order: -1; }
+      #cfob-root .view-toggles { display: none; }
+      #cfob-root .gallery-container { grid-template-columns: 1fr !important; }
+      #cfob-root .gallery-container .image-card { flex-direction: column !important; }
+      #cfob-root .gallery-container .image-card .card-preview { width: 100% !important; height: 220px !important; }
+      #cfob-root .gallery-container .image-card .card-body { display: none; }
+      #cfob-root .gallery-container .image-card.expanded .card-body { display: flex; }
+      #cfob-root .card-toggle-bar { display: flex; }
+      #cfob-root .full-view-layout { flex-direction: column; }
+      #cfob-root .full-view-main { height: 50vh; min-height: 250px; }
+      #cfob-root .full-view-sidebar { width: 100% !important; min-width: 100% !important; height: 50vh; border-left: none; border-top: 1px solid var(--border); }
+      #cfob-root .full-view-sidebar.collapsed { height: 0; min-height: 0; border-top: none; }
+      #cfob-root #cfobToggleSidebarBtn svg { transform: rotate(90deg); }
+    }
+`;
+
+const ICONS = {
+  close: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+  config: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
+  copy: `<svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M20 2H10c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2m0 12H10V4h10z"/><path fill="currentColor" d="M14 20H4V10h2V8H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h-2z"/></svg>`,
+  check: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+  drop: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--highlight)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`,
+  gridBig: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`,
+  gridSmall: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="4" height="4"></rect><rect x="10" y="3" width="4" height="4"></rect><rect x="17" y="3" width="4" height="4"></rect><rect x="3" y="10" width="4" height="4"></rect><rect x="10" y="10" width="4" height="4"></rect><rect x="17" y="10" width="4" height="4"></rect><rect x="3" y="17" width="4" height="4"></rect><rect x="10" y="17" width="4" height="4"></rect><rect x="17" y="17" width="4" height="4"></rect></svg>`,
+  gridList: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
+  logo: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
+  pane: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="15" y1="3" x2="15" y2="21"></line></svg>`,
+  picture: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
+  refresh: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`,
+  toggle: `<svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+};
+
+const BROWSER_HTML = `
+<div class="top-bar">
+  <div class="logo-group">${ICONS.logo}<h1>ComfyUI Output Browser</h1></div>
+  <div class="actions-group">
+    <input type="text" id="cfobSearchInput" class="search-input" placeholder="Search prompts, models, files...">
+    <div class="view-toggles">
+      <button class="view-btn" data-view="compact" title="Compact Grid">${ICONS.gridSmall}</button>
+      <button class="view-btn" data-view="grid" title="Standard Grid">${ICONS.gridBig}</button>
+      <button class="view-btn" data-view="list" title="List View">${ICONS.gridList}</button>
+    </div>
+    <button class="btn" id="cfobRefreshBtn" title="Sync outputs from Server">${ICONS.refresh}<span>Refresh</span></button>
+    <button class="btn" id="cfobLocalFilesBtn" title="Manually inspect other files">${ICONS.picture}<span>+ PNGs</span></button>
+      <button class="btn btn-primary" id="cfobConfigFieldsBtn">${ICONS.config}<span>Card Fields</span></button>
+      <button class="btn btn-danger" id="cfobCloseBrowserBtn">${ICONS.close}<span>Close</span></button>
+      <input type="file" id="cfobFilesInput" accept="image/png" multiple style="display: none;">
+  </div>
+</div>
+<div class="main-container" id="cfobMainContainer">
+  <div class="drop-overlay">${ICONS.drop}<h3 style="margin: 10px 0 0 0; color: #fff;">Drop PNGs Here</h3></div>
+  <div class="gallery-container view-grid" id="cfobGalleryGrid"></div>
+  <div class="empty-state" id="cfobEmptyState">
+    ${ICONS.picture}
+    <h3 id="cfobEmptyStateTitle">No Images Loaded</h3><p id="cfobEmptyStateDesc">Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect.</p>
+  </div>
+</div>
+<div class="modal-overlay" id="cfobConfigModal">
+  <div class="modal-content">
+    <div class="modal-header"><h3>Customize Image Details Card Fields</h3><button class="icon-btn" id="cfobCloseConfigBtn">${ICONS.close}</button></div>
+    <div class="modal-body"><p style="font-size: 13px; color: var(--text-muted); margin: 0;">Define custom card fields. Enter fallback paths separated by commas or newlines. <br><em>Syntax examples: <code>Positive Prompt.text</code>, <code>KSampler.seed</code>, <code>6.inputs.text</code></em></p>
+      <div id="cfobConfigFieldsList" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      <button class="btn" id="cfobAddFieldBtn" style="align-self: flex-start;">+ Add Custom Field</button>
+    </div>
+    <div class="modal-footer"><button class="btn btn-danger" id="cfobResetConfigBtn">Reset Defaults</button><button class="btn btn-primary" id="cfobSaveConfigBtn">Save & Apply</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="cfobInspectorModal">
+  <div class="modal-content">
+    <div class="modal-header"><h3 id="cfobInspectorTitle">Image Metadata Inspector</h3><button class="icon-btn" id="cfobCloseInspectorBtn">${ICONS.close}</button></div>
+    <div class="modal-body">
+      <div class="tabs" id="cfobInspectorTabs">
+      <div class="tab active" data-target="cfobInsNodes">Visual Nodes View</div><div class="tab" data-target="cfobInsPrompt">API Prompt (JSON)</div><div class="tab" data-target="cfobInsWorkflow">UI Workflow (JSON)</div>
+      </div>
+      <div class="tab-content active" id="cfobInsNodes"><div class="nodes-grid" id="cfobInsNodesGrid"></div></div>
+      <div class="tab-content" id="cfobInsPrompt"><textarea id="cfobInsPromptText" style="width: 100%; height: 480px; background: #111; color: var(--string); font-family: monospace; border: 1px solid var(--border); padding: 12px; border-radius: 6px;" readonly></textarea></div>
+      <div class="tab-content" id="cfobInsWorkflow"><textarea id="cfobInsWorkflowText" style="width: 100%; height: 480px; background: #111; color: var(--key); font-family: monospace; border: 1px solid var(--border); padding: 12px; border-radius: 6px;" readonly></textarea></div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="cfobFullViewModal">
+  <div class="full-view-layout">
+    <div class="full-view-main">
+      <div class="full-view-top-bar"><span id="cfobFullViewCount" style="font-weight: 600; font-size: 14px;">1 / 10</span><div style="display: flex; gap: 8px;"><button class="icon-btn" id="cfobToggleSidebarBtn" title="Toggle Details Pane">${ICONS.pane}</button><button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button></div></div>
+      <button class="nav-btn prev-btn" id="cfobPrevImgBtn" title="Previous (Left Arrow)">❮</button>
+      <img id="cfobFullViewImg" src="" alt="Full View">
+      <button class="nav-btn next-btn" id="cfobNextImgBtn" title="Next (Right Arrow)">❯</button>
+    </div>
+    <div class="full-view-sidebar" id="cfobFullViewSidebar">
+      <div class="sidebar-header"><h4 id="cfobFullViewTitle" style="margin: 0; font-size: 14px; color: #fff; word-break: break-all;">Filename.png</h4></div>
+      <div class="sidebar-body" id="cfobFullViewFields"></div>
+      <div class="sidebar-footer"><button class="btn btn-primary" id="cfobFullViewInspectBtn" style="width: 100%; justify-content: center;">${ICONS.config} Inspect All Nodes</button></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="cfobToastNotice"></div>
+`;
+
+const DEFAULT_FIELDS = [
+  { label: "Positive Prompt", paths: "Positive Prompt.text, CLIPTextEncode.text, 6.inputs.text, Preset Gallery.evaluated_preset" },
+  { label: "Negative Prompt", paths: "Negative Prompt.text, CLIPTextEncode[1].text, 7.inputs.text" },
+  { label: "Seed", paths: "KSampler.seed, KSamplerAdvanced.seed, 3.inputs.seed" },
+  { label: "Steps / CFG", paths: "KSampler.steps, KSamplerAdvanced.steps" },
+  { label: "Sampler", paths: "KSampler.sampler_name, KSamplerAdvanced.sampler_name" },
+  { label: "Model", paths: "CheckpointLoaderSimple.ckpt_name, DualCLIPLoader.ckpt_name, 4.inputs.ckpt_name, UNETLoader.unet_name" }
+];
+
+class ComfyOutputBrowser {
+  constructor() {
+    this.loadedImages = [];
+    this.activePopover = null;
+    this.currentImageIndex = 0;
+    this.fieldConfigs = this.loadConfig();
+  }
+
+  $(id) { return this.root.querySelector(`#${id}`); }
+
+  loadConfig() {
+    const saved = localStorage.getItem('comfy_folder_browser_fields');
+    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_FIELDS));
+  }
+
+  saveConfig(cfg) {
+    this.fieldConfigs = cfg;
+    localStorage.setItem('comfy_folder_browser_fields', JSON.stringify(cfg));
+  }
+
+  init() {
+    const style = document.createElement("style");
+    style.innerHTML = BROWSER_CSS;
+    document.head.appendChild(style);
+
+    this.root = document.createElement("div");
+    this.root.id = "cfob-root";
+    this.root.innerHTML = BROWSER_HTML;
+    document.body.appendChild(this.root);
+
+    this.injectMenuButton();
+    this.bindEvents();
+
+    const savedView = localStorage.getItem('comfy_folder_browser_view') || 'grid';
+    this.setViewMode(savedView);
+  }
+
+  injectMenuButton() {
+    const menuBtn = document.createElement("button");
+    menuBtn.innerHTML = ICONS.logo;
+    menuBtn.title = "Browse Outputs";
+    menuBtn.className = "bg-secondary-background border-none hover:bg-secondary-background-hover inline-flex items-center justify-center size-8";
+    menuBtn.style.border = "4px";
+
+    menuBtn.onclick = () => {
+      this.root.style.display = "flex";
+      if (this.loadedImages.length === 0) this.fetchServerImages();
+    };
+
+    const targetGroup = app.menu?.actionsGroup?.element || app.menu?.settingsGroup?.element || app.menu?.element || document.querySelector(".comfy-menu") || document.body;
+    targetGroup.appendChild(menuBtn);
+  }
+
+  bindEvents() {
+    this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.root.style.display = "none");
+    this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
+    this.$("cfobLocalFilesBtn").addEventListener('click', () => this.$("cfobFilesInput").click());
+    this.$("cfobConfigFieldsBtn").addEventListener('click', () => this.openConfigModal());
+    this.$("cfobFilesInput").addEventListener('change', (e) => this.handleLocalFiles(e.target.files));
+    this.$("cfobSearchInput").addEventListener('input', () => this.filterGallery());
+
+    // View Toggles
+    this.root.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => this.setViewMode(e.currentTarget.dataset.view));
+    });
+
+    // Drag & Drop
+    const mainCont = this.$("cfobMainContainer");
+    ['dragenter', 'dragover'].forEach(evt => mainCont.addEventListener(evt, (e) => { e.preventDefault(); mainCont.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(evt => mainCont.addEventListener(evt, (e) => { e.preventDefault(); mainCont.classList.remove('dragover'); }));
+    mainCont.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files.length) this.handleLocalFiles(e.dataTransfer.files);
+    });
+
+    // Global Popover Dismiss
+    document.addEventListener('click', (e) => {
+      if (this.activePopover && !this.activePopover.contains(e.target)) {
+        this.activePopover.remove();
+        this.activePopover = null;
+      }
+    });
+
+    // Global Keydowns
+    document.addEventListener('keydown', (e) => {
+      const fvModal = this.$("cfobFullViewModal");
+      const configModal = this.$("cfobConfigModal");
+      const inspectorModal = this.$("cfobInspectorModal");
+
+      if (fvModal.classList.contains('active')) {
+        if (e.key === 'Escape') { e.preventDefault(); this.closeFullView(); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); this.navigateImage(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); this.navigateImage(1); }
+      } else if (this.root.style.display === "flex" && e.key === 'Escape') {
+        if (configModal.classList.contains('active')) configModal.classList.remove('active');
+        else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
+        else this.root.style.display = "none";
+      }
+    });
+
+    // Config Modal Setup
+    this.$("cfobCloseConfigBtn").addEventListener('click', () => this.$("cfobConfigModal").classList.remove('active'));
+    this.$("cfobAddFieldBtn").addEventListener('click', () => { this.fieldConfigs.push({ label: "Custom Field", paths: "" }); this.openConfigModal(); });
+    this.$("cfobResetConfigBtn").addEventListener('click', () => { this.saveConfig(JSON.parse(JSON.stringify(DEFAULT_FIELDS))); this.openConfigModal(); });
+    this.$("cfobSaveConfigBtn").addEventListener('click', () => {
+      const newCfgs = [];
+      this.$("cfobConfigFieldsList").querySelectorAll('.config-field-item').forEach(item => {
+        const l = item.querySelector('.field-label-input').value.trim(), p = item.querySelector('.field-paths-input').value.trim();
+        if (l) newCfgs.push({ label: l, paths: p });
+      });
+      this.saveConfig(newCfgs);
+      this.$("cfobConfigModal").classList.remove('active');
+      this.renderGallery();
+    });
+
+    // Inspector Modal Setup
+    this.$("cfobCloseInspectorBtn").addEventListener('click', () => this.$("cfobInspectorModal").classList.remove('active'));
+    this.root.querySelectorAll('#cfobInspectorTabs .tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        this.root.querySelectorAll('#cfobInspectorTabs .tab').forEach(t => t.classList.remove('active'));
+        this.root.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        this.$(tab.dataset.target).classList.add('active');
+      });
+    });
+
+    // Full View Controls
+    this.$("cfobCloseFullViewBtn").addEventListener('click', () => this.closeFullView());
+    this.$("cfobToggleSidebarBtn").addEventListener('click', () => this.$("cfobFullViewSidebar").classList.toggle('collapsed'));
+    this.$("cfobPrevImgBtn").addEventListener('click', () => this.navigateImage(-1));
+    this.$("cfobNextImgBtn").addEventListener('click', () => this.navigateImage(1));
+  }
+
+  showToast(msg) {
+    const t = this.$("cfobToastNotice");
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  setViewMode(mode) {
+    this.root.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    this.root.querySelector(`.view-btn[data-view="${mode}"]`).classList.add('active');
+    this.$("cfobGalleryGrid").className = `gallery-container view-${mode}`;
+    localStorage.setItem('comfy_folder_browser_view', mode);
+  }
+
+  sanitizeJson(str) {
+    return str.replace(/(?<!["\w])\-?(?:NaN|Infinity)(?!["\w])/g, "null");
+  }
+
+  escapeHtml(u) {
+    return (u || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  async fetchServerImages() {
+    this.$("cfobGalleryGrid").innerHTML = "";
+    this.$("cfobEmptyStateTitle").innerText = "Loading Outputs...";
+    this.$("cfobEmptyStateDesc").innerText = "Fetching metadata from ComfyUI server.";
+    this.$("cfobEmptyState").style.display = "block";
+
+    try {
+      const response = await fetch("/comfyui-output-browser/images");
+      const rawText = await response.text();
+      this.loadedImages = JSON.parse(this.sanitizeJson(rawText));
+      this.renderGallery();
+    } catch (err) {
+      this.$("cfobEmptyStateTitle").innerText = "Connection Error";
+      this.$("cfobEmptyStateDesc").innerText = "Failed to load outputs from server.";
+      console.error("Output Browser Error:", err);
+    }
+  }
+
+  async handleLocalFiles(fileList) {
+    const pngs = Array.from(fileList).filter(f => f.type === 'image/png' || f.name.toLowerCase().endsWith('.png'));
+    for (const file of pngs) {
+      const res = await this.processPngFile(file);
+      if (res) this.loadedImages.push(res);
+    }
+    this.renderGallery();
+  }
+
+  async processPngFile(file) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      const view = new DataView(arrayBuffer);
+
+      if (view.getUint32(0) !== 0x89504e47) return null;
+
+      let offset = 8, prompt = null, workflow = null;
+      while (offset < bytes.length) {
+        const length = view.getUint32(offset);
+        offset += 4;
+        const type = String.fromCharCode(...bytes.slice(offset, offset + 4));
+        offset += 4;
+
+        if (type === 'tEXt') {
+          let kw = '', i = offset;
+          while (bytes[i] !== 0) kw += String.fromCharCode(bytes[i++]);
+          i++;
+          const txt = new TextDecoder().decode(bytes.slice(i, offset + length));
+          if (kw === 'prompt') try { prompt = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
+          if (kw === 'workflow') try { workflow = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
+        }
+        offset += length + 4;
+      }
+      return { name: file.name, url: URL.createObjectURL(file), prompt, workflow };
+    } catch (err) {
+      console.error(`Failed reading PNG file ${file.name}`, err);
+      return null;
+    }
+  }
+
+  resolveFieldValue(imgData, pathString) {
+    if (!pathString) return null;
+    const candidates = pathString.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    const { prompt, workflow } = imgData;
+
+    for (const path of candidates) {
+      const parts = path.split('.');
+      if (parts.length < 2) continue;
+
+      const target = parts[0].trim();
+      const prop = parts.slice(1).join('.').trim();
+      const match = target.match(/^(.+)\[(\d+)\]$/);
+      const targetName = match ? match[1] : target;
+      const targetIdx = match ? parseInt(match[2], 10) : 0;
+
+      let matchCount = 0;
+      if (prompt) {
+        for (const [id, node] of Object.entries(prompt)) {
+          const classType = node.class_type || '', title = node._meta?.title || '';
+          if (id === targetName || classType.toLowerCase() === targetName.toLowerCase() || title.toLowerCase() === targetName.toLowerCase()) {
+            if (matchCount === targetIdx) {
+              let val = prop.startsWith('inputs.') ? (node.inputs ? node.inputs[prop.replace('inputs.', '')] : undefined) : node.inputs?.[prop];
+              if (val !== undefined && !Array.isArray(val) && val !== null && val !== '') return val;
+            }
+            matchCount++;
+          }
+        }
+      }
+
+      if (workflow?.nodes) {
+        matchCount = 0;
+        for (const node of workflow.nodes) {
+          const classType = node.type || '', title = node.title || '', id = String(node.id);
+          if (id === targetName || classType.toLowerCase() === targetName.toLowerCase() || title.toLowerCase() === targetName.toLowerCase()) {
+            if (matchCount === targetIdx) {
+              if (node.widgets_values_named?.[prop] !== undefined) return node.widgets_values_named[prop];
+              const wMatch = prop.match(/^widget\[(\d+)\]$/);
+              if (wMatch && node.widgets_values) return node.widgets_values[parseInt(wMatch[1], 10)];
+            }
+            matchCount++;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  renderGallery() {
+    const grid = this.$("cfobGalleryGrid");
+    grid.innerHTML = '';
+
+    if (!this.loadedImages.length) {
+      this.$("cfobEmptyStateTitle").innerText = "No Images Loaded";
+      this.$("cfobEmptyStateDesc").innerText = "Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect.";
+      this.$("cfobEmptyState").style.display = 'block';
+      return;
+    }
+
+    this.$("cfobEmptyState").style.display = 'none';
+
+    this.loadedImages.forEach((img, idx) => {
+      const card = document.createElement('div');
+      card.className = 'image-card';
+      card.dataset.index = idx;
+
+      let fieldsHtml = '';
+      this.fieldConfigs.forEach(cfg => {
+        const val = this.resolveFieldValue(img, cfg.paths);
+        const displayVal = val !== null ? String(val) : '—';
+        const emptyClass = val === null ? 'empty' : '';
+
+        fieldsHtml += ` <div class="field-row">
+                          <div class="field-label">${this.escapeHtml(cfg.label)}</div>
+                          <div class="field-value-container">
+                            <div class="field-value ${emptyClass}">${this.escapeHtml(displayVal)}</div>
+                            ${val !== null ? `<button class="icon-btn copy-val-btn" data-val="${encodeURIComponent(String(val))}" title="Copy">${ICONS.copy}</button>` : ''}
+                          </div>
+                        </div>`;
+      });
+
+      card.innerHTML = `<img class="card-preview" src="${img.url}" title="Click to view full image">
+                        <div class="card-content-wrapper">
+                          <div class="card-header">
+                            <span class="card-filename" title="${this.escapeHtml(img.name)}">${this.escapeHtml(img.name)}</span>
+                            <button class="btn ins-btn" style="padding: 4px 8px; font-size: 11px;">Inspect Nodes</button>
+                          </div>
+                          <div class="card-toggle-bar" title="Toggle Details"><span>Metadata Details</span>${ICONS.toggle}</div>
+                          <div class="card-body">${fieldsHtml}</div>
+                        </div>`;
+
+      card.querySelector('.card-preview').addEventListener('click', () => this.openFullView(idx));
+      card.querySelector('.ins-btn').addEventListener('click', () => this.openInspector(idx));
+      card.querySelector('.card-toggle-bar').addEventListener('click', () => {
+        card.classList.toggle('expanded');
+      });
+
+      card.querySelectorAll('.copy-val-btn').forEach(b => {
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.copyValue(e.currentTarget, e.currentTarget.dataset.val);
+        });
+      });
+
+      grid.appendChild(card);
+    });
+
+    this.filterGallery();
+  }
+
+  filterGallery() {
+    const q = this.$("cfobSearchInput").value.toLowerCase().trim();
+    this.root.querySelectorAll('.image-card').forEach(card => {
+      const img = this.loadedImages[card.dataset.index];
+      if (!q) return card.style.display = 'flex';
+      const matches = img.name.toLowerCase().includes(q) || (img.prompt && JSON.stringify(img.prompt).toLowerCase().includes(q));
+      card.style.display = matches ? 'flex' : 'none';
+    });
+  }
+
+  copyValue(btn, encText) {
+    const temp = document.createElement('textarea');
+    temp.value = decodeURIComponent(encText);
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand('copy');
+    document.body.removeChild(temp);
+
+    btn.innerHTML = ICONS.check;
+    setTimeout(() => { btn.innerHTML = ICONS.copy; }, 1500);
+  }
+
+  openAddPathMenu(e, safePath) {
+    e.stopPropagation();
+    if (this.activePopover) this.activePopover.remove();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'popover-menu';
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+
+    let html = `<div class="popover-header">Add Path To Field:</div>`;
+    this.fieldConfigs.forEach((cfg, i) => html += `<button class="popover-item append-path" data-idx="${i}" data-path="${safePath}"><span>${this.escapeHtml(cfg.label)}</span></button>`);
+    html += `<div style="border-top: 1px solid var(--border); margin: 4px 0;"></div><button class="popover-item new-path" data-path="${safePath}"><span style="color: var(--link);">+ Create New Field</span></button>`;
+
+    menu.innerHTML = html;
+    this.root.appendChild(menu);
+    this.activePopover = menu;
+
+    menu.querySelectorAll('.append-path').forEach(b => {
+      b.addEventListener('click', () => {
+        const field = this.fieldConfigs[b.dataset.idx];
+        const p = b.dataset.path;
+        if (!field.paths?.includes(p)) {
+          field.paths = field.paths ? `${field.paths}, ${p}` : p;
+          this.saveConfig(this.fieldConfigs);
+          this.renderGallery();
+          this.showToast(`Added to '${field.label}'`);
+        }
+        this.activePopover.remove(); this.activePopover = null;
+      });
+    });
+
+    menu.querySelector('.new-path').addEventListener('click', () => {
+      const lbl = prompt("Enter a label for the new card field:", "Custom Field");
+      if (lbl) {
+        this.fieldConfigs.push({ label: lbl, paths: menu.querySelector('.new-path').dataset.path });
+        this.saveConfig(this.fieldConfigs);
+        this.renderGallery();
+        this.showToast(`Created field '${lbl}'`);
+      }
+      this.activePopover.remove(); this.activePopover = null;
+    });
+  }
+
+  openConfigModal() {
+    const list = this.$("cfobConfigFieldsList");
+    list.innerHTML = '';
+
+    this.fieldConfigs.forEach((cfg, idx) => {
+      const div = document.createElement('div');
+      div.className = 'config-field-item';
+      div.innerHTML = ` <div class="config-field-header">
+                          <input type="text" class="config-input field-label-input" value="${this.escapeHtml(cfg.label)}" style="flex: 1;">
+                          <button class="icon-btn del-cfg-btn">${ICONS.close}</button>
+                        </div>
+                        <textarea class="config-paths-textarea field-paths-input">${this.escapeHtml(cfg.paths)}</textarea>`;
+
+      div.querySelector('.del-cfg-btn').addEventListener('click', () => {
+        this.fieldConfigs.splice(idx, 1);
+        this.openConfigModal();
+      });
+      list.appendChild(div);
+    });
+
+    this.$("cfobConfigModal").classList.add('active');
+  }
+
+  openInspector(idx) {
+    const img = this.loadedImages[idx];
+    this.$("cfobInspectorTitle").innerText = `Metadata: ${img.name}`;
+    this.$("cfobInsPromptText").value = img.prompt ? JSON.stringify(img.prompt, null, 2) : 'No API Prompt Metadata';
+    this.$("cfobInsWorkflowText").value = img.workflow ? JSON.stringify(img.workflow, null, 2) : 'No UI Workflow Metadata';
+
+    const grid = this.$("cfobInsNodesGrid");
+    grid.innerHTML = '';
+
+    if (img.workflow?.nodes) {
+      img.workflow.nodes.forEach(node => {
+        const titleText = node.title || node.type || node.id;
+        let html = `<div class="node-card"><div class="node-header"><div class="node-title">${this.escapeHtml(titleText)}</div><span class="node-id">#${node.id}</span></div><div class="node-body">`;
+
+        let w = [];
+        if (node.widgets_values_named) Object.entries(node.widgets_values_named).forEach(([key, val]) => w.push({ key, val }));
+        else if (node.widgets_values) node.widgets_values.forEach((val, i) => w.push({ key: `widget[${i}]`, val }));
+
+        if (w.length > 0) {
+          w.forEach(({ key, val }) => {
+            const pPath = this.escapeHtml(`${titleText}.${key}`);
+            const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
+            html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+          });
+        } else {
+          html += `<i style="color:#666">No widgets</i>`;
+        }
+        grid.innerHTML += html + `</div></div>`;
+      });
+    } else if (img.prompt) {
+      for (const [id, node] of Object.entries(img.prompt)) {
+        const titleText = node._meta?.title || node.class_type || 'Unknown Node';
+        let html = `<div class="node-card"><div class="node-header"><div class="node-title">${this.escapeHtml(titleText)}<small>${this.escapeHtml(node.class_type)}</small></div><span class="node-id">#${id}</span></div><div class="node-body">`;
+
+        if (node.inputs && Object.keys(node.inputs).length > 0) {
+          for (const [key, val] of Object.entries(node.inputs)) {
+            const pPath = this.escapeHtml(`${titleText}.${key}`);
+            if (Array.isArray(val) && val.length >= 2 && typeof val[0] === 'string' && !isNaN(val[1])) {
+              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.escapeHtml(key)}</span></div><span style="color: var(--link); font-style: italic; font-size: 11px;">➔ Connected to #${val[0]}</span></div>`;
+            } else {
+              const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
+              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">➕ Field</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+            }
+          }
+        } else {
+          html += `<i style="color:#666">No inputs</i>`;
+        }
+        grid.innerHTML += html + `</div></div>`;
+      }
+    }
+
+    grid.querySelectorAll('.cp-val').forEach(b => b.addEventListener('click', (e) => this.copyValue(e.currentTarget, e.currentTarget.dataset.val)));
+    grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, e.currentTarget.dataset.path)));
+
+    this.$("cfobInspectorModal").classList.add('active');
+  }
+
+  openFullView(idx) {
+    this.currentImageIndex = idx;
+    const img = this.loadedImages[idx];
+    if (!img) return;
+
+    this.$("cfobFullViewImg").src = img.url;
+    this.$("cfobFullViewTitle").innerText = img.name;
+    this.$("cfobFullViewCount").innerText = `${idx + 1} / ${this.loadedImages.length}`;
+
+    let htmlBuffer = '';
+    this.fieldConfigs.forEach(cfg => {
+      const val = this.resolveFieldValue(img, cfg.paths);
+      const displayVal = val !== null ? String(val) : '—';
+      const emptyClass = val === null ? 'empty' : '';
+
+      htmlBuffer += ` <div class="field-row">
+                        <div class="field-label">${this.escapeHtml(cfg.label)}</div>
+                        <div class="field-value-container">
+                          <div class="field-value ${emptyClass}">${this.escapeHtml(displayVal)}</div>
+                          ${val !== null ? `<button class="icon-btn fv-copy-btn" data-val="${encodeURIComponent(String(val))}">${ICONS.copy}</button>` : ''}
+                        </div>
+                      </div>`;
+    });
+
+    const fieldsContainer = this.$("cfobFullViewFields");
+    fieldsContainer.innerHTML = htmlBuffer;
+
+    fieldsContainer.querySelectorAll('.fv-copy-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => this.copyValue(e.currentTarget, e.currentTarget.dataset.val));
+    });
+
+    this.$("cfobFullViewInspectBtn").onclick = () => {
+      this.closeFullView();
+      this.openInspector(idx);
+    };
+
+    this.$("cfobFullViewModal").classList.add('active');
+  }
+
+  closeFullView() {
+    this.$("cfobFullViewModal").classList.remove('active');
+    this.$("cfobFullViewImg").src = '';
+  }
+
+  navigateImage(dir) {
+    if (!this.loadedImages.length) return;
+    this.currentImageIndex = (this.currentImageIndex + dir + this.loadedImages.length) % this.loadedImages.length;
+    this.openFullView(this.currentImageIndex);
+  }
+}
+
+app.registerExtension({
+  name: "Comfy.OutputBrowser",
+  setup() {
+    const outputBrowser = new ComfyOutputBrowser();
+    outputBrowser.init();
+  }
+});
