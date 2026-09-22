@@ -480,17 +480,32 @@ class ComfyOutputBrowser {
       const fvModal = this.$("cfobFullViewModal");
       const configModal = this.$("cfobConfigModal");
       const inspectorModal = this.$("cfobInspectorModal");
+      const hiddenModal = this.$("cfobHiddenFoldersModal");
 
       if (fvModal.classList.contains('active')) {
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.closeFullView(); }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.navigateImage(-1); }
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.navigateImage(1); }
-      } else if (this.root.style.display === "flex" && e.key === 'Escape') {
-        e.stopPropagation();
-        if (configModal.classList.contains('active')) configModal.classList.remove('active');
-        else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
-        else if (this.selectedImages.size > 0) this.clearSelection();
-        else this.root.style.display = "none";
+      } else if (this.root.style.display === "flex") {
+        const target = e.target;
+        const isEditing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+          const noModalOpen = !configModal.classList.contains('active') &&
+            !inspectorModal.classList.contains('active') &&
+            !hiddenModal.classList.contains('active');
+          if (!isEditing && noModalOpen) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.selectAllFiltered();
+          }
+        } else if (e.key === 'Escape') {
+          e.stopPropagation();
+          if (configModal.classList.contains('active')) configModal.classList.remove('active');
+          else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
+          else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
+          else if (this.selectedImages.size > 0) this.clearSelection();
+          else this.root.style.display = "none";
+        }
       }
     }, { capture: true });
 
@@ -848,6 +863,16 @@ class ComfyOutputBrowser {
     this.selectedImages.clear();
     this.lastSelectedIdx = -1;
     this.root.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+    this.updateCardStyles();
+    this.updateActionBar();
+  }
+
+  selectAllFiltered() {
+    if (!this.filteredImages.length) return;
+    this.filteredImages.forEach(img => this.selectedImages.add(img.name));
+    this.root.querySelectorAll('.card-checkbox').forEach(cb => {
+      cb.checked = this.selectedImages.has(cb.value);
+    });
     this.updateCardStyles();
     this.updateActionBar();
   }
