@@ -309,9 +309,60 @@ class ComfyOutputBrowser {
     this.hiddenFolders = this.loadHiddenFoldersConfig();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.observer = null;
+
+    this.dbPromise = this.initDB();
+    this._idleParsingActive = false;
   }
 
   $(id) { return this.root.querySelector(`#${id}`); }
+
+  async initDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('CfobCacheDB', 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('metadata')) {
+          db.createObjectStore('metadata');
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async cacheGet(key) {
+    try {
+      const db = await this.dbPromise;
+      return new Promise(resolve => {
+        const tx = db.transaction('metadata', 'readonly');
+        const req = tx.objectStore('metadata').get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      });
+    } catch (e) { return null; }
+  }
+
+  async cacheSet(key, val) {
+    try {
+      const db = await this.dbPromise;
+      return new Promise(resolve => {
+        const tx = db.transaction('metadata', 'readwrite');
+        tx.objectStore('metadata').put(val, key);
+        tx.oncomplete = () => resolve();
+      });
+    } catch (e) { }
+  }
+
+  async cacheDelete(key) {
+    try {
+      const db = await this.dbPromise;
+      return new Promise(resolve => {
+        const tx = db.transaction('metadata', 'readwrite');
+        tx.objectStore('metadata').delete(key);
+        tx.oncomplete = () => resolve();
+      });
+    } catch (e) { }
+  }
 
   loadConfig() {
     const saved = localStorage.getItem('comfy_folder_browser_fields');
@@ -451,7 +502,6 @@ class ComfyOutputBrowser {
       }
     });
 
-    // Action Bar Setup
     this.$("cfobActionClear").addEventListener('click', () => this.clearSelection());
     this.$("cfobActionDelete").addEventListener('click', () => this.deleteSelected());
     this.$("cfobActionRename").addEventListener('click', () => this.renameSelected());
@@ -459,12 +509,10 @@ class ComfyOutputBrowser {
     this.$("cfobActionOpen").addEventListener('click', () => this.loadWorkflowSelected());
     this.$("cfobActionInspect").addEventListener('click', () => this.inspectSelected());
 
-    // View Toggles
     this.root.querySelectorAll('.view-btn').forEach(btn => {
       btn.addEventListener('click', (e) => this.setViewMode(e.currentTarget.dataset.view));
     });
 
-    // Drag & Drop
     const mainCont = this.$("cfobMainContainer");
     let dragCounter = 0;
     mainCont.addEventListener('dragenter', (e) => {
@@ -489,7 +537,6 @@ class ComfyOutputBrowser {
       if (e.dataTransfer.files.length) this.handleLocalFiles(e.dataTransfer.files);
     });
 
-    // Global Popover Dismiss
     document.addEventListener('click', (e) => {
       if (this.activePopover && !this.activePopover.contains(e.target)) {
         this.activePopover.remove();
@@ -497,7 +544,6 @@ class ComfyOutputBrowser {
       }
     });
 
-    // Global Keydowns
     document.addEventListener('keydown', (e) => {
       const fvModal = this.$("cfobFullViewModal");
       const configModal = this.$("cfobConfigModal");
@@ -531,7 +577,6 @@ class ComfyOutputBrowser {
       }
     }, { capture: true });
 
-    // Config Modal Setup
     this.$("cfobCloseConfigBtn").addEventListener('click', () => this.$("cfobConfigModal").classList.remove('active'));
     this.$("cfobAddFieldBtn").addEventListener('click', () => { this.fieldConfigs.push({ label: "Custom Field", paths: "" }); this.openConfigModal(); });
     this.$("cfobResetConfigBtn").addEventListener('click', () => { this.saveConfig(JSON.parse(JSON.stringify(DEFAULT_FIELDS))); this.openConfigModal(); });
@@ -546,7 +591,6 @@ class ComfyOutputBrowser {
       this.renderGallery();
     });
 
-    // Inspector Modal Setup
     this.$("cfobCloseInspectorBtn").addEventListener('click', () => this.$("cfobInspectorModal").classList.remove('active'));
     this.root.querySelectorAll('#cfobInspectorTabs .tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -557,7 +601,6 @@ class ComfyOutputBrowser {
       });
     });
 
-    // Hidden Folders Modal Bindings
     this.$("cfobCloseHiddenFoldersBtn").addEventListener('click', () => this.$("cfobHiddenFoldersModal").classList.remove('active'));
     this.$("cfobResetHiddenFoldersBtn").addEventListener('click', () => {
       this.saveHiddenFoldersConfig(["temp", "trash"]);
@@ -572,13 +615,11 @@ class ComfyOutputBrowser {
       this.showToast("Saved hidden folders configuration");
     });
 
-    // Full View Controls
     this.$("cfobCloseFullViewBtn").addEventListener('click', () => this.closeFullView());
     this.$("cfobToggleSidebarBtn").addEventListener('click', () => this.$("cfobFullViewSidebar").classList.toggle('collapsed'));
     this.$("cfobPrevImgBtn").addEventListener('click', () => this.navigateImage(-1));
     this.$("cfobNextImgBtn").addEventListener('click', () => this.navigateImage(1));
 
-    // Full View Action Bar Bindings
     this.$("cfobFVActionOpen").addEventListener('click', () => {
       const img = this.filteredImages[this.currentImageIndex];
       if (img) this.loadWorkflowImage(img);
@@ -700,12 +741,47 @@ class ComfyOutputBrowser {
         this.applySort();
         this.renderGallery();
       }
+
+      this.startIdleParsing();
     } catch (err) {
       this.$("cfobEmptyStateTitle").innerText = "Connection Error";
       this.$("cfobEmptyStateDesc").innerText = "Failed to load outputs from server.";
       this.$("cfobEmptyState").style.display = "block";
       console.error("Output Browser Error:", err);
     }
+  }
+
+  startIdleParsing() {
+    if (this._idleParsingActive) return;
+    this._idleParsingActive = true;
+
+    const parseNext = async () => {
+      const img = this.loadedImages.find(i => !i.isParsed && !i.isParsing);
+
+      if (img) {
+        await this.loadMetadata(img);
+
+        const cards = Array.from(this.root.querySelectorAll('.image-card'));
+        const card = cards.find(c => c.dataset.name === img.name);
+        if (card) {
+          const cardBody = card.querySelector('.card-body');
+          if (cardBody && cardBody.innerHTML.includes('Loading...')) {
+            cardBody.innerHTML = this.getCardFieldsHtml(img);
+          }
+        }
+
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(parseNext, { timeout: 2000 });
+        } else {
+          setTimeout(parseNext, 50);
+        }
+      } else {
+        this._idleParsingActive = false;
+      }
+    };
+
+    if ('requestIdleCallback' in window) requestIdleCallback(parseNext, { timeout: 2000 });
+    else setTimeout(parseNext, 50);
   }
 
   async handleLocalFiles(fileList) {
@@ -741,6 +817,8 @@ class ComfyOutputBrowser {
       const data = await res.json();
 
       if (data.success) {
+        await this.cacheSet(data.name, { prompt: meta.prompt, workflow: meta.workflow });
+
         return {
           name: data.name,
           url: this.getImageUrl(data.name),
@@ -767,14 +845,18 @@ class ComfyOutputBrowser {
 
     img.isParsing = true;
     try {
-      const res = await fetch(img.url);
-      const buffer = await res.arrayBuffer();
-      const meta = await this.parsePngBuffer(buffer) || { prompt: null, workflow: null };
+      let meta = await this.cacheGet(img.name);
+      if (!meta) {
+        const res = await fetch(img.url);
+        const buffer = await res.arrayBuffer();
+        meta = await this.parsePngBuffer(buffer) || { prompt: null, workflow: null };
+        await this.cacheSet(img.name, meta);
+      }
       img.prompt = meta.prompt;
       img.workflow = meta.workflow;
       img.isParsed = true;
     } catch (e) {
-      console.warn(`Failed to parse remote file: ${img.name}`, e);
+      console.warn(`Failed to parse file: ${img.name}`, e);
       img.isParsed = true;
     } finally {
       img.isParsing = false;
@@ -940,7 +1022,6 @@ class ComfyOutputBrowser {
     const files = Array.from(this.selectedImages);
     if (!files.length) return;
 
-    // Check if any selected items are already in the trash directory
     const hasTrashedItems = files.some(f => f.replace(/\\/g, '/').startsWith('.trash/'));
     const confirmMsg = hasTrashedItems
       ? `Permanently delete at least one of ${files.length} selected image(s)? This cannot be undone.`
@@ -960,6 +1041,11 @@ class ComfyOutputBrowser {
 
       if (removed.length > 0) {
         this.loadedImages = this.loadedImages.filter(img => !removed.includes(img.name));
+
+        for (const file of removed) {
+          await this.cacheDelete(file);
+        }
+
         this.clearSelection();
         this.renderGallery();
 
@@ -998,6 +1084,11 @@ class ComfyOutputBrowser {
           if (img) {
             img.name = data.new_name;
             img.url = this.getImageUrl(data.new_name);
+            const meta = await this.cacheGet(oldName);
+            if (meta) {
+              await this.cacheSet(data.new_name, meta);
+              await this.cacheDelete(oldName);
+            }
           }
           this.clearSelection();
           this.renderGallery();
@@ -1022,13 +1113,18 @@ class ComfyOutputBrowser {
         const data = await res.json();
 
         if (data.success) {
-          data.moved.forEach(m => {
+          for (const m of data.moved) {
             const img = this.loadedImages.find(i => i.name === m.old_name);
             if (img) {
               img.name = m.new_name;
               img.url = this.getImageUrl(m.new_name);
+              const meta = await this.cacheGet(m.old_name);
+              if (meta) {
+                await this.cacheSet(m.new_name, meta);
+                await this.cacheDelete(m.old_name);
+              }
             }
-          });
+          }
           this.clearSelection();
           this.renderGallery();
           if (data.errors && data.errors.length > 0) {
@@ -1044,27 +1140,6 @@ class ComfyOutputBrowser {
         console.error(e);
         this.showToast("Move request failed.");
       }
-    }
-  }
-
-  async loadWorkflowSelected() {
-    if (this.selectedImages.size !== 1) return;
-    const filename = Array.from(this.selectedImages)[0];
-    const img = this.loadedImages.find(i => i.name === filename);
-    if (!img) return;
-
-    if (!img.isParsed) {
-      this.showToast("Loading metadata...");
-      await this.loadMetadata(img);
-    }
-
-    if (img.workflow) {
-      app.loadGraphData(img.workflow);
-      this.root.style.display = 'none';
-      this.clearSelection();
-      this.showToast("Workflow loaded successfully!");
-    } else {
-      this.showToast("No workflow metadata found in this image.");
     }
   }
 
@@ -1114,8 +1189,14 @@ class ComfyOutputBrowser {
       });
       const data = await res.json();
       if (data.success) {
+        const oldName = img.name;
         img.name = data.new_name;
         img.url = this.getImageUrl(data.new_name);
+        const meta = await this.cacheGet(oldName);
+        if (meta) {
+          await this.cacheSet(data.new_name, meta);
+          await this.cacheDelete(oldName);
+        }
         this.renderGallery();
         this.openFullView(img);
         this.showToast(`Moved to ${data.new_name}`);
@@ -1148,7 +1229,9 @@ class ComfyOutputBrowser {
       const removed = [...(data.deleted || []), ...(data.trashed || [])];
 
       if (removed.length > 0) {
-        this.loadedImages = this.loadedImages.filter(i => i.name !== img.name);
+        const imgName = img.name;
+        this.loadedImages = this.loadedImages.filter(i => i.name !== imgName);
+        await this.cacheDelete(imgName);
         this.renderGallery();
         this.showToast(data.deleted?.length ? "Permanently deleted image" : "Moved image to Trash");
 
@@ -1162,6 +1245,44 @@ class ComfyOutputBrowser {
     } catch (e) {
       console.error(e);
       this.showToast("Failed to delete/trash image.");
+    }
+  }
+
+  openFullView(img) {
+    this.currentImageIndex = this.filteredImages.indexOf(img);
+    this.updateFullViewUI();
+    this.$("cfobFullViewModal").classList.add('active');
+  }
+
+  closeFullView() {
+    this.$("cfobFullViewModal").classList.remove('active');
+    this.$("cfobFullViewImg").src = "";
+  }
+
+  navigateImage(dir) {
+    if (this.filteredImages.length === 0) return;
+    this.currentImageIndex += dir;
+    if (this.currentImageIndex < 0) this.currentImageIndex = this.filteredImages.length - 1;
+    if (this.currentImageIndex >= this.filteredImages.length) this.currentImageIndex = 0;
+    this.updateFullViewUI();
+  }
+
+  updateFullViewUI() {
+    const img = this.filteredImages[this.currentImageIndex];
+    if (!img) return;
+    this.$("cfobFullViewImg").src = img.url;
+    this.$("cfobFullViewTitle").innerText = img.name;
+    this.$("cfobFullViewCount").innerText = `${this.currentImageIndex + 1} / ${this.filteredImages.length}`;
+
+    if (!img.isParsed) {
+      this.$("cfobFullViewFields").innerHTML = "<i style='color: #666;'>Loading metadata...</i>";
+      this.loadMetadata(img).then(() => {
+        if (this.filteredImages[this.currentImageIndex] === img) {
+          this.$("cfobFullViewFields").innerHTML = this.getCardFieldsHtml(img);
+        }
+      });
+    } else {
+      this.$("cfobFullViewFields").innerHTML = this.getCardFieldsHtml(img);
     }
   }
 
@@ -1511,38 +1632,6 @@ class ComfyOutputBrowser {
   openHiddenFoldersModal() {
     this.$("cfobHiddenFoldersInput").value = this.hiddenFolders.join('\n');
     this.$("cfobHiddenFoldersModal").classList.add('active');
-  }
-
-  async openFullView(img) {
-    if (!img) return;
-    this.currentImageIndex = this.filteredImages.indexOf(img);
-    if (this.currentImageIndex === -1) this.currentImageIndex = 0;
-
-    this.$("cfobFullViewImg").src = img.url;
-    this.$("cfobFullViewTitle").innerText = img.name;
-    this.$("cfobFullViewCount").innerText = `${this.currentImageIndex + 1} / ${this.filteredImages.length}`;
-
-    this.$("cfobFullViewModal").classList.add('active');
-
-    const fieldsContainer = this.$("cfobFullViewFields");
-
-    if (!img.isParsed) {
-      fieldsContainer.innerHTML = '<div style="padding: 20px; color: #a1a1aa; text-align: center;">Loading metadata...</div>';
-      await this.loadMetadata(img);
-    }
-
-    fieldsContainer.innerHTML = this.getCardFieldsHtml(img);
-  }
-
-  closeFullView() {
-    this.$("cfobFullViewModal").classList.remove('active');
-    this.$("cfobFullViewImg").src = '';
-  }
-
-  navigateImage(dir) {
-    if (!this.filteredImages.length) return;
-    this.currentImageIndex = (this.currentImageIndex + dir + this.filteredImages.length) % this.filteredImages.length;
-    this.openFullView(this.filteredImages[this.currentImageIndex]);
   }
 }
 
