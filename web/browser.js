@@ -13,7 +13,7 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .logo-group h1 { font-size: 18px; margin: 0; color: #fff; white-space: nowrap; }
     #cfobImageCount { color: var(--text-muted); font-size: 13px; font-weight: 600; margin-left: 6px; }
     #cfob-root .actions-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
-    #cfob-root .btn { background: var(--panel-hover); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+    #cfob-root .btn { background: var(--panel-hover); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap; }
     #cfob-root .btn:hover { background: #52525b; border-color: #71717a; }
     #cfob-root .btn-primary { background: var(--highlight); border-color: var(--highlight); color: #fff; }
     #cfob-root .btn-primary:hover { background: var(--highlight-hover); border-color: var(--highlight-hover); }
@@ -37,13 +37,12 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .checkbox-wrapper { position: absolute; top: 8px; left: 8px; z-index: 5; background: rgba(0,0,0,0.6); border-radius: 4px; padding: 4px; display: flex; }
     #cfob-root .card-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--highlight); margin: 0; }
     #cfob-root .card-content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-    #cfob-root .card-header { padding: 10px 14px; background: #202023; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    #cfob-root .card-header { padding: 10px 14px; background: #202023; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    #cfob-root .card-header:hover { background: var(--panel-hover); color: #fff; }
+    #cfob-root .card-header .toggle-icon { transition: transform 0.2s ease; }
     #cfob-root .card-filename { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
     #cfob-root .card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
-    #cfob-root .card-toggle-bar { display: flex; background: #202023; border-top: 1px solid var(--border); padding: 8px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s, color 0.15s; }
-    #cfob-root .card-toggle-bar:hover {background: var(--panel-hover);color: #fff; }
-    #cfob-root .card-toggle-bar .toggle-icon {transition: transform 0.2s ease; }
-    #cfob-root .image-card.expanded .card-toggle-bar .toggle-icon {transform: rotate(180deg);}
+    #cfob-root .image-card.expanded .card-header .toggle-icon {transform: rotate(180deg);}
     #cfob-root .gallery-container { display: grid; gap: 20px; align-items: start; padding-bottom: 80px; }
     #cfob-root .gallery-container .image-card .card-body { display: none; }
     #cfob-root .gallery-container .image-card.expanded .card-body { display: flex; }
@@ -56,7 +55,6 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .gallery-container.view-compact .card-header { padding: 8px 10px; }
     #cfob-root .gallery-container.view-compact .card-body { display: none; }
     #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
-    #cfob-root .gallery-container.view-list .card-toggle-bar { display: none; }
     #cfob-root .gallery-container.view-list .image-card { flex-direction: row; }
     #cfob-root .gallery-container.view-list .card-preview { width: 280px; height: 100%; min-height: 180px; max-height: 280px; background: #111; object-fit: contain; cursor: pointer; border-right: 1px solid var(--border); }
     #cfob-root .gallery-container.view-list .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
@@ -131,22 +129,26 @@ const BROWSER_CSS = /*css*/ `
     #cfob-launcher-btn.floating { position: fixed; top: 4px; right: 45px; z-index: 9998; background: #27272a; color: #fff; border: 1px solid #3f3f46; border-radius: 8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
     #cfob-launcher-btn.floating:hover { background: #3f3f46; }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
       #cfob-root .btn span { display: none; }
+      #cfob-root .full-view-actions { display: flex; justify-content: space-around; }
+    }
+
+    @media (max-width: 768px) {
       #cfob-root .top-bar { flex-direction: column; align-items: stretch; gap: 10px; }
       #cfob-root .logo-group { width: 100%; justify-content: space-between; }
       #cfob-root .actions-group { width: 100%; justify-content: stretch; gap: 8px; }
       #cfob-root .search-wrapper { max-width: none; width: 100%; order: -1; }
       #cfob-root .view-toggles { display: none; }
-      #cfob-root .gallery-container { grid-template-columns: 1fr !important; }
+      #cfob-root .gallery-container { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));}
       #cfob-root .gallery-container .image-card { flex-direction: column !important; }
       #cfob-root .gallery-container .image-card .card-preview { width: 100% !important; height: 220px !important; }
       #cfob-root .main-container .action-bar { padding: 5px 10px; flex-wrap: wrap; justify-content: center; gap: 8px; }
+      #cfob-root .nodes-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
       #cfob-root .full-view-layout { flex-direction: column; }
       #cfob-root .full-view-main { height: 50vh; min-height: 250px; }
       #cfob-root .full-view-sidebar { width: 100% !important; min-width: 100% !important; height: 50vh; border-left: none; border-top: 1px solid var(--border); }
       #cfob-root .full-view-sidebar.collapsed { height: 0; min-height: 0; border-top: none; }
-      #cfob-root .full-view-actions { display: flex; justify-content: space-around; }
       #cfob-root #cfobToggleSidebarBtn svg { transform: rotate(90deg); }
     }
 `;
@@ -156,6 +158,7 @@ const ICONS = {
   config: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
   copy: `<svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M20 2H10c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2m0 12H10V4h10z"/><path fill="currentColor" d="M14 20H4V10h2V8H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h-2z"/></svg>`,
   check: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+  download: `<svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7zM5 18v2h14v-2z" /></svg>`,
   drop: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`,
   gridBig: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`,
   gridSmall: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="4" height="4"></rect><rect x="10" y="3" width="4" height="4"></rect><rect x="17" y="3" width="4" height="4"></rect><rect x="3" y="10" width="4" height="4"></rect><rect x="10" y="10" width="4" height="4"></rect><rect x="17" y="10" width="4" height="4"></rect><rect x="3" y="17" width="4" height="4"></rect><rect x="10" y="17" width="4" height="4"></rect><rect x="17" y="17" width="4" height="4"></rect></svg>`,
@@ -208,7 +211,7 @@ const BROWSER_HTML = `
     <div style="width: 1px; height: 20px; background: var(--border);"></div>
     <button class="btn btn-primary" id="cfobActionOpen">${ICONS.workflow}<span>Load Workflow</span></button>
     <button class="btn" id="cfobActionInspect">${ICONS.inspect}<span>Inspect Nodes</span></button>
-    <button class="btn" id="cfobActionDownload">${ICONS.drop}<span>Download</span></button>
+    <button class="btn" id="cfobActionDownload">${ICONS.download}<span>Download</span></button>
     <button class="btn" id="cfobActionRename">${ICONS.move}<span>Move/Rename</span></button>
     <button class="btn btn-danger" id="cfobActionDelete">${ICONS.trash}<span>Delete</span></button>
     <div style="width: 1px; height: 20px; background: var(--border);"></div>
@@ -253,7 +256,7 @@ const BROWSER_HTML = `
         <div class="full-view-actions" id="cfobFullViewActions">
           <button class="btn btn-primary" id="cfobFVActionOpen">${ICONS.workflow}<span>Workflow</span></button>
           <button class="btn" id="cfobFVActionInspect">${ICONS.inspect}<span>Inspect</span></button>
-          <button class="btn" id="cfobFVActionDownload">${ICONS.drop}<span>Download</span></button>
+          <button class="btn" id="cfobFVActionDownload">${ICONS.download}<span>Download</span></button>
           <button class="btn" id="cfobFVActionRename">${ICONS.move}<span>Move/Rename</span></button>
           <button class="btn btn-danger" id="cfobFVActionDelete">${ICONS.trash}<span>Delete</span></button>
         </div>
@@ -1185,10 +1188,10 @@ class ComfyOutputBrowser {
                         </div>
                         <img class="card-preview" src="${img.url}" loading="lazy" title="Click to view full image">
                         <div class="card-content-wrapper">
-                          <div class="card-header">
+                          <div class="card-header" title="Click to toggle details">
                             <span class="card-filename" title="${this.escapeHtml(img.name)}">${this.escapeHtml(img.name)}</span>
+                            ${ICONS.toggle}
                           </div>
-                          <div class="card-toggle-bar" title="Toggle Details"><span>Metadata Details</span>${ICONS.toggle}</div>
                           <div class="card-body">${this.getCardFieldsHtml(img)}</div>
                         </div>`;
 
@@ -1197,7 +1200,7 @@ class ComfyOutputBrowser {
       cb.addEventListener('click', (e) => this.handleCheckboxClick(e, img.name));
 
       card.querySelector('.card-preview').addEventListener('click', () => this.openFullView(img));
-      card.querySelector('.card-toggle-bar').addEventListener('click', () => {
+      card.querySelector('.card-header').addEventListener('click', () => {
         if (card.classList.contains('selected') && this.selectedImages.size > 1) {
           this.root.querySelectorAll('.image-card.selected').forEach(c => c.classList.toggle('expanded'));
         } else {
