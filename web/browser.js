@@ -19,7 +19,10 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .btn-danger { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
     #cfob-root .btn-danger:hover { background: #991b1b; }
     #cfob-root .btn-xs { padding: 3px 6px; font-size: 11px; border-radius: 4px; }
-    #cfob-root .search-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; flex: 1; min-width: 150px; max-width: 350px; }
+    #cfob-root .search-wrapper { position: relative; display: flex; align-items: center; flex: 1; min-width: 150px; max-width: 350px; }
+    #cfob-root .search-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 30px 8px 12px; border-radius: 6px; font-size: 13px; width: 100%; }
+    #cfob-root .search-clear-btn { position: absolute; right: 6px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: none; align-items: center; justify-content: center; transition: color 0.15s; }
+    #cfob-root .search-clear-btn:hover { color: #fff; }
     #cfob-root .search-input:focus { outline: none; border-color: var(--highlight); }
     #cfob-root .view-toggles { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
     #cfob-root .view-btn { background: transparent; color: var(--text-muted); border: none; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; border-right: 1px solid var(--border); }
@@ -123,7 +126,7 @@ const BROWSER_CSS = /*css*/ `
       #cfob-root .top-bar { flex-direction: column; align-items: stretch; gap: 10px; }
       #cfob-root .logo-group { width: 100%; justify-content: space-between; }
       #cfob-root .actions-group { width: 100%; justify-content: stretch; gap: 8px; }
-      #cfob-root .search-input { max-width: none; width: 100%; order: -1; }
+      #cfob-root .search-wrapper { max-width: none; width: 100%; order: -1; }
       #cfob-root .view-toggles { display: none; }
       #cfob-root .gallery-container { grid-template-columns: 1fr !important; }
       #cfob-root .gallery-container .image-card { flex-direction: column !important; }
@@ -159,7 +162,10 @@ const BROWSER_HTML = `
 <div class="top-bar">
   <div class="logo-group">${ICONS.logo}<h1>ComfyUI Output Browser</h1></div>
   <div class="actions-group">
-    <input type="text" id="cfobSearchInput" class="search-input" placeholder="cat dog, tree !blue (AND / OR / NOT)">
+    <div class="search-wrapper">
+      <input type="text" id="cfobSearchInput" class="search-input" placeholder="cat dog, tree !blue (AND / OR / NOT)">
+      <button id="cfobClearSearchBtn" class="search-clear-btn" title="Clear search">${ICONS.close}</button>
+    </div>
     <div class="view-toggles">
       <button class="view-btn" data-view="compact" title="Compact Grid">${ICONS.gridSmall}</button>
       <button class="view-btn" data-view="grid" title="Standard Grid">${ICONS.gridBig}</button>
@@ -233,6 +239,7 @@ const DEFAULT_FIELDS = [
 class ComfyOutputBrowser {
   constructor() {
     this.loadedImages = [];
+    this.filteredImages = [];
     this.activePopover = null;
     this.currentImageIndex = 0;
     this.fieldConfigs = this.loadConfig();
@@ -307,6 +314,11 @@ class ComfyOutputBrowser {
     this.$("cfobConfigFieldsBtn").addEventListener('click', () => this.openConfigModal());
     this.$("cfobFilesInput").addEventListener('change', (e) => this.handleLocalFiles(e.target.files));
     this.$("cfobSearchInput").addEventListener('input', () => this.filterGallery());
+
+    this.$("cfobClearSearchBtn").addEventListener('click', () => {
+      this.$("cfobSearchInput").value = "";
+      this.filterGallery();
+    });
 
     // View Toggles
     this.root.querySelectorAll('.view-btn').forEach(btn => {
@@ -605,8 +617,8 @@ class ComfyOutputBrowser {
                           <div class="card-body">${fieldsHtml}</div>
                         </div>`;
 
-      card.querySelector('.card-preview').addEventListener('click', () => this.openFullView(idx));
-      card.querySelector('.ins-btn').addEventListener('click', () => this.openInspector(idx));
+      card.querySelector('.card-preview').addEventListener('click', () => this.openFullView(img));
+      card.querySelector('.ins-btn').addEventListener('click', () => this.openInspector(this.loadedImages.indexOf(img)));
       card.querySelector('.card-toggle-bar').addEventListener('click', () => {
         card.classList.toggle('expanded');
       });
@@ -626,6 +638,9 @@ class ComfyOutputBrowser {
 
   filterGallery() {
     const rawQ = this.$("cfobSearchInput").value.toLowerCase().trim();
+    const clearBtn = this.$("cfobClearSearchBtn");
+    if (clearBtn) clearBtn.style.display = rawQ ? "flex" : "none";
+    this.filteredImages = [];
 
     // Split by commas first (OR groups), then split each group by spaces (AND words/exclusions)
     const orGroups = rawQ.split(',').map(group =>
@@ -637,7 +652,9 @@ class ComfyOutputBrowser {
 
       // If no search query, show all cards
       if (orGroups.length === 0) {
-        return card.style.display = 'flex';
+        card.style.display = 'flex';
+        this.filteredImages.push(img);
+        return;
       }
 
       const textToSearch = (img.name + ' ' + (img.prompt ? JSON.stringify(img.prompt) : '')).toLowerCase();
@@ -658,6 +675,7 @@ class ComfyOutputBrowser {
       });
 
       card.style.display = matches ? 'flex' : 'none';
+      if (matches) this.filteredImages.push(img);
     });
   }
 
@@ -797,14 +815,14 @@ class ComfyOutputBrowser {
     this.$("cfobInspectorModal").classList.add('active');
   }
 
-  openFullView(idx) {
-    this.currentImageIndex = idx;
-    const img = this.loadedImages[idx];
+  openFullView(img) {
     if (!img) return;
+    this.currentImageIndex = this.filteredImages.indexOf(img);
+    if (this.currentImageIndex === -1) this.currentImageIndex = 0;
 
     this.$("cfobFullViewImg").src = img.url;
     this.$("cfobFullViewTitle").innerText = img.name;
-    this.$("cfobFullViewCount").innerText = `${idx + 1} / ${this.loadedImages.length}`;
+    this.$("cfobFullViewCount").innerText = `${this.currentImageIndex + 1} / ${this.filteredImages.length}`;
 
     let htmlBuffer = '';
     this.fieldConfigs.forEach(cfg => {
@@ -830,7 +848,7 @@ class ComfyOutputBrowser {
 
     this.$("cfobFullViewInspectBtn").onclick = () => {
       this.closeFullView();
-      this.openInspector(idx);
+      this.openInspector(this.loadedImages.indexOf(img));
     };
 
     this.$("cfobFullViewModal").classList.add('active');
@@ -842,9 +860,9 @@ class ComfyOutputBrowser {
   }
 
   navigateImage(dir) {
-    if (!this.loadedImages.length) return;
-    this.currentImageIndex = (this.currentImageIndex + dir + this.loadedImages.length) % this.loadedImages.length;
-    this.openFullView(this.currentImageIndex);
+    if (!this.filteredImages.length) return;
+    this.currentImageIndex = (this.currentImageIndex + dir + this.filteredImages.length) % this.filteredImages.length;
+    this.openFullView(this.filteredImages[this.currentImageIndex]);
   }
 }
 
