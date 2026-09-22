@@ -85,3 +85,45 @@ async def rename_image(request):
             return web.json_response({"success": False, "error": str(e)})
             
     return web.json_response({"success": False, "error": "Source file not found."})
+
+@server.PromptServer.instance.routes.post("/comfyui-output-browser/move")
+async def move_images(request):
+    data = await request.json()
+    files = data.get("files", [])
+    dest_folder = data.get("dest_folder", "").strip()
+
+    if not files or not dest_folder:
+        return web.json_response({"success": False, "error": "Invalid files or destination folder provided."})
+
+    output_dir = folder_paths.get_output_directory()
+    safe_dest_dir = get_safe_path(output_dir, dest_folder)
+    
+    if not safe_dest_dir:
+        return web.json_response({"success": False, "error": "Access denied: Destination outside output directory."})
+
+    os.makedirs(safe_dest_dir, exist_ok=True)
+
+    moved = []
+    errors = []
+    
+    for f in files:
+        old_path = get_safe_path(output_dir, f)
+        if not old_path or not os.path.exists(old_path):
+            errors.append(f"{f}: Source not found or invalid.")
+            continue
+            
+        filename = os.path.basename(old_path)
+        new_path = os.path.join(safe_dest_dir, filename)
+        
+        if os.path.exists(new_path):
+            errors.append(f"{f}: Target file already exists.")
+            continue
+            
+        try:
+            os.rename(old_path, new_path)
+            clean_new_name = os.path.relpath(new_path, os.path.abspath(output_dir)).replace("\\", "/")
+            moved.append({"old_name": f, "new_name": clean_new_name})
+        except Exception as e:
+            errors.append(f"{f}: {str(e)}")
+            
+    return web.json_response({"success": True, "moved": moved, "errors": errors})

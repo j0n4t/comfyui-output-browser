@@ -546,7 +546,7 @@ class ComfyOutputBrowser {
         for (const sel of this.selectedImages) {
           if (!validNames.has(sel)) this.selectedImages.delete(sel);
         }
-        
+
         this.updateActionBar();
         this.renderGallery();
       } else if (isFirstLoad) {
@@ -595,7 +595,7 @@ class ComfyOutputBrowser {
   async loadMetadata(img) {
     if (img.isParsed) return;
     if (img.isParsing) {
-      while(img.isParsing) { await new Promise(r => setTimeout(r, 50)); }
+      while (img.isParsing) { await new Promise(r => setTimeout(r, 50)); }
       return;
     }
 
@@ -609,7 +609,7 @@ class ComfyOutputBrowser {
       img.isParsed = true;
     } catch (e) {
       console.warn(`Failed to parse remote file: ${img.name}`, e);
-      img.isParsed = true; 
+      img.isParsed = true;
     } finally {
       img.isParsing = false;
     }
@@ -679,7 +679,7 @@ class ComfyOutputBrowser {
     });
     return fieldsHtml;
   }
-  
+
   handleCheckboxClick(e, filename) {
     e.stopPropagation();
     const fIdx = this.filteredImages.findIndex(img => img.name === filename);
@@ -689,13 +689,13 @@ class ComfyOutputBrowser {
       const start = Math.min(this.lastSelectedIdx, fIdx);
       const end = Math.max(this.lastSelectedIdx, fIdx);
       const isChecked = e.target.checked;
-      
+
       for (let i = start; i <= end; i++) {
         const targetImg = this.filteredImages[i];
         if (isChecked) this.selectedImages.add(targetImg.name);
         else this.selectedImages.delete(targetImg.name);
       }
-      
+
       this.root.querySelectorAll('.card-checkbox').forEach(cb => {
         cb.checked = this.selectedImages.has(cb.value);
       });
@@ -703,7 +703,7 @@ class ComfyOutputBrowser {
       if (e.target.checked) this.selectedImages.add(filename);
       else this.selectedImages.delete(filename);
     }
-    
+
     this.lastSelectedIdx = fIdx;
     this.updateActionBar();
     this.updateCardStyles();
@@ -715,9 +715,10 @@ class ComfyOutputBrowser {
     if (count > 0) {
       bar.classList.add('show');
       this.$("cfobSelectionCount").innerText = `${count} selected`;
-      
+
       const isSingle = count === 1;
-      this.$("cfobActionRename").style.display = isSingle ? 'inline-flex' : 'none';
+      this.$("cfobActionRename").style.display = 'inline-flex';
+      this.$("cfobActionRename").querySelector('span').innerText = isSingle ? 'Move/Rename' : 'Move to Folder';
       this.$("cfobActionOpen").style.display = isSingle ? 'inline-flex' : 'none';
     } else {
       bar.classList.remove('show');
@@ -732,7 +733,7 @@ class ComfyOutputBrowser {
       else card.classList.remove('selected');
     });
   }
-  
+
   clearSelection() {
     this.selectedImages.clear();
     this.lastSelectedIdx = -1;
@@ -744,74 +745,113 @@ class ComfyOutputBrowser {
   async downloadSelected() {
     this.showToast(`Downloading ${this.selectedImages.size} image(s)...`);
     for (const filename of this.selectedImages) {
-        const img = this.loadedImages.find(i => i.name === filename);
-        if (img) {
-            const a = document.createElement('a');
-            a.href = img.url;
-            a.download = img.name.split('/').pop();
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            await new Promise(r => setTimeout(r, 250));
-        }
+      const img = this.loadedImages.find(i => i.name === filename);
+      if (img) {
+        const a = document.createElement('a');
+        a.href = img.url;
+        a.download = img.name.split('/').pop();
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        await new Promise(r => setTimeout(r, 250));
+      }
     }
     this.clearSelection();
   }
 
   async deleteSelected() {
     if (!confirm(`Permanently delete ${this.selectedImages.size} image(s)?`)) return;
-    
+
     const files = Array.from(this.selectedImages);
     try {
-        const res = await fetch("/comfyui-output-browser/delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ files })
-        });
-        const data = await res.json();
-        
-        if (data.deleted) {
-            this.loadedImages = this.loadedImages.filter(img => !data.deleted.includes(img.name));
-            this.clearSelection();
-            this.renderGallery();
-            this.showToast(`Deleted ${data.deleted.length} image(s)`);
-        }
+      const res = await fetch("/comfyui-output-browser/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files })
+      });
+      const data = await res.json();
+
+      if (data.deleted) {
+        this.loadedImages = this.loadedImages.filter(img => !data.deleted.includes(img.name));
+        this.clearSelection();
+        this.renderGallery();
+        this.showToast(`Deleted ${data.deleted.length} image(s)`);
+      }
     } catch (e) {
-        console.error(e);
-        this.showToast("Failed to delete images.");
+      console.error(e);
+      this.showToast("Failed to delete images.");
     }
   }
 
   async renameSelected() {
-    if (this.selectedImages.size !== 1) return;
-    const oldName = Array.from(this.selectedImages)[0];
-    let newName = prompt("Enter new path or filename (e.g. 'etc/thing02.png'):", oldName);
-    
-    if (!newName || newName === oldName) return;
-    
-    try {
+    const count = this.selectedImages.size;
+    if (count === 0) return;
+
+    if (count === 1) {
+      const oldName = Array.from(this.selectedImages)[0];
+      let newName = prompt("Enter new path or filename (e.g. 'etc/thing02.png'):", oldName);
+
+      if (!newName || newName === oldName) return;
+
+      try {
         const res = await fetch("/comfyui-output-browser/rename", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ old_name: oldName, new_name: newName })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ old_name: oldName, new_name: newName })
         });
         const data = await res.json();
-        
+
         if (data.success) {
-            const img = this.loadedImages.find(i => i.name === oldName);
-            if (img) {
-                img.name = data.new_name;
-                img.url = this.getImageUrl(data.new_name);
-            }
-            this.clearSelection();
-            this.renderGallery();
-            this.showToast(`Moved to ${data.new_name}`);
+          const img = this.loadedImages.find(i => i.name === oldName);
+          if (img) {
+            img.name = data.new_name;
+            img.url = this.getImageUrl(data.new_name);
+          }
+          this.clearSelection();
+          this.renderGallery();
+          this.showToast(`Moved to ${data.new_name}`);
         } else {
-            this.showToast(data.error || "Rename failed.");
+          this.showToast(data.error || "Rename failed.");
         }
-    } catch (e) {
+      } catch (e) {
         console.error(e);
         this.showToast("Rename request failed.");
+      }
+    } else {
+      let destFolder = prompt(`Move ${count} items to folder (e.g., 'Favorites'):`, "");
+      if (destFolder === null || destFolder.trim() === "") return;
+
+      try {
+        const res = await fetch("/comfyui-output-browser/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ files: Array.from(this.selectedImages), dest_folder: destFolder })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          data.moved.forEach(m => {
+            const img = this.loadedImages.find(i => i.name === m.old_name);
+            if (img) {
+              img.name = m.new_name;
+              img.url = this.getImageUrl(m.new_name);
+            }
+          });
+          this.clearSelection();
+          this.renderGallery();
+          if (data.errors && data.errors.length > 0) {
+            this.showToast(`Moved ${data.moved.length}, but ${data.errors.length} failed.`);
+            console.warn("Move errors:", data.errors);
+          } else {
+            this.showToast(`Moved ${data.moved.length} item(s) to ${destFolder}`);
+          }
+        } else {
+          this.showToast(data.error || "Move failed.");
+        }
+      } catch (e) {
+        console.error(e);
+        this.showToast("Move request failed.");
+      }
     }
   }
 
@@ -820,26 +860,26 @@ class ComfyOutputBrowser {
     const filename = Array.from(this.selectedImages)[0];
     const img = this.loadedImages.find(i => i.name === filename);
     if (!img) return;
-    
+
     if (!img.isParsed) {
-        this.showToast("Loading metadata...");
-        await this.loadMetadata(img);
+      this.showToast("Loading metadata...");
+      await this.loadMetadata(img);
     }
-    
+
     if (img.workflow) {
-        app.loadGraphData(img.workflow);
-        this.root.style.display = 'none';
-        this.clearSelection();
-        this.showToast("Workflow loaded successfully!");
+      app.loadGraphData(img.workflow);
+      this.root.style.display = 'none';
+      this.clearSelection();
+      this.showToast("Workflow loaded successfully!");
     } else {
-        this.showToast("No workflow metadata found in this image.");
+      this.showToast("No workflow metadata found in this image.");
     }
   }
 
   renderGallery() {
     const grid = this.$("cfobGalleryGrid");
     grid.innerHTML = '';
-    
+
     if (this.observer) this.observer.disconnect();
 
     if (!this.loadedImages.length) {
@@ -887,7 +927,7 @@ class ComfyOutputBrowser {
       });
 
       grid.appendChild(card);
-      
+
       if (!img.isParsed && this.observer) {
         this.observer.observe(card);
       }
@@ -1014,12 +1054,12 @@ class ComfyOutputBrowser {
 
   async openInspector(idx) {
     const img = this.loadedImages[idx];
-    
+
     if (!img.isParsed) {
       this.$("cfobInspectorTitle").innerText = `Loading Metadata...`;
       await this.loadMetadata(img);
     }
-    
+
     this.$("cfobInspectorTitle").innerText = `Metadata: ${img.name}`;
     this.$("cfobInsPromptText").value = img.prompt ? JSON.stringify(img.prompt, null, 2) : 'No API Prompt Metadata';
     this.$("cfobInsWorkflowText").value = img.workflow ? JSON.stringify(img.workflow, null, 2) : 'No UI Workflow Metadata';
