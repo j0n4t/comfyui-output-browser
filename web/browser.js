@@ -160,6 +160,7 @@ const ICONS = {
   gridSmall: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="4" height="4"></rect><rect x="10" y="3" width="4" height="4"></rect><rect x="17" y="3" width="4" height="4"></rect><rect x="3" y="10" width="4" height="4"></rect><rect x="10" y="10" width="4" height="4"></rect><rect x="17" y="10" width="4" height="4"></rect><rect x="3" y="17" width="4" height="4"></rect><rect x="10" y="17" width="4" height="4"></rect><rect x="17" y="17" width="4" height="4"></rect></svg>`,
   gridList: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
   logo: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
+  more: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>`,
   pane: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="15" y1="3" x2="15" y2="21"></line></svg>`,
   picture: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
   refresh: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`,
@@ -183,7 +184,7 @@ const BROWSER_HTML = `
     </div>
     <button class="btn" id="cfobRefreshBtn" title="Sync outputs from Server">${ICONS.refresh}<span>Refresh</span></button>
     <button class="btn" id="cfobLocalFilesBtn" title="Manually inspect other files">${ICONS.picture}<span>+ PNGs</span></button>
-      <button class="btn btn-primary" id="cfobConfigFieldsBtn">${ICONS.config}<span>Card Fields</span></button>
+      <button class="btn" id="cfobMenuBtn" title="Options">${ICONS.more}</button>
       <button class="btn btn-danger" id="cfobCloseBrowserBtn">${ICONS.close}<span>Close</span></button>
       <input type="file" id="cfobFilesInput" accept="image/png" multiple style="display: none;">
   </div>
@@ -245,6 +246,24 @@ const BROWSER_HTML = `
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="cfobHiddenFoldersModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Configure Hidden Folders</h3>
+      <button class="icon-btn" id="cfobCloseHiddenFoldersBtn">${ICONS.close}</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+        Specify folder names or path keywords to hide (one per line or comma-separated). Folders starting with <code>.</code> (e.g. <code>.cache</code>) are automatically hidden when hidden folders are toggled off.
+      </p>
+      <textarea id="cfobHiddenFoldersInput" class="config-paths-textarea" style="height: 140px; width: 100%;" placeholder="temp&#10;trash&#10;drafts"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="cfobResetHiddenFoldersBtn">Reset Defaults</button>
+      <button class="btn btn-primary" id="cfobSaveHiddenFoldersBtn">Save & Apply</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="cfobToastNotice"></div>
 `;
 
@@ -266,6 +285,8 @@ class ComfyOutputBrowser {
     this.activePopover = null;
     this.currentImageIndex = 0;
     this.fieldConfigs = this.loadConfig();
+    this.hiddenFolders = this.loadHiddenFoldersConfig();
+    this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.observer = null;
   }
 
@@ -279,6 +300,33 @@ class ComfyOutputBrowser {
   saveConfig(cfg) {
     this.fieldConfigs = cfg;
     localStorage.setItem('comfy_folder_browser_fields', JSON.stringify(cfg));
+  }
+
+  loadHiddenFoldersConfig() {
+    const saved = localStorage.getItem('comfy_folder_browser_hidden_folders');
+    return saved ? JSON.parse(saved) : ["temp", "trash"];
+  }
+
+  saveHiddenFoldersConfig(folders) {
+    this.hiddenFolders = folders;
+    localStorage.setItem('comfy_folder_browser_hidden_folders', JSON.stringify(folders));
+  }
+
+  isImageInHiddenFolder(relPath) {
+    const parts = relPath.replace(/\\/g, '/').split('/');
+    parts.pop(); // Remove filename
+
+    for (const folder of parts) {
+      if (!folder) continue;
+      if (folder.startsWith('.')) return true;
+      for (const pat of this.hiddenFolders) {
+        const cleanPat = pat.trim().toLowerCase();
+        if (cleanPat && (folder.toLowerCase() === cleanPat || relPath.toLowerCase().includes(cleanPat))) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   getImageUrl(relPath) {
@@ -365,7 +413,7 @@ class ComfyOutputBrowser {
     this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.root.style.display = "none");
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
     this.$("cfobLocalFilesBtn").addEventListener('click', () => this.$("cfobFilesInput").click());
-    this.$("cfobConfigFieldsBtn").addEventListener('click', () => this.openConfigModal());
+    this.$("cfobMenuBtn").addEventListener('click', (e) => this.toggleOptionsMenu(e));
     this.$("cfobFilesInput").addEventListener('change', (e) => this.handleLocalFiles(e.target.files));
     this.$("cfobSearchInput").addEventListener('input', () => this.filterGallery());
 
@@ -453,6 +501,21 @@ class ComfyOutputBrowser {
         tab.classList.add('active');
         this.$(tab.dataset.target).classList.add('active');
       });
+    });
+
+    // Hidden Folders Modal Bindings
+    this.$("cfobCloseHiddenFoldersBtn").addEventListener('click', () => this.$("cfobHiddenFoldersModal").classList.remove('active'));
+    this.$("cfobResetHiddenFoldersBtn").addEventListener('click', () => {
+      this.saveHiddenFoldersConfig(["temp", "trash"]);
+      this.openHiddenFoldersModal();
+    });
+    this.$("cfobSaveHiddenFoldersBtn").addEventListener('click', () => {
+      const val = this.$("cfobHiddenFoldersInput").value;
+      const list = val.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+      this.saveHiddenFoldersConfig(list);
+      this.$("cfobHiddenFoldersModal").classList.remove('active');
+      this.filterGallery();
+      this.showToast("Saved hidden folders configuration");
     });
 
     // Full View Controls
@@ -953,6 +1016,11 @@ class ComfyOutputBrowser {
     this.root.querySelectorAll('.image-card').forEach(card => {
       const img = this.loadedImages[card.dataset.index];
 
+      if (!this.showHiddenFolders && this.isImageInHiddenFolder(img.name)) {
+        card.style.display = 'none';
+        return;
+      }
+
       if (orGroups.length === 0) {
         card.style.display = 'flex';
         this.filteredImages.push(img);
@@ -1126,6 +1194,65 @@ class ComfyOutputBrowser {
     grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, e.currentTarget.dataset.path)));
 
     this.$("cfobInspectorModal").classList.add('active');
+  }
+
+  toggleOptionsMenu(e) {
+    e.stopPropagation();
+    if (this.activePopover) {
+      this.activePopover.remove();
+      this.activePopover = null;
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'popover-menu';
+    menu.style.top = `${rect.bottom + 6}px`;
+    menu.style.right = `${window.innerWidth - rect.right}px`;
+    menu.style.left = 'auto';
+
+    menu.innerHTML = `
+      <button class="popover-item" id="cfobMenuToggleHidden">
+        <span>Show Hidden Folders</span>
+        <span>${this.showHiddenFolders ? ICONS.check : ''}</span>
+      </button>
+      <div style="border-top: 1px solid var(--border); margin: 4px 0;"></div>
+      <button class="popover-item" id="cfobMenuCardFields">
+        <span>${ICONS.config} Card Fields Settings</span>
+      </button>
+      <button class="popover-item" id="cfobMenuHiddenFolders">
+        <span>Hidden Folders Settings</span>
+      </button>
+    `;
+
+    this.root.appendChild(menu);
+    this.activePopover = menu;
+
+    menu.querySelector('#cfobMenuToggleHidden').addEventListener('click', () => {
+      this.showHiddenFolders = !this.showHiddenFolders;
+      localStorage.setItem('comfy_folder_browser_show_hidden', this.showHiddenFolders);
+      this.filterGallery();
+      this.showToast(this.showHiddenFolders ? "Showing hidden folders" : "Hiding hidden folders");
+      this.activePopover.remove();
+      this.activePopover = null;
+    });
+
+    menu.querySelector('#cfobMenuCardFields').addEventListener('click', () => {
+      this.openConfigModal();
+      this.activePopover.remove();
+      this.activePopover = null;
+    });
+
+    menu.querySelector('#cfobMenuHiddenFolders').addEventListener('click', () => {
+      this.openHiddenFoldersModal();
+      this.activePopover.remove();
+      this.activePopover = null;
+    });
+  }
+
+  openHiddenFoldersModal() {
+    this.$("cfobHiddenFoldersInput").value = this.hiddenFolders.join('\n');
+    this.$("cfobHiddenFoldersModal").classList.add('active');
   }
 
   async openFullView(img) {
