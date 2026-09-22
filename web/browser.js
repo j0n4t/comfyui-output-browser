@@ -826,9 +826,17 @@ class ComfyOutputBrowser {
   }
 
   async deleteSelected() {
-    if (!confirm(`Permanently delete ${this.selectedImages.size} image(s)?`)) return;
-
     const files = Array.from(this.selectedImages);
+    if (!files.length) return;
+
+    // Check if any selected items are already in the trash directory
+    const hasTrashedItems = files.some(f => f.replace(/\\/g, '/').startsWith('.trash/'));
+    const confirmMsg = hasTrashedItems
+      ? `Permanently delete ${files.length} selected image(s)? This cannot be undone.`
+      : `Move ${files.length} selected image(s) to Trash?`;
+
+    if (!confirm(confirmMsg)) return;
+
     try {
       const res = await fetch("/comfyui-output-browser/delete", {
         method: "POST",
@@ -837,15 +845,22 @@ class ComfyOutputBrowser {
       });
       const data = await res.json();
 
-      if (data.deleted) {
-        this.loadedImages = this.loadedImages.filter(img => !data.deleted.includes(img.name));
+      const removed = [...(data.deleted || []), ...(data.trashed || [])];
+
+      if (removed.length > 0) {
+        this.loadedImages = this.loadedImages.filter(img => !removed.includes(img.name));
         this.clearSelection();
         this.renderGallery();
-        this.showToast(`Deleted ${data.deleted.length} image(s)`);
+
+        if (data.deleted && data.deleted.length > 0) {
+          this.showToast(`Permanently deleted ${data.deleted.length} image(s)`);
+        } else if (data.trashed && data.trashed.length > 0) {
+          this.showToast(`Moved ${data.trashed.length} image(s) to Trash`);
+        }
       }
     } catch (e) {
       console.error(e);
-      this.showToast("Failed to delete images.");
+      this.showToast("Failed to delete/trash images.");
     }
   }
 

@@ -1,5 +1,6 @@
 import os
 import server
+import time
 import folder_paths
 from aiohttp import web
 
@@ -39,18 +40,40 @@ async def delete_images(request):
     data = await request.json()
     files = data.get("files", [])
     output_dir = folder_paths.get_output_directory()
+    trash_dir = os.path.join(output_dir, ".trash")
+    
     deleted = []
+    trashed = []
     
     for f in files:
         file_path = get_safe_path(output_dir, f)
-        if file_path and os.path.exists(file_path):
-            try:
+        if not file_path or not os.path.exists(file_path):
+            continue
+            
+        clean_f = f.replace("\\", "/")
+        
+        try:
+            # If the file is already inside .trash, permanently delete it
+            if clean_f.startswith(".trash/") or "/.trash/" in clean_f:
                 os.remove(file_path)
                 deleted.append(f)
-            except Exception as e:
-                print(f"Failed to delete {f}: {e}")
+            else:
+                # Move to .trash folder
+                os.makedirs(trash_dir, exist_ok=True)
+                filename = os.path.basename(file_path)
+                dest_path = os.path.join(trash_dir, filename)
                 
-    return web.json_response({"deleted": deleted})
+                # Prevent overwriting if a file with the same name already exists in trash
+                if os.path.exists(dest_path):
+                    base, ext = os.path.splitext(filename)
+                    dest_path = os.path.join(trash_dir, f"{base}_{int(time.time())}{ext}")
+                    
+                os.rename(file_path, dest_path)
+                trashed.append(f)
+        except Exception as e:
+            print(f"Failed to process delete/trash for {f}: {e}")
+                
+    return web.json_response({"success": True, "deleted": deleted, "trashed": trashed})
 
 @server.PromptServer.instance.routes.post("/comfyui-output-browser/rename")
 async def rename_image(request):
