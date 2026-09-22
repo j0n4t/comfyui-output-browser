@@ -11,6 +11,7 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .top-bar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 5px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
     #cfob-root .logo-group { display: flex; align-items: center; gap: 10px; }
     #cfob-root .logo-group h1 { font-size: 18px; margin: 0; color: #fff; white-space: nowrap; }
+    #cfobImageCount { color: var(--text-muted); font-size: 13px; font-weight: 600; margin-left: 6px; }
     #cfob-root .actions-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
     #cfob-root .btn { background: var(--panel-hover); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
     #cfob-root .btn:hover { background: #52525b; border-color: #71717a; }
@@ -167,7 +168,9 @@ const ICONS = {
 
 const BROWSER_HTML = `
 <div class="top-bar">
-  <div class="logo-group">${ICONS.logo}<h1>ComfyUI Output Browser</h1></div>
+  <div class="logo-group">${ICONS.logo}<h1>ComfyUI Output Browser</h1>
+  <span id="cfobImageCount"></span>
+  </div>
   <div class="actions-group">
     <div class="search-wrapper">
       <input type="text" id="cfobSearchInput" class="search-input" placeholder="cat dog, tree !blue (AND / OR / NOT)">
@@ -886,6 +889,7 @@ class ComfyOutputBrowser {
       this.$("cfobEmptyStateTitle").innerText = "No Images Loaded";
       this.$("cfobEmptyStateDesc").innerText = "Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect.";
       this.$("cfobEmptyState").style.display = 'block';
+      this.$("cfobImageCount").innerText = "(0)";
       return;
     }
 
@@ -971,6 +975,15 @@ class ComfyOutputBrowser {
       card.style.display = matches ? 'flex' : 'none';
       if (matches) this.filteredImages.push(img);
     });
+
+    const countEl = this.$("cfobImageCount");
+    if (countEl) {
+      if (this.filteredImages.length === this.loadedImages.length) {
+        countEl.innerText = `(${this.loadedImages.length})`;
+      } else {
+        countEl.innerText = `(${this.filteredImages.length} / ${this.loadedImages.length})`;
+      }
+    }
   }
 
   copyValue(btn, encText) {
