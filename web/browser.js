@@ -30,7 +30,7 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .view-btn:last-child { border-right: none; }
     #cfob-root .view-btn:hover, #cfob-root .view-btn.active { background: var(--panel-hover); color: var(--highlight); }
     #cfob-root .main-container { flex: 1; overflow-y: auto; padding: 20px; position: relative; }
-    #cfob-root .drop-overlay { position: absolute; inset: 20px; border: 2px dashed var(--highlight); border-radius: 12px; background: rgba(2, 132, 199, 0.08); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
+    #cfob-root .drop-overlay { position: absolute; inset: 10px; border: 2px dashed var(--highlight); border-radius: 12px; background: rgba(2, 132, 199, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
     #cfob-root .main-container.dragover .drop-overlay { opacity: 1; pointer-events: all; }
     #cfob-root .image-card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; box-shadow: 0 4px 12px rgba(0,0,0,0.25); transition: border-color 0.15s, box-shadow 0.15s; }
     #cfob-root .image-card.selected { border-color: var(--highlight); box-shadow: 0 0 0 1px var(--highlight); }
@@ -461,9 +461,26 @@ class ComfyOutputBrowser {
 
     // Drag & Drop
     const mainCont = this.$("cfobMainContainer");
-    ['dragenter', 'dragover'].forEach(evt => mainCont.addEventListener(evt, (e) => { e.preventDefault(); mainCont.classList.add('dragover'); }));
-    ['dragleave', 'drop'].forEach(evt => mainCont.addEventListener(evt, (e) => { e.preventDefault(); mainCont.classList.remove('dragover'); }));
+    let dragCounter = 0;
+    mainCont.addEventListener('dragenter', (e) => {
+      e.preventDefault(); dragCounter++;
+      mainCont.classList.add('dragover');
+    });
+    mainCont.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+    mainCont.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        mainCont.classList.remove('dragover');
+      }
+    });
     mainCont.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      mainCont.classList.remove('dragover');
       if (e.dataTransfer.files.length) this.handleLocalFiles(e.dataTransfer.files);
     });
 
