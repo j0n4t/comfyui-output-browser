@@ -159,7 +159,7 @@ const BROWSER_HTML = `
 <div class="top-bar">
   <div class="logo-group">${ICONS.logo}<h1>ComfyUI Output Browser</h1></div>
   <div class="actions-group">
-    <input type="text" id="cfobSearchInput" class="search-input" placeholder="Search prompts, models, files...">
+    <input type="text" id="cfobSearchInput" class="search-input" placeholder="cat dog, tree !blue (AND / OR / NOT)">
     <div class="view-toggles">
       <button class="view-btn" data-view="compact" title="Compact Grid">${ICONS.gridSmall}</button>
       <button class="view-btn" data-view="grid" title="Standard Grid">${ICONS.gridBig}</button>
@@ -625,11 +625,38 @@ class ComfyOutputBrowser {
   }
 
   filterGallery() {
-    const q = this.$("cfobSearchInput").value.toLowerCase().trim();
+    const rawQ = this.$("cfobSearchInput").value.toLowerCase().trim();
+
+    // Split by commas first (OR groups), then split each group by spaces (AND words/exclusions)
+    const orGroups = rawQ.split(',').map(group =>
+      group.trim().split(/\s+/).filter(Boolean)
+    ).filter(group => group.length > 0);
+
     this.root.querySelectorAll('.image-card').forEach(card => {
       const img = this.loadedImages[card.dataset.index];
-      if (!q) return card.style.display = 'flex';
-      const matches = img.name.toLowerCase().includes(q) || (img.prompt && JSON.stringify(img.prompt).toLowerCase().includes(q));
+
+      // If no search query, show all cards
+      if (orGroups.length === 0) {
+        return card.style.display = 'flex';
+      }
+
+      const textToSearch = (img.name + ' ' + (img.prompt ? JSON.stringify(img.prompt) : '')).toLowerCase();
+
+      // Match if ANY comma-separated group matches (OR logic)
+      const matches = orGroups.some(group => {
+        // Inside each group, all conditions must pass (AND logic for inclusions/exclusions)
+        return group.every(term => {
+          if (term.startsWith('!')) {
+            const excludeWord = term.slice(1);
+            // Must NOT contain the excluded word (skip empty exclusions like just "!")
+            return excludeWord ? !textToSearch.includes(excludeWord) : true;
+          } else {
+            // Must contain the word
+            return textToSearch.includes(term);
+          }
+        });
+      });
+
       card.style.display = matches ? 'flex' : 'none';
     });
   }
