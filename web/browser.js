@@ -304,6 +304,8 @@ class ComfyOutputBrowser {
     this.activePopover = null;
     this.currentImageIndex = 0;
     this.fieldConfigs = this.loadConfig();
+    this.currentSort = 'default';
+    this.serverOrder = [];
     this.hiddenFolders = this.loadHiddenFoldersConfig();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.observer = null;
@@ -664,6 +666,7 @@ class ComfyOutputBrowser {
     try {
       const response = await fetch("/comfyui-output-browser/images");
       const allFiles = await response.json();
+      this.serverOrder = allFiles;
 
       const existingMap = new Map(this.loadedImages.map(img => [img.name, img]));
       const validImages = [];
@@ -684,7 +687,7 @@ class ComfyOutputBrowser {
 
       if (newImages.length > 0 || validImages.length !== this.loadedImages.length) {
         this.loadedImages = [...newImages, ...validImages];
-        this.loadedImages.sort((a, b) => allFiles.indexOf(a.name) - allFiles.indexOf(b.name));
+        this.applySort();
 
         const validNames = new Set(this.loadedImages.map(img => img.name));
         for (const sel of this.selectedImages) {
@@ -694,6 +697,7 @@ class ComfyOutputBrowser {
         this.updateActionBar();
         this.renderGallery();
       } else if (isFirstLoad) {
+        this.applySort();
         this.renderGallery();
       }
     } catch (err) {
@@ -1279,6 +1283,26 @@ class ComfyOutputBrowser {
     }
   }
 
+  sortImages(method) {
+    this.currentSort = method;
+    this.applySort();
+    this.renderGallery();
+  }
+
+  applySort() {
+    if (this.currentSort === 'recent' && this.serverOrder.length > 0) {
+      this.loadedImages.sort((a, b) => this.serverOrder.indexOf(a.name) - this.serverOrder.indexOf(b.name));
+    } else if (this.currentSort === 'oldest' && this.serverOrder.length > 0) {
+      this.loadedImages.sort((a, b) => this.serverOrder.indexOf(b.name) - this.serverOrder.indexOf(a.name));
+    } else if (this.currentSort === 'name_asc') {
+      this.loadedImages.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (this.currentSort === 'name_desc') {
+      this.loadedImages.sort((a, b) => b.name.localeCompare(a.name));
+    } else if (this.currentSort === 'default' && this.serverOrder.length > 0) {
+      this.loadedImages.sort((a, b) => this.serverOrder.indexOf(a.name) - this.serverOrder.indexOf(b.name));
+    }
+  }
+
   copyValue(btn, encText) {
     const temp = document.createElement('textarea');
     temp.value = decodeURIComponent(encText);
@@ -1437,6 +1461,13 @@ class ComfyOutputBrowser {
     menu.style.left = 'auto';
 
     menu.innerHTML = `
+      <select id="cfobSortSelect" class="btn" style="background: var(--bg); cursor: pointer;">
+        <option value="default">Sort: Default</option>
+        <option value="name_asc">Sort: Name (A-Z)</option>
+        <option value="name_desc">Sort: Name (Z-A)</option>
+        <option value="oldest">Sort: Oldest</option>
+        <option value="recent">Sort: Recent</option>
+      </select>
       <button class="popover-item" id="cfobMenuToggleHidden">
         <span>Show Hidden Folders</span>
         <span>${this.showHiddenFolders ? ICONS.check : ''}</span>
@@ -1452,6 +1483,8 @@ class ComfyOutputBrowser {
 
     this.root.appendChild(menu);
     this.activePopover = menu;
+
+    menu.querySelector("#cfobSortSelect").addEventListener('change', (e) => this.sortImages(e.target.value));
 
     menu.querySelector('#cfobMenuToggleHidden').addEventListener('click', () => {
       this.showHiddenFolders = !this.showHiddenFolders;
