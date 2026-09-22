@@ -140,8 +140,10 @@ async def rename_image(request):
         
     if os.path.exists(old_path):
         if os.path.exists(new_path):
-            return web.json_response({"success": False, "error": "Target file path already exists."})
-            
+            base, ext = os.path.splitext(new_name)
+            timestamp = int(time.time())
+            new_name = f"{base}_{timestamp}{ext}"
+            new_path = get_safe_path(output_dir, new_name)
         try:
             os.makedirs(os.path.dirname(new_path), exist_ok=True)
             os.rename(old_path, new_path)
@@ -183,8 +185,10 @@ async def move_images(request):
         new_path = os.path.join(safe_dest_dir, filename)
         
         if os.path.exists(new_path):
-            errors.append(f"{f}: Target file already exists.")
-            continue
+            base, ext = os.path.splitext(filename)
+            timestamp = int(time.time())
+            filename = f"{base}_{timestamp}{ext}"
+            new_path = get_safe_path(safe_dest_dir, filename)
             
         try:
             os.rename(old_path, new_path)
