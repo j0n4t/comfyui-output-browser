@@ -348,15 +348,16 @@ class ComfyOutputBrowser {
       const inspectorModal = this.$("cfobInspectorModal");
 
       if (fvModal.classList.contains('active')) {
-        if (e.key === 'Escape') { e.preventDefault(); this.closeFullView(); }
-        else if (e.key === 'ArrowLeft') { e.preventDefault(); this.navigateImage(-1); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); this.navigateImage(1); }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.closeFullView(); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.navigateImage(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.navigateImage(1); }
       } else if (this.root.style.display === "flex" && e.key === 'Escape') {
+        e.stopPropagation();
         if (configModal.classList.contains('active')) configModal.classList.remove('active');
         else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
         else this.root.style.display = "none";
       }
-    });
+    }, { capture: true });
 
     // Config Modal Setup
     this.$("cfobCloseConfigBtn").addEventListener('click', () => this.$("cfobConfigModal").classList.remove('active'));
