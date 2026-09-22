@@ -1024,6 +1024,8 @@ class ComfyOutputBrowser {
     if (clearBtn) clearBtn.style.display = rawQ ? "flex" : "none";
     this.filteredImages = [];
 
+    const includeHiddenBySearch = rawQ.startsWith('.');
+
     const orGroups = rawQ.split(',').map(group =>
       group.trim().split(/\s+/).filter(Boolean)
     ).filter(group => group.length > 0);
@@ -1031,7 +1033,7 @@ class ComfyOutputBrowser {
     this.root.querySelectorAll('.image-card').forEach(card => {
       const img = this.loadedImages[card.dataset.index];
 
-      if (!this.showHiddenFolders && this.isImageInHiddenFolder(img.name)) {
+      if (!this.showHiddenFolders && !includeHiddenBySearch && this.isImageInHiddenFolder(img.name)) {
         card.style.display = 'none';
         return;
       }
