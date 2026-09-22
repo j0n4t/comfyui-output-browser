@@ -198,7 +198,7 @@ const BROWSER_HTML = `
     <div style="width: 1px; height: 20px; background: var(--border);"></div>
     <button class="btn btn-primary" id="cfobActionOpen">${ICONS.pane}<span>Load Workflow</span></button>
     <button class="btn" id="cfobActionDownload">${ICONS.drop}<span>Download</span></button>
-    <button class="btn" id="cfobActionRename"><span>Rename</span></button>
+    <button class="btn" id="cfobActionRename"><span>Move/Rename</span></button>
     <button class="btn btn-danger" id="cfobActionDelete">${ICONS.close}<span>Delete</span></button>
     <div style="width: 1px; height: 20px; background: var(--border);"></div>
     <button class="icon-btn" id="cfobActionClear" title="Clear Selection">${ICONS.close}</button>
@@ -276,6 +276,17 @@ class ComfyOutputBrowser {
   saveConfig(cfg) {
     this.fieldConfigs = cfg;
     localStorage.setItem('comfy_folder_browser_fields', JSON.stringify(cfg));
+  }
+
+  getImageUrl(relPath) {
+    const parts = relPath.replace(/\\/g, '/').split('/');
+    const filename = parts.pop();
+    const subfolder = parts.join('/');
+    let url = `/view?filename=${encodeURIComponent(filename)}&type=output`;
+    if (subfolder) {
+      url += `&subfolder=${encodeURIComponent(subfolder)}`;
+    }
+    return url;
   }
 
   init() {
@@ -360,7 +371,6 @@ class ComfyOutputBrowser {
       this.filterGallery();
     });
 
-    // Delegated listener for dynamically loaded field copy buttons
     this.$("cfobFullViewFields").addEventListener('click', (e) => {
       const btn = e.target.closest('.copy-val-btn');
       if (btn) {
@@ -524,7 +534,7 @@ class ComfyOutputBrowser {
       }
 
       const newImages = newFilesToFetch.map((filename) => {
-        const url = `/view?filename=${filename}&type=output`;
+        const url = this.getImageUrl(filename);
         return { name: filename, url, prompt: null, workflow: null, isParsed: false, isParsing: false };
       });
 
@@ -738,11 +748,11 @@ class ComfyOutputBrowser {
         if (img) {
             const a = document.createElement('a');
             a.href = img.url;
-            a.download = img.name;
+            a.download = img.name.split('/').pop();
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            await new Promise(r => setTimeout(r, 250)); // stagger multiple downloads
+            await new Promise(r => setTimeout(r, 250));
         }
     }
     this.clearSelection();
@@ -775,7 +785,7 @@ class ComfyOutputBrowser {
   async renameSelected() {
     if (this.selectedImages.size !== 1) return;
     const oldName = Array.from(this.selectedImages)[0];
-    let newName = prompt("Enter new filename:", oldName);
+    let newName = prompt("Enter new path or filename (e.g. 'etc/thing02.png'):", oldName);
     
     if (!newName || newName === oldName) return;
     
@@ -791,11 +801,11 @@ class ComfyOutputBrowser {
             const img = this.loadedImages.find(i => i.name === oldName);
             if (img) {
                 img.name = data.new_name;
-                img.url = `/view?filename=${data.new_name}&type=output`; 
+                img.url = this.getImageUrl(data.new_name);
             }
             this.clearSelection();
             this.renderGallery();
-            this.showToast(`Renamed to ${data.new_name}`);
+            this.showToast(`Moved to ${data.new_name}`);
         } else {
             this.showToast(data.error || "Rename failed.");
         }
