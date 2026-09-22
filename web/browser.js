@@ -31,7 +31,10 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .main-container { flex: 1; overflow-y: auto; padding: 20px; position: relative; }
     #cfob-root .drop-overlay { position: absolute; inset: 20px; border: 2px dashed var(--highlight); border-radius: 12px; background: rgba(2, 132, 199, 0.08); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
     #cfob-root .main-container.dragover .drop-overlay { opacity: 1; pointer-events: all; }
-    #cfob-root .image-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+    #cfob-root .image-card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; box-shadow: 0 4px 12px rgba(0,0,0,0.25); transition: border-color 0.15s, box-shadow 0.15s; }
+    #cfob-root .image-card.selected { border-color: var(--highlight); box-shadow: 0 0 0 1px var(--highlight); }
+    #cfob-root .checkbox-wrapper { position: absolute; top: 8px; left: 8px; z-index: 5; background: rgba(0,0,0,0.6); border-radius: 4px; padding: 4px; display: flex; }
+    #cfob-root .card-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--highlight); margin: 0; }
     #cfob-root .card-content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     #cfob-root .card-header { padding: 10px 14px; background: #202023; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     #cfob-root .card-filename { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
@@ -40,7 +43,7 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .card-toggle-bar:hover {background: var(--panel-hover);color: #fff; }
     #cfob-root .card-toggle-bar .toggle-icon {transition: transform 0.2s ease; }
     #cfob-root .image-card.expanded .card-toggle-bar .toggle-icon {transform: rotate(180deg);}
-    #cfob-root .gallery-container { display: grid; gap: 20px; align-items: start; }
+    #cfob-root .gallery-container { display: grid; gap: 20px; align-items: start; padding-bottom: 80px; }
     #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
     #cfob-root .gallery-container.view-grid .image-card { flex-direction: column; }
     #cfob-root .gallery-container.view-grid .card-preview { width: 100%; height: 240px; background: #111; object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--border); }
@@ -53,6 +56,10 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .gallery-container.view-list .image-card { flex-direction: row; }
     #cfob-root .gallery-container.view-list .card-preview { width: 280px; height: 100%; min-height: 180px; max-height: 280px; background: #111; object-fit: contain; cursor: pointer; border-right: 1px solid var(--border); }
     #cfob-root .gallery-container.view-list .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    
+    #cfob-root .action-bar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--panel); border: 1px solid var(--highlight); border-radius: 8px; padding: 10px 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 10005; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    #cfob-root .action-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
+    
     #cfob-root .field-row { display: flex; flex-direction: column; gap: 4px; background: #1e1e21; border: 1px solid #333; padding: 8px 10px; border-radius: 6px; }
     #cfob-root .field-label { font-size: 11px; font-weight: 700; color: var(--key); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
     #cfob-root .field-value-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -147,7 +154,7 @@ const ICONS = {
   config: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
   copy: `<svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M20 2H10c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2m0 12H10V4h10z"/><path fill="currentColor" d="M14 20H4V10h2V8H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h-2z"/></svg>`,
   check: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-  drop: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="var(--highlight)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`,
+  drop: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`,
   gridBig: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`,
   gridSmall: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="4" height="4"></rect><rect x="10" y="3" width="4" height="4"></rect><rect x="17" y="3" width="4" height="4"></rect><rect x="3" y="10" width="4" height="4"></rect><rect x="10" y="10" width="4" height="4"></rect><rect x="17" y="10" width="4" height="4"></rect><rect x="3" y="17" width="4" height="4"></rect><rect x="10" y="17" width="4" height="4"></rect><rect x="17" y="17" width="4" height="4"></rect></svg>`,
   gridList: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
@@ -184,6 +191,17 @@ const BROWSER_HTML = `
   <div class="empty-state" id="cfobEmptyState">
     ${ICONS.picture}
     <h3 id="cfobEmptyStateTitle">No Images Loaded</h3><p id="cfobEmptyStateDesc">Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect.</p>
+  </div>
+  
+  <div id="cfobActionBar" class="action-bar">
+    <span id="cfobSelectionCount" style="font-weight: 600; color: #fff; min-width: 80px;">1 selected</span>
+    <div style="width: 1px; height: 20px; background: var(--border);"></div>
+    <button class="btn btn-primary" id="cfobActionOpen">${ICONS.pane}<span>Load Workflow</span></button>
+    <button class="btn" id="cfobActionDownload">${ICONS.drop}<span>Download</span></button>
+    <button class="btn" id="cfobActionRename"><span>Rename</span></button>
+    <button class="btn btn-danger" id="cfobActionDelete">${ICONS.close}<span>Delete</span></button>
+    <div style="width: 1px; height: 20px; background: var(--border);"></div>
+    <button class="icon-btn" id="cfobActionClear" title="Clear Selection">${ICONS.close}</button>
   </div>
 </div>
 <div class="modal-overlay" id="cfobConfigModal">
@@ -240,6 +258,8 @@ class ComfyOutputBrowser {
   constructor() {
     this.loadedImages = [];
     this.filteredImages = [];
+    this.selectedImages = new Set();
+    this.lastSelectedIdx = -1;
     this.activePopover = null;
     this.currentImageIndex = 0;
     this.fieldConfigs = this.loadConfig();
@@ -274,7 +294,6 @@ class ComfyOutputBrowser {
     const savedView = localStorage.getItem('comfy_folder_browser_view') || 'grid';
     this.setViewMode(savedView);
 
-    // Setup Intersection Observer for lazy parsing of loaded images metadata
     this.observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -341,7 +360,7 @@ class ComfyOutputBrowser {
       this.filterGallery();
     });
 
-    // Delegated listener for dynamically loaded field copy buttons inside FullView
+    // Delegated listener for dynamically loaded field copy buttons
     this.$("cfobFullViewFields").addEventListener('click', (e) => {
       const btn = e.target.closest('.copy-val-btn');
       if (btn) {
@@ -349,6 +368,13 @@ class ComfyOutputBrowser {
         this.copyValue(btn, btn.dataset.val);
       }
     });
+
+    // Action Bar Setup
+    this.$("cfobActionClear").addEventListener('click', () => this.clearSelection());
+    this.$("cfobActionDelete").addEventListener('click', () => this.deleteSelected());
+    this.$("cfobActionRename").addEventListener('click', () => this.renameSelected());
+    this.$("cfobActionDownload").addEventListener('click', () => this.downloadSelected());
+    this.$("cfobActionOpen").addEventListener('click', () => this.loadWorkflowSelected());
 
     // View Toggles
     this.root.querySelectorAll('.view-btn').forEach(btn => {
@@ -385,6 +411,7 @@ class ComfyOutputBrowser {
         e.stopPropagation();
         if (configModal.classList.contains('active')) configModal.classList.remove('active');
         else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
+        else if (this.selectedImages.size > 0) this.clearSelection();
         else this.root.style.display = "none";
       }
     }, { capture: true });
@@ -448,7 +475,7 @@ class ComfyOutputBrowser {
     const bytes = new Uint8Array(arrayBuffer);
     const view = new DataView(arrayBuffer);
 
-    if (view.getUint32(0) !== 0x89504e47) return null; // Not a valid PNG
+    if (view.getUint32(0) !== 0x89504e47) return null;
 
     let offset = 8, prompt = null, workflow = null;
     while (offset < bytes.length) {
@@ -496,7 +523,6 @@ class ComfyOutputBrowser {
         }
       }
 
-      // Create entries but defer fetching and parsing metadata (Lazy Parsing)
       const newImages = newFilesToFetch.map((filename) => {
         const url = `/view?filename=${filename}&type=output`;
         return { name: filename, url, prompt: null, workflow: null, isParsed: false, isParsing: false };
@@ -506,8 +532,13 @@ class ComfyOutputBrowser {
         this.loadedImages = [...newImages, ...validImages];
         this.loadedImages.sort((a, b) => allFiles.indexOf(a.name) - allFiles.indexOf(b.name));
 
+        const validNames = new Set(this.loadedImages.map(img => img.name));
+        for (const sel of this.selectedImages) {
+          if (!validNames.has(sel)) this.selectedImages.delete(sel);
+        }
+        
+        this.updateActionBar();
         this.renderGallery();
-
       } else if (isFirstLoad) {
         this.renderGallery();
       }
@@ -638,6 +669,162 @@ class ComfyOutputBrowser {
     });
     return fieldsHtml;
   }
+  
+  handleCheckboxClick(e, filename) {
+    e.stopPropagation();
+    const fIdx = this.filteredImages.findIndex(img => img.name === filename);
+    if (fIdx === -1) return;
+
+    if (e.shiftKey && this.lastSelectedIdx !== -1) {
+      const start = Math.min(this.lastSelectedIdx, fIdx);
+      const end = Math.max(this.lastSelectedIdx, fIdx);
+      const isChecked = e.target.checked;
+      
+      for (let i = start; i <= end; i++) {
+        const targetImg = this.filteredImages[i];
+        if (isChecked) this.selectedImages.add(targetImg.name);
+        else this.selectedImages.delete(targetImg.name);
+      }
+      
+      this.root.querySelectorAll('.card-checkbox').forEach(cb => {
+        cb.checked = this.selectedImages.has(cb.value);
+      });
+    } else {
+      if (e.target.checked) this.selectedImages.add(filename);
+      else this.selectedImages.delete(filename);
+    }
+    
+    this.lastSelectedIdx = fIdx;
+    this.updateActionBar();
+    this.updateCardStyles();
+  }
+
+  updateActionBar() {
+    const bar = this.$("cfobActionBar");
+    const count = this.selectedImages.size;
+    if (count > 0) {
+      bar.classList.add('show');
+      this.$("cfobSelectionCount").innerText = `${count} selected`;
+      
+      const isSingle = count === 1;
+      this.$("cfobActionRename").style.display = isSingle ? 'inline-flex' : 'none';
+      this.$("cfobActionOpen").style.display = isSingle ? 'inline-flex' : 'none';
+    } else {
+      bar.classList.remove('show');
+      this.lastSelectedIdx = -1;
+    }
+  }
+
+  updateCardStyles() {
+    this.root.querySelectorAll('.image-card').forEach(card => {
+      const name = card.dataset.name;
+      if (this.selectedImages.has(name)) card.classList.add('selected');
+      else card.classList.remove('selected');
+    });
+  }
+  
+  clearSelection() {
+    this.selectedImages.clear();
+    this.lastSelectedIdx = -1;
+    this.root.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+    this.updateCardStyles();
+    this.updateActionBar();
+  }
+
+  async downloadSelected() {
+    this.showToast(`Downloading ${this.selectedImages.size} image(s)...`);
+    for (const filename of this.selectedImages) {
+        const img = this.loadedImages.find(i => i.name === filename);
+        if (img) {
+            const a = document.createElement('a');
+            a.href = img.url;
+            a.download = img.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            await new Promise(r => setTimeout(r, 250)); // stagger multiple downloads
+        }
+    }
+    this.clearSelection();
+  }
+
+  async deleteSelected() {
+    if (!confirm(`Permanently delete ${this.selectedImages.size} image(s)?`)) return;
+    
+    const files = Array.from(this.selectedImages);
+    try {
+        const res = await fetch("/comfyui-output-browser/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ files })
+        });
+        const data = await res.json();
+        
+        if (data.deleted) {
+            this.loadedImages = this.loadedImages.filter(img => !data.deleted.includes(img.name));
+            this.clearSelection();
+            this.renderGallery();
+            this.showToast(`Deleted ${data.deleted.length} image(s)`);
+        }
+    } catch (e) {
+        console.error(e);
+        this.showToast("Failed to delete images.");
+    }
+  }
+
+  async renameSelected() {
+    if (this.selectedImages.size !== 1) return;
+    const oldName = Array.from(this.selectedImages)[0];
+    let newName = prompt("Enter new filename:", oldName);
+    
+    if (!newName || newName === oldName) return;
+    
+    try {
+        const res = await fetch("/comfyui-output-browser/rename", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ old_name: oldName, new_name: newName })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            const img = this.loadedImages.find(i => i.name === oldName);
+            if (img) {
+                img.name = data.new_name;
+                img.url = `/view?filename=${data.new_name}&type=output`; 
+            }
+            this.clearSelection();
+            this.renderGallery();
+            this.showToast(`Renamed to ${data.new_name}`);
+        } else {
+            this.showToast(data.error || "Rename failed.");
+        }
+    } catch (e) {
+        console.error(e);
+        this.showToast("Rename request failed.");
+    }
+  }
+
+  async loadWorkflowSelected() {
+    if (this.selectedImages.size !== 1) return;
+    const filename = Array.from(this.selectedImages)[0];
+    const img = this.loadedImages.find(i => i.name === filename);
+    if (!img) return;
+    
+    if (!img.isParsed) {
+        this.showToast("Loading metadata...");
+        await this.loadMetadata(img);
+    }
+    
+    if (img.workflow) {
+        app.loadGraphData(img.workflow);
+        this.root.style.display = 'none';
+        this.clearSelection();
+        this.showToast("Workflow loaded successfully!");
+    } else {
+        this.showToast("No workflow metadata found in this image.");
+    }
+  }
 
   renderGallery() {
     const grid = this.$("cfobGalleryGrid");
@@ -656,10 +843,14 @@ class ComfyOutputBrowser {
 
     this.loadedImages.forEach((img, idx) => {
       const card = document.createElement('div');
-      card.className = 'image-card';
+      card.className = `image-card ${this.selectedImages.has(img.name) ? 'selected' : ''}`;
       card.dataset.index = idx;
+      card.dataset.name = img.name;
 
-      card.innerHTML = `<img class="card-preview" src="${img.url}" loading="lazy" title="Click to view full image">
+      card.innerHTML = `<div class="checkbox-wrapper" title="Select (Shift-click for range)">
+                          <input type="checkbox" class="card-checkbox" value="${this.escapeHtml(img.name)}">
+                        </div>
+                        <img class="card-preview" src="${img.url}" loading="lazy" title="Click to view full image">
                         <div class="card-content-wrapper">
                           <div class="card-header">
                             <span class="card-filename" title="${this.escapeHtml(img.name)}">${this.escapeHtml(img.name)}</span>
@@ -669,11 +860,14 @@ class ComfyOutputBrowser {
                           <div class="card-body">${this.getCardFieldsHtml(img)}</div>
                         </div>`;
 
+      const cb = card.querySelector('.card-checkbox');
+      cb.checked = this.selectedImages.has(img.name);
+      cb.addEventListener('click', (e) => this.handleCheckboxClick(e, img.name));
+
       card.querySelector('.card-preview').addEventListener('click', () => this.openFullView(img));
       card.querySelector('.ins-btn').addEventListener('click', () => this.openInspector(this.loadedImages.indexOf(img)));
       card.querySelector('.card-toggle-bar').addEventListener('click', () => card.classList.toggle('expanded'));
 
-      // Delegated event listener for dynamically updated cards
       card.querySelector('.card-body').addEventListener('click', (e) => {
         const btn = e.target.closest('.copy-val-btn');
         if (btn) {
