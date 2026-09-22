@@ -35,6 +35,50 @@ async def get_images(request):
     files.sort(key=lambda x: x[1], reverse=True)
     return web.json_response([f[0] for f in files])
 
+import base64
+import time
+import os
+
+@server.PromptServer.instance.routes.post("/comfyui-output-browser/upload")
+async def upload_image(request):
+    data = await request.json()
+    filename = data.get("filename", "").strip()
+    image_data = data.get("image_data", "")
+
+    if not filename or not image_data:
+        return web.json_response({"success": False, "error": "Invalid filename or image data provided."})
+
+    if not filename.lower().endswith('.png'):
+        filename += '.png'
+
+    output_dir = folder_paths.get_output_directory()
+    target_path = get_safe_path(output_dir, filename)
+
+    if not target_path:
+        return web.json_response({"success": False, "error": "Access denied: Path outside output directory."})
+
+    # If file already exists, append a timestamp to the filename
+    if os.path.exists(target_path):
+        base, ext = os.path.splitext(filename)
+        timestamp = int(time.time())
+        filename = f"{base}_{timestamp}{ext}"
+        target_path = get_safe_path(output_dir, filename)
+
+    try:
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        
+        if "," in image_data:
+            image_data = image_data.split(",")[1]
+
+        binary_data = base64.b64decode(image_data)
+        with open(target_path, "wb") as f:
+            f.write(binary_data)
+
+        clean_name = os.path.relpath(target_path, os.path.abspath(output_dir)).replace("\\", "/")
+        return web.json_response({"success": True, "name": clean_name})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)})
+
 @server.PromptServer.instance.routes.post("/comfyui-output-browser/delete")
 async def delete_images(request):
     data = await request.json()

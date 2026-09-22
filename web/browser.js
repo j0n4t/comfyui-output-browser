@@ -697,19 +697,37 @@ class ComfyOutputBrowser {
     this.renderGallery();
   }
 
-  async processPngFile(file) {
+  async processPngFile(file, targetSubfolder = "") {
     try {
       const arrayBuffer = await file.arrayBuffer();
       const meta = await this.parsePngBuffer(arrayBuffer);
       if (!meta) return null;
 
-      return {
-        name: file.name,
-        url: URL.createObjectURL(file),
-        prompt: meta.prompt,
-        workflow: meta.workflow,
-        isParsed: true
-      };
+      const base64Data = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+      const filename = targetSubfolder ? `${targetSubfolder}/${file.name}` : file.name;
+      const res = await fetch("/comfyui-output-browser/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename, image_data: base64Data })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        return {
+          name: data.name,
+          url: this.getImageUrl(data.name),
+          prompt: meta.prompt,
+          workflow: meta.workflow,
+          isParsed: true
+        };
+      } else {
+        console.error("Failed to save dropped file to server:", data.error);
+        return null;
+      }
     } catch (err) {
       console.error(`Failed reading local PNG file ${file.name}`, err);
       return null;
