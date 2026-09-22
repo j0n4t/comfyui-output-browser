@@ -919,7 +919,7 @@ class ComfyOutputBrowser {
     // Check if any selected items are already in the trash directory
     const hasTrashedItems = files.some(f => f.replace(/\\/g, '/').startsWith('.trash/'));
     const confirmMsg = hasTrashedItems
-      ? `Permanently delete ${files.length} selected image(s)? This cannot be undone.`
+      ? `Permanently delete at least one of ${files.length} selected image(s)? This cannot be undone.`
       : `Move ${files.length} selected image(s) to Trash?`;
 
     if (!confirm(confirmMsg)) return;
