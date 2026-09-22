@@ -40,11 +40,13 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .card-header { padding: 10px 14px; background: #202023; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     #cfob-root .card-filename { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
     #cfob-root .card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
-    #cfob-root .card-toggle-bar { display: none;background: #202023;border-top: 1px solid var(--border);padding: 8px 14px;font-size: 11px;font-weight: 600;color: var(--text-muted);justify-content: space-between;align-items: center;cursor: pointer;transition: background 0.15s, color 0.15s; }
+    #cfob-root .card-toggle-bar { display: flex; background: #202023; border-top: 1px solid var(--border); padding: 8px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s, color 0.15s; }
     #cfob-root .card-toggle-bar:hover {background: var(--panel-hover);color: #fff; }
     #cfob-root .card-toggle-bar .toggle-icon {transition: transform 0.2s ease; }
     #cfob-root .image-card.expanded .card-toggle-bar .toggle-icon {transform: rotate(180deg);}
     #cfob-root .gallery-container { display: grid; gap: 20px; align-items: start; padding-bottom: 80px; }
+    #cfob-root .gallery-container .image-card .card-body { display: none; }
+    #cfob-root .gallery-container .image-card.expanded .card-body { display: flex; }
     #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
     #cfob-root .gallery-container.view-grid .image-card { flex-direction: column; }
     #cfob-root .gallery-container.view-grid .card-preview { width: 100%; height: 240px; background: #111; object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--border); }
@@ -54,6 +56,7 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .gallery-container.view-compact .card-header { padding: 8px 10px; }
     #cfob-root .gallery-container.view-compact .card-body { display: none; }
     #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
+    #cfob-root .gallery-container.view-list .card-toggle-bar { display: none; }
     #cfob-root .gallery-container.view-list .image-card { flex-direction: row; }
     #cfob-root .gallery-container.view-list .card-preview { width: 280px; height: 100%; min-height: 180px; max-height: 280px; background: #111; object-fit: contain; cursor: pointer; border-right: 1px solid var(--border); }
     #cfob-root .gallery-container.view-list .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
@@ -138,10 +141,7 @@ const BROWSER_CSS = /*css*/ `
       #cfob-root .gallery-container { grid-template-columns: 1fr !important; }
       #cfob-root .gallery-container .image-card { flex-direction: column !important; }
       #cfob-root .gallery-container .image-card .card-preview { width: 100% !important; height: 220px !important; }
-      #cfob-root .gallery-container .image-card .card-body { display: none; }
-      #cfob-root .gallery-container .image-card.expanded .card-body { display: flex; }
       #cfob-root .main-container .action-bar { padding: 5px 10px; flex-wrap: wrap; justify-content: center; gap: 8px; }
-      #cfob-root .card-toggle-bar { display: flex; }
       #cfob-root .full-view-layout { flex-direction: column; }
       #cfob-root .full-view-main { height: 50vh; min-height: 250px; }
       #cfob-root .full-view-sidebar { width: 100% !important; min-width: 100% !important; height: 50vh; border-left: none; border-top: 1px solid var(--border); }
@@ -1137,7 +1137,13 @@ class ComfyOutputBrowser {
       cb.addEventListener('click', (e) => this.handleCheckboxClick(e, img.name));
 
       card.querySelector('.card-preview').addEventListener('click', () => this.openFullView(img));
-      card.querySelector('.card-toggle-bar').addEventListener('click', () => card.classList.toggle('expanded'));
+      card.querySelector('.card-toggle-bar').addEventListener('click', () => {
+        if (card.classList.contains('selected') && this.selectedImages.size > 1) {
+          this.root.querySelectorAll('.image-card.selected').forEach(c => c.classList.toggle('expanded'));
+        } else {
+          card.classList.toggle('expanded');
+        }
+      });
 
       card.querySelector('.card-body').addEventListener('click', (e) => {
         const btn = e.target.closest('.copy-val-btn');
