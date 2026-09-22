@@ -277,7 +277,7 @@ class ComfyOutputBrowser {
         menuBtn.title = "Browse Outputs";
         menuBtn.onclick = () => {
           this.root.style.display = "flex";
-          if (this.loadedImages.length === 0) this.fetchServerImages();
+          this.fetchServerImages();
         };
       }
       if (isAppMode) {
@@ -401,29 +401,98 @@ class ComfyOutputBrowser {
     return (u || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  async parsePngBuffer(arrayBuffer) {
+    const bytes = new Uint8Array(arrayBuffer);
+    const view = new DataView(arrayBuffer);
+
+    if (view.getUint32(0) !== 0x89504e47) return null; // Not a valid PNG
+
+    let offset = 8, prompt = null, workflow = null;
+    while (offset < bytes.length) {
+      const length = view.getUint32(offset);
+      offset += 4;
+      const type = String.fromCharCode(...bytes.slice(offset, offset + 4));
+      offset += 4;
+
+      if (type === 'tEXt') {
+        let kw = '', i = offset;
+        while (bytes[i] !== 0) kw += String.fromCharCode(bytes[i++]);
+        i++;
+        const txt = new TextDecoder().decode(bytes.slice(i, offset + length));
+        if (kw === 'prompt') try { prompt = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
+        if (kw === 'workflow') try { workflow = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
+      }
+      offset += length + 4;
+    }
+    return { prompt, workflow };
+  }
+
   async fetchServerImages() {
-    this.$("cfobGalleryGrid").innerHTML = "";
-    this.$("cfobEmptyStateTitle").innerText = "Loading Outputs...";
-    this.$("cfobEmptyStateDesc").innerText = "Fetching metadata from ComfyUI server.";
-    this.$("cfobEmptyState").style.display = "block";
+    const isFirstLoad = this.loadedImages.length === 0;
+
+    if (isFirstLoad) {
+      this.$("cfobGalleryGrid").innerHTML = "";
+      this.$("cfobEmptyStateTitle").innerText = "Loading Outputs...";
+      this.$("cfobEmptyStateDesc").innerText = "Fetching and parsing images from server...";
+      this.$("cfobEmptyState").style.display = "block";
+    }
 
     try {
       const response = await fetch("/comfyui-output-browser/images");
-      const rawText = await response.text();
-      this.loadedImages = JSON.parse(this.sanitizeJson(rawText));
-      this.renderGallery();
+      const allFiles = await response.json(); // Array of filenames
+
+      const existingMap = new Map(this.loadedImages.map(img => [img.name, img]));
+      const validImages = [];
+      const newFilesToFetch = [];
+
+      for (const filename of allFiles) {
+        if (existingMap.has(filename)) {
+          validImages.push(existingMap.get(filename));
+        } else {
+          newFilesToFetch.push(filename);
+        }
+      }
+
+      const newImages = await Promise.all(newFilesToFetch.map(async (filename) => {
+        const url = `/view?filename=${filename}&type=output`;
+        try {
+          const res = await fetch(url);
+          const buffer = await res.arrayBuffer();
+          const meta = await this.parsePngBuffer(buffer) || { prompt: null, workflow: null };
+
+          return { name: filename, url: url, prompt: meta.prompt, workflow: meta.workflow };
+        } catch (e) {
+          console.warn(`Failed to parse remote file: ${filename}`, e);
+          return { name: filename, url, prompt: null, workflow: null };
+        }
+      }));
+
+      if (newImages.length > 0 || validImages.length !== this.loadedImages.length) {
+        this.loadedImages = [...newImages, ...validImages];
+        this.loadedImages.sort((a, b) => allFiles.indexOf(a.name) - allFiles.indexOf(b.name));
+
+        this.renderGallery();
+
+      } else if (isFirstLoad) {
+        this.renderGallery();
+      }
     } catch (err) {
       this.$("cfobEmptyStateTitle").innerText = "Connection Error";
       this.$("cfobEmptyStateDesc").innerText = "Failed to load outputs from server.";
+      this.$("cfobEmptyState").style.display = "block";
       console.error("Output Browser Error:", err);
     }
   }
 
   async handleLocalFiles(fileList) {
     const pngs = Array.from(fileList).filter(f => f.type === 'image/png' || f.name.toLowerCase().endsWith('.png'));
+
     for (const file of pngs) {
       const res = await this.processPngFile(file);
-      if (res) this.loadedImages.push(res);
+      if (res) {
+        this.loadedImages = this.loadedImages.filter(img => img.name !== res.name);
+        this.loadedImages.unshift(res);
+      }
     }
     this.renderGallery();
   }
@@ -431,31 +500,17 @@ class ComfyOutputBrowser {
   async processPngFile(file) {
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      const view = new DataView(arrayBuffer);
+      const meta = await this.parsePngBuffer(arrayBuffer);
+      if (!meta) return null;
 
-      if (view.getUint32(0) !== 0x89504e47) return null;
-
-      let offset = 8, prompt = null, workflow = null;
-      while (offset < bytes.length) {
-        const length = view.getUint32(offset);
-        offset += 4;
-        const type = String.fromCharCode(...bytes.slice(offset, offset + 4));
-        offset += 4;
-
-        if (type === 'tEXt') {
-          let kw = '', i = offset;
-          while (bytes[i] !== 0) kw += String.fromCharCode(bytes[i++]);
-          i++;
-          const txt = new TextDecoder().decode(bytes.slice(i, offset + length));
-          if (kw === 'prompt') try { prompt = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
-          if (kw === 'workflow') try { workflow = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
-        }
-        offset += length + 4;
-      }
-      return { name: file.name, url: URL.createObjectURL(file), prompt, workflow };
+      return {
+        name: file.name,
+        url: URL.createObjectURL(file),
+        prompt: meta.prompt,
+        workflow: meta.workflow
+      };
     } catch (err) {
-      console.error(`Failed reading PNG file ${file.name}`, err);
+      console.error(`Failed reading local PNG file ${file.name}`, err);
       return null;
     }
   }
