@@ -243,6 +243,7 @@ class ComfyOutputBrowser {
     this.activePopover = null;
     this.currentImageIndex = 0;
     this.fieldConfigs = this.loadConfig();
+    this.observer = null;
   }
 
   $(id) { return this.root.querySelector(`#${id}`); }
@@ -272,6 +273,26 @@ class ComfyOutputBrowser {
 
     const savedView = localStorage.getItem('comfy_folder_browser_view') || 'grid';
     this.setViewMode(savedView);
+
+    // Setup Intersection Observer for lazy parsing of loaded images metadata
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const card = entry.target;
+          const idx = card.dataset.index;
+          const img = this.loadedImages[idx];
+          if (img && !img.isParsed) {
+            this.loadMetadata(img).then(() => {
+              const cardBody = card.querySelector('.card-body');
+              if (cardBody) {
+                cardBody.innerHTML = this.getCardFieldsHtml(img);
+              }
+            });
+            this.observer.unobserve(card);
+          }
+        }
+      });
+    }, { root: this.$("cfobMainContainer"), rootMargin: "200px" });
   }
 
   injectMenuButton() {
@@ -318,6 +339,15 @@ class ComfyOutputBrowser {
     this.$("cfobClearSearchBtn").addEventListener('click', () => {
       this.$("cfobSearchInput").value = "";
       this.filterGallery();
+    });
+
+    // Delegated listener for dynamically loaded field copy buttons inside FullView
+    this.$("cfobFullViewFields").addEventListener('click', (e) => {
+      const btn = e.target.closest('.copy-val-btn');
+      if (btn) {
+        e.stopPropagation();
+        this.copyValue(btn, btn.dataset.val);
+      }
     });
 
     // View Toggles
@@ -446,13 +476,13 @@ class ComfyOutputBrowser {
     if (isFirstLoad) {
       this.$("cfobGalleryGrid").innerHTML = "";
       this.$("cfobEmptyStateTitle").innerText = "Loading Outputs...";
-      this.$("cfobEmptyStateDesc").innerText = "Fetching and parsing images from server...";
+      this.$("cfobEmptyStateDesc").innerText = "Fetching image list from server...";
       this.$("cfobEmptyState").style.display = "block";
     }
 
     try {
       const response = await fetch("/comfyui-output-browser/images");
-      const allFiles = await response.json(); // Array of filenames
+      const allFiles = await response.json();
 
       const existingMap = new Map(this.loadedImages.map(img => [img.name, img]));
       const validImages = [];
@@ -466,19 +496,11 @@ class ComfyOutputBrowser {
         }
       }
 
-      const newImages = await Promise.all(newFilesToFetch.map(async (filename) => {
+      // Create entries but defer fetching and parsing metadata (Lazy Parsing)
+      const newImages = newFilesToFetch.map((filename) => {
         const url = `/view?filename=${filename}&type=output`;
-        try {
-          const res = await fetch(url);
-          const buffer = await res.arrayBuffer();
-          const meta = await this.parsePngBuffer(buffer) || { prompt: null, workflow: null };
-
-          return { name: filename, url: url, prompt: meta.prompt, workflow: meta.workflow };
-        } catch (e) {
-          console.warn(`Failed to parse remote file: ${filename}`, e);
-          return { name: filename, url, prompt: null, workflow: null };
-        }
-      }));
+        return { name: filename, url, prompt: null, workflow: null, isParsed: false, isParsing: false };
+      });
 
       if (newImages.length > 0 || validImages.length !== this.loadedImages.length) {
         this.loadedImages = [...newImages, ...validImages];
@@ -520,11 +542,35 @@ class ComfyOutputBrowser {
         name: file.name,
         url: URL.createObjectURL(file),
         prompt: meta.prompt,
-        workflow: meta.workflow
+        workflow: meta.workflow,
+        isParsed: true
       };
     } catch (err) {
       console.error(`Failed reading local PNG file ${file.name}`, err);
       return null;
+    }
+  }
+
+  async loadMetadata(img) {
+    if (img.isParsed) return;
+    if (img.isParsing) {
+      while(img.isParsing) { await new Promise(r => setTimeout(r, 50)); }
+      return;
+    }
+
+    img.isParsing = true;
+    try {
+      const res = await fetch(img.url);
+      const buffer = await res.arrayBuffer();
+      const meta = await this.parsePngBuffer(buffer) || { prompt: null, workflow: null };
+      img.prompt = meta.prompt;
+      img.workflow = meta.workflow;
+      img.isParsed = true;
+    } catch (e) {
+      console.warn(`Failed to parse remote file: ${img.name}`, e);
+      img.isParsed = true; 
+    } finally {
+      img.isParsing = false;
     }
   }
 
@@ -575,9 +621,29 @@ class ComfyOutputBrowser {
     return null;
   }
 
+  getCardFieldsHtml(img) {
+    let fieldsHtml = '';
+    this.fieldConfigs.forEach(cfg => {
+      const val = this.resolveFieldValue(img, cfg.paths);
+      const displayVal = val !== null ? String(val) : (img.isParsed ? '—' : 'Loading...');
+      const emptyClass = val === null ? 'empty' : '';
+
+      fieldsHtml += ` <div class="field-row">
+                        <div class="field-label">${this.escapeHtml(cfg.label)}</div>
+                        <div class="field-value-container">
+                          <div class="field-value ${emptyClass}">${this.escapeHtml(displayVal)}</div>
+                          ${val !== null ? `<button class="icon-btn copy-val-btn" data-val="${encodeURIComponent(String(val))}" title="Copy">${ICONS.copy}</button>` : ''}
+                        </div>
+                      </div>`;
+    });
+    return fieldsHtml;
+  }
+
   renderGallery() {
     const grid = this.$("cfobGalleryGrid");
     grid.innerHTML = '';
+    
+    if (this.observer) this.observer.disconnect();
 
     if (!this.loadedImages.length) {
       this.$("cfobEmptyStateTitle").innerText = "No Images Loaded";
@@ -593,45 +659,34 @@ class ComfyOutputBrowser {
       card.className = 'image-card';
       card.dataset.index = idx;
 
-      let fieldsHtml = '';
-      this.fieldConfigs.forEach(cfg => {
-        const val = this.resolveFieldValue(img, cfg.paths);
-        const displayVal = val !== null ? String(val) : '—';
-        const emptyClass = val === null ? 'empty' : '';
-
-        fieldsHtml += ` <div class="field-row">
-                          <div class="field-label">${this.escapeHtml(cfg.label)}</div>
-                          <div class="field-value-container">
-                            <div class="field-value ${emptyClass}">${this.escapeHtml(displayVal)}</div>
-                            ${val !== null ? `<button class="icon-btn copy-val-btn" data-val="${encodeURIComponent(String(val))}" title="Copy">${ICONS.copy}</button>` : ''}
-                          </div>
-                        </div>`;
-      });
-
-      card.innerHTML = `<img class="card-preview" src="${img.url}" title="Click to view full image">
+      card.innerHTML = `<img class="card-preview" src="${img.url}" loading="lazy" title="Click to view full image">
                         <div class="card-content-wrapper">
                           <div class="card-header">
                             <span class="card-filename" title="${this.escapeHtml(img.name)}">${this.escapeHtml(img.name)}</span>
                             <button class="btn ins-btn" style="padding: 4px 8px; font-size: 11px;">Inspect Nodes</button>
                           </div>
                           <div class="card-toggle-bar" title="Toggle Details"><span>Metadata Details</span>${ICONS.toggle}</div>
-                          <div class="card-body">${fieldsHtml}</div>
+                          <div class="card-body">${this.getCardFieldsHtml(img)}</div>
                         </div>`;
 
       card.querySelector('.card-preview').addEventListener('click', () => this.openFullView(img));
       card.querySelector('.ins-btn').addEventListener('click', () => this.openInspector(this.loadedImages.indexOf(img)));
-      card.querySelector('.card-toggle-bar').addEventListener('click', () => {
-        card.classList.toggle('expanded');
-      });
+      card.querySelector('.card-toggle-bar').addEventListener('click', () => card.classList.toggle('expanded'));
 
-      card.querySelectorAll('.copy-val-btn').forEach(b => {
-        b.addEventListener('click', (e) => {
+      // Delegated event listener for dynamically updated cards
+      card.querySelector('.card-body').addEventListener('click', (e) => {
+        const btn = e.target.closest('.copy-val-btn');
+        if (btn) {
           e.stopPropagation();
-          this.copyValue(e.currentTarget, e.currentTarget.dataset.val);
-        });
+          this.copyValue(btn, btn.dataset.val);
+        }
       });
 
       grid.appendChild(card);
+      
+      if (!img.isParsed && this.observer) {
+        this.observer.observe(card);
+      }
     });
 
     this.filterGallery();
@@ -643,7 +698,6 @@ class ComfyOutputBrowser {
     if (clearBtn) clearBtn.style.display = rawQ ? "flex" : "none";
     this.filteredImages = [];
 
-    // Split by commas first (OR groups), then split each group by spaces (AND words/exclusions)
     const orGroups = rawQ.split(',').map(group =>
       group.trim().split(/\s+/).filter(Boolean)
     ).filter(group => group.length > 0);
@@ -651,7 +705,6 @@ class ComfyOutputBrowser {
     this.root.querySelectorAll('.image-card').forEach(card => {
       const img = this.loadedImages[card.dataset.index];
 
-      // If no search query, show all cards
       if (orGroups.length === 0) {
         card.style.display = 'flex';
         this.filteredImages.push(img);
@@ -660,16 +713,12 @@ class ComfyOutputBrowser {
 
       const textToSearch = (img.name + ' ' + (img.prompt ? JSON.stringify(img.prompt) : '')).toLowerCase();
 
-      // Match if ANY comma-separated group matches (OR logic)
       const matches = orGroups.some(group => {
-        // Inside each group, all conditions must pass (AND logic for inclusions/exclusions)
         return group.every(term => {
           if (term.startsWith('!')) {
             const excludeWord = term.slice(1);
-            // Must NOT contain the excluded word (skip empty exclusions like just "!")
             return excludeWord ? !textToSearch.includes(excludeWord) : true;
           } else {
-            // Must contain the word
             return textToSearch.includes(term);
           }
         });
@@ -759,8 +808,14 @@ class ComfyOutputBrowser {
     this.$("cfobConfigModal").classList.add('active');
   }
 
-  openInspector(idx) {
+  async openInspector(idx) {
     const img = this.loadedImages[idx];
+    
+    if (!img.isParsed) {
+      this.$("cfobInspectorTitle").innerText = `Loading Metadata...`;
+      await this.loadMetadata(img);
+    }
+    
     this.$("cfobInspectorTitle").innerText = `Metadata: ${img.name}`;
     this.$("cfobInsPromptText").value = img.prompt ? JSON.stringify(img.prompt, null, 2) : 'No API Prompt Metadata';
     this.$("cfobInsWorkflowText").value = img.workflow ? JSON.stringify(img.workflow, null, 2) : 'No UI Workflow Metadata';
@@ -816,7 +871,7 @@ class ComfyOutputBrowser {
     this.$("cfobInspectorModal").classList.add('active');
   }
 
-  openFullView(img) {
+  async openFullView(img) {
     if (!img) return;
     this.currentImageIndex = this.filteredImages.indexOf(img);
     if (this.currentImageIndex === -1) this.currentImageIndex = 0;
@@ -825,34 +880,21 @@ class ComfyOutputBrowser {
     this.$("cfobFullViewTitle").innerText = img.name;
     this.$("cfobFullViewCount").innerText = `${this.currentImageIndex + 1} / ${this.filteredImages.length}`;
 
-    let htmlBuffer = '';
-    this.fieldConfigs.forEach(cfg => {
-      const val = this.resolveFieldValue(img, cfg.paths);
-      const displayVal = val !== null ? String(val) : '—';
-      const emptyClass = val === null ? 'empty' : '';
-
-      htmlBuffer += ` <div class="field-row">
-                        <div class="field-label">${this.escapeHtml(cfg.label)}</div>
-                        <div class="field-value-container">
-                          <div class="field-value ${emptyClass}">${this.escapeHtml(displayVal)}</div>
-                          ${val !== null ? `<button class="icon-btn fv-copy-btn" data-val="${encodeURIComponent(String(val))}">${ICONS.copy}</button>` : ''}
-                        </div>
-                      </div>`;
-    });
+    this.$("cfobFullViewModal").classList.add('active');
 
     const fieldsContainer = this.$("cfobFullViewFields");
-    fieldsContainer.innerHTML = htmlBuffer;
 
-    fieldsContainer.querySelectorAll('.fv-copy-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => this.copyValue(e.currentTarget, e.currentTarget.dataset.val));
-    });
+    if (!img.isParsed) {
+      fieldsContainer.innerHTML = '<div style="padding: 20px; color: #a1a1aa; text-align: center;">Loading metadata...</div>';
+      await this.loadMetadata(img);
+    }
+
+    fieldsContainer.innerHTML = this.getCardFieldsHtml(img);
 
     this.$("cfobFullViewInspectBtn").onclick = () => {
       this.closeFullView();
       this.openInspector(this.loadedImages.indexOf(img));
     };
-
-    this.$("cfobFullViewModal").classList.add('active');
   }
 
   closeFullView() {
