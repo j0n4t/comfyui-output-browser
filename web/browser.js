@@ -56,8 +56,8 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .gallery-container.view-list .image-card { flex-direction: row; }
     #cfob-root .gallery-container.view-list .card-preview { width: 280px; height: 100%; min-height: 180px; max-height: 280px; background: #111; object-fit: contain; cursor: pointer; border-right: 1px solid var(--border); }
     #cfob-root .gallery-container.view-list .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-    
-    #cfob-root .action-bar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--panel); border: 1px solid var(--highlight); border-radius: 8px; padding: 10px 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 10005; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+    #cfob-root .action-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--panel); border: 1px solid var(--highlight); border-radius: 8px; padding: 10px 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 10005; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     #cfob-root .action-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
     
     #cfob-root .field-row { display: flex; flex-direction: column; gap: 4px; background: #1e1e21; border: 1px solid #333; padding: 8px 10px; border-radius: 6px; }
