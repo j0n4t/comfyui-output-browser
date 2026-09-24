@@ -696,6 +696,36 @@ class ComfyOutputBrowser {
     this.$("cfobToggleSidebarBtn").addEventListener('click', () => this.$("cfobFullViewSidebar").classList.toggle('collapsed'));
     this.$("cfobPrevImgBtn").addEventListener('click', () => this.navigateImage(-1));
     this.$("cfobNextImgBtn").addEventListener('click', () => this.navigateImage(1));
+    this.$("cfobPrevImgBtn").addEventListener('click', () => this.navigateImage(-1));
+    this.$("cfobNextImgBtn").addEventListener('click', () => this.navigateImage(1));
+
+    // Swipe gesture detection for full view mode
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const fvModal = this.$("cfobFullViewModal");
+    const fvMain = this.root.querySelector('.full-view-main');
+
+    // Attach to the main image area to avoid conflicts with scrolling the sidebar
+    fvMain.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    fvMain.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+
+      if (fvModal.classList.contains('active')) {
+        const swipeDistance = touchStartX - touchEndX;
+        const minSwipeDistance = 50; // Threshold in pixels to register a swipe
+
+        if (swipeDistance > minSwipeDistance) {
+          // Swiped left -> Next Image
+          this.navigateImage(1);
+        } else if (swipeDistance < -minSwipeDistance) {
+          // Swiped right -> Previous Image
+          this.navigateImage(-1);
+        }
+      }
+    }, { passive: true });
 
     this.$("cfobFVActionOpen").addEventListener('click', () => {
       const img = this.filteredImages[this.currentImageIndex];
