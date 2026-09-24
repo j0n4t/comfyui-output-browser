@@ -733,6 +733,13 @@ class ComfyOutputBrowser {
     this.root.style.setProperty('--cfob-scale', this.uiScale);
   }
 
+  setGridSize(size) {
+    this.gridSize = Math.max(20, Math.min(800, parseInt(size, 10) || 380));
+    localStorage.setItem('cfob_grid_size', this.gridSize);
+    this.root.style.setProperty('--grid-size', `${this.gridSize}px`);
+    this.root.style.setProperty('--compact-size', `${Math.max(20, this.gridSize - 180)}px`);
+  }
+
   isImageInHiddenFolder(relPath) {
     const parts = relPath.replace(/\\/g, '/').split('/');
     parts.pop();
@@ -777,7 +784,7 @@ class ComfyOutputBrowser {
 
     const savedView = localStorage.getItem('comfy_folder_browser_view') || 'grid';
     this.setViewMode(savedView);
-
+    this.setGridSize(this.gridSize);
     this.setBrowserMode(this.browserMode);
     this.root.style.setProperty('--grid-size', `${this.gridSize}px`);
     this.root.style.setProperty('--compact-size', `${Math.max(120, this.gridSize - 180)}px`);
@@ -1228,6 +1235,16 @@ class ComfyOutputBrowser {
       </div>
 
       <div class="popover-section">
+        <div class="popover-header">Image Size</div>
+        <div class="popover-row">
+          <div class="popover-slider-container">
+            <input type="range" class="popover-slider" id="cfobGridSizeSlider" min="20" max="800" step="10" value="${this.gridSize}">
+            <span id="cfobGridSizeVal" style="font-size: 0.75em; font-weight: 600; min-width: 3em; text-align: right;">${this.gridSize}px</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="popover-section">
         <div class="popover-header">Layout & Navigation</div>
         <div class="popover-row">
           <span>Position</span>
@@ -1290,6 +1307,14 @@ class ComfyOutputBrowser {
       const val = parseFloat(ev.target.value);
       this.setUiScale(val);
       scaleValDisplay.innerText = `${Math.round(val * 100)}%`;
+    });
+
+    const gridSizeSlider = popover.querySelector('#cfobGridSizeSlider');
+    const gridSizeValDisplay = popover.querySelector('#cfobGridSizeVal');
+    gridSizeSlider.addEventListener('input', (ev) => {
+      const val = parseInt(ev.target.value, 10);
+      this.setGridSize(val);
+      gridSizeValDisplay.innerText = `${val}px`;
     });
 
     popover.querySelector('#cfobModeSelect').addEventListener('change', (ev) => {
