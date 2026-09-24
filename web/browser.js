@@ -2132,38 +2132,105 @@ class ComfyOutputBrowser {
   }
 
   filterGallery() {
-    const query = (this.$("cfobSearchInput")?.value || "").toLowerCase().trim();
+    const searchInput = this.$("cfobSearchInput");
+    const searchStr = searchInput ? searchInput.value.trim() : "";
 
-    let images = this.loadedImages;
+    // Force show hidden if query starts with a dot
+    const forceShowHidden = searchStr.startsWith('.');
+    const effectiveShowHidden = this.showHiddenFolders || forceShowHidden;
 
-    if (!this.showHiddenFolders) {
-      images = images.filter(img => !this.isImageInHiddenFolder(img.name));
-    }
+    const clearBtn = this.$("cfobClearSearchBtn");
+    if (clearBtn) clearBtn.style.display = searchStr ? 'flex' : 'none';
 
-    if (!query) {
-      this.filteredImages = images;
-    } else {
-      const tokens = query.split(/\s+/).filter(Boolean);
-      this.filteredImages = images.filter(img => {
-        const name = img.name.toLowerCase();
-        let promptText = "";
-        if (img.prompt) {
-          try { promptText = JSON.stringify(img.prompt).toLowerCase(); } catch (e) { }
-        }
+    // Parse OR groups (separated by commas)
+    // e.g., "cat dog, tree !blue" -> ["cat dog", "tree !blue"]
+    const orGroups = searchStr.split(',').map(g => g.trim()).filter(Boolean);
 
-        return tokens.every(token => {
-          if (token.startsWith('!')) {
-            const term = token.slice(1);
-            if (!term) return true;
-            return !name.includes(term) && !promptText.includes(term);
-          } else {
-            return name.includes(token) || promptText.includes(token);
+    this.filteredImages = this.loadedImages.filter(img => {
+      // 1. Check hidden folder constraint
+      if (!effectiveShowHidden && this.isImageInHiddenFolder(img.name)) {
+        return false;
+      }
+
+      // If there are no search terms, show everything that passed the hidden check
+      if (orGroups.length === 0) return true;
+
+      // 2. Evaluate OR groups (returns true if ANY group matches)
+      return orGroups.some(groupStr => {
+
+        // Parse AND terms, keeping quoted strings together 
+        // Matches non-space/non-quote sequences OR anything inside quotes
+        // e.g., 'tree !name:"big tree"' -> ['tree', '!name:"big tree"']
+        const andTerms = groupStr.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+
+        // Evaluate AND terms
+        return andTerms.every(term => {
+          const isNot = term.startsWith('!');
+          const actualTerm = isNot ? term.substring(1) : term;
+          if (!actualTerm) return true; // Ignore standalone '!'
+
+          let searchKey = null;
+          let searchValue = actualTerm;
+
+          // Detect key:query syntax 
+          // Ensure the colon isn't inside a global quote by checking startsWith
+          const colonIdx = actualTerm.indexOf(':');
+          if (colonIdx > 0 && !actualTerm.startsWith('"')) {
+            searchKey = actualTerm.substring(0, colonIdx).toLowerCase();
+            searchValue = actualTerm.substring(colonIdx + 1);
           }
+
+          // Strip surrounding quotes for exact phrase parsing
+          if (searchValue.startsWith('"') && searchValue.endsWith('"') && searchValue.length >= 2) {
+            searchValue = searchValue.substring(1, searchValue.length - 1);
+          }
+
+          searchValue = searchValue.toLowerCase();
+          let match = false;
+
+          // Cache strings for generic search
+          const nameStr = (img.name || "").toLowerCase();
+          const promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
+          const workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+
+          if (searchKey) {
+            if (searchKey === 'name') {
+              match = nameStr.includes(searchValue);
+            } else if (searchKey === 'prompt') {
+              match = promptStr.includes(searchValue);
+            } else if (searchKey === 'workflow') {
+              match = workflowStr.includes(searchValue);
+            } else {
+              // Check if key is an index (e.g., '2' for the 2nd configured field)
+              const fieldIdx = parseInt(searchKey, 10);
+              if (!isNaN(fieldIdx) && fieldIdx > 0 && fieldIdx <= this.fieldConfigs.length) {
+                const val = this.resolveFieldValue(img, this.fieldConfigs[fieldIdx - 1].paths);
+                match = val !== null && String(val).toLowerCase().includes(searchValue);
+              } else {
+                // Check if key matches a specific card field label (e.g., 'model:sdxl')
+                const fieldMatch = this.fieldConfigs.find(c => c.label.toLowerCase() === searchKey);
+                if (fieldMatch) {
+                  const val = this.resolveFieldValue(img, fieldMatch.paths);
+                  match = val !== null && String(val).toLowerCase().includes(searchValue);
+                } else {
+                  // Fallback to standard global search if key isn't recognized
+                  match = nameStr.includes(searchValue) || promptStr.includes(searchValue) || workflowStr.includes(searchValue);
+                }
+              }
+            }
+          } else {
+            // Standard global search across filename, prompt, and workflow
+            match = nameStr.includes(searchValue) || promptStr.includes(searchValue) || workflowStr.includes(searchValue);
+          }
+
+          return isNot ? !match : match;
         });
       });
-    }
+    });
 
-    this.renderGallery();
+    // Re-render components with the newly filtered array
+    if (typeof this.renderGallery === 'function') this.renderGallery();
+    if (typeof this.updateActionBar === 'function') this.updateActionBar();
   }
 
   renderGallery() {
