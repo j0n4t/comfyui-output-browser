@@ -654,6 +654,7 @@ class ComfyOutputBrowser {
     this.uiScale = parseFloat(localStorage.getItem('cfob_ui_scale')) || 1.0;
     this.dbPromise = this.initDB();
     this._idleParsingActive = false;
+    this.isUiVisible = false;
   }
 
   $(id) { return this.root.querySelector(`#${id}`); }
@@ -835,6 +836,7 @@ class ComfyOutputBrowser {
     this.root.style.display = 'flex';
     void this.root.offsetWidth;
     this.root.classList.remove('cfob-hidden');
+    this.isUiVisible = true;
   }
 
   hideWithTransition() {
@@ -843,6 +845,7 @@ class ComfyOutputBrowser {
     this.transitionTimer = setTimeout(() => {
       if (this.root.classList.contains('cfob-hidden')) {
         this.root.style.display = 'none';
+        this.isUiVisible = false;
       }
     }, 250);
   }
@@ -856,9 +859,12 @@ class ComfyOutputBrowser {
         menuBtn.innerHTML = ICONS.logo;
         menuBtn.title = "Browse Outputs";
         menuBtn.onclick = () => {
-          this.root.style.display = "flex";
-          this.fetchServerImages();
-          this.showWithTransition();
+          if (!this.isUiVisible) {
+            this.fetchServerImages();
+            this.showWithTransition();
+          } else {
+            this.hideWithTransition();
+          }
         };
       }
       if (isAppMode) {
@@ -885,7 +891,7 @@ class ComfyOutputBrowser {
   }
 
   bindEvents() {
-    this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.root.style.display = "none");
+    this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.hideWithTransition());
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
     this.$("cfobLocalFilesBtn").addEventListener('click', () => this.$("cfobFilesInput").click());
     this.$("cfobMenuBtn").addEventListener('click', (e) => this.toggleOptionsMenu(e));
