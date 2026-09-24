@@ -4,9 +4,28 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root {
       --bg: #18181b; --panel: #27272a; --panel-hover: #3f3f46; --border: #3f3f46; --text: #f4f4f5; --text-muted: #a1a1aa;
       --highlight: #0284c7; --highlight-hover: #0369a1; --link: #38bdf8; --string: #fde047; --key: #38bdf8; --success: #22c55e;
-      position: fixed; inset: 0; z-index: 9999; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text);
-      margin: 0; padding: 0; display: none; flex-direction: column; height: 100vh; overflow: hidden;
+      position: fixed; z-index: 9999; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+      margin: 0; padding: 0; display: none; flex-direction: column; overflow: hidden; box-shadow: 0 0 25px rgba(0,0,0,0.6);
     }
+    #cfob-root.mode-full { inset: 0; width: 100vw; height: 100vh; border: none; }
+    #cfob-root.mode-right { top: 0; right: 0; bottom: 0; height: 100vh; border-left: 1px solid var(--border); }
+    #cfob-root.mode-left { top: 0; left: 0; bottom: 0; height: 100vh; border-right: 1px solid var(--border); }
+    #cfob-root.mode-down { left: 0; right: 0; bottom: 0; width: 100vw; border-top: 1px solid var(--border); }
+    #cfob-root.mode-up { top: 0; left: 0; right: 0; width: 100vw; border-bottom: 1px solid var(--border); }
+    /* Hidden states for smooth sliding */
+    #cfob-root.cfob-hidden { opacity: 0; pointer-events: none; }
+    #cfob-root.mode-full.cfob-hidden { transform: scale(0.95); }
+    #cfob-root.mode-right.cfob-hidden { transform: translateX(100%); }
+    #cfob-root.mode-left.cfob-hidden { transform: translateX(-100%); }
+    #cfob-root.mode-down.cfob-hidden { transform: translateY(100%); }
+    #cfob-root.mode-up.cfob-hidden { transform: translateY(-100%); }
+
+    #cfob-resizer { position: absolute; z-index: 10000; display: none; background: transparent; transition: background 0.2s; }
+    #cfob-resizer:hover, #cfob-resizer.dragging { background: var(--highlight); }
+    #cfob-root.mode-right #cfob-resizer { display: block; top: 0; left: 0; bottom: 0; width: 6px; cursor: ew-resize; }
+    #cfob-root.mode-left #cfob-resizer { display: block; top: 0; right: 0; bottom: 0; width: 6px; cursor: ew-resize; }
+    #cfob-root.mode-down #cfob-resizer { display: block; top: 0; left: 0; right: 0; height: 6px; cursor: ns-resize; }
+    #cfob-root.mode-up #cfob-resizer { display: block; bottom: 0; left: 0; right: 0; height: 6px; cursor: ns-resize; }
     #cfob-root * { box-sizing: border-box; }
     #cfob-root .top-bar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 5px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
     #cfob-root .logo-group { display: flex; align-items: center; gap: 10px; }
@@ -135,6 +154,8 @@ const BROWSER_CSS = /*css*/ `
     }
 
     @media (max-width: 768px) {
+      /* #cfob-root { inset: 0 !important; width: 100vw !important; height: 100vh !important; } */
+      /* #cfob-resizer { display: none !important; } */
       #cfob-root .top-bar { flex-direction: column; align-items: stretch; gap: 10px; }
       #cfob-root .logo-group { width: 100%; justify-content: space-between; }
       #cfob-root .actions-group { width: 100%; justify-content: stretch; gap: 8px; }
@@ -177,6 +198,7 @@ const ICONS = {
 };
 
 const BROWSER_HTML = `
+<div id="cfob-resizer"></div>
 <div class="top-bar">
   <div class="logo-group">${ICONS.logo}<h1>ComfyUI Output Browser</h1>
   <span id="cfobImageCount"></span>
@@ -309,7 +331,10 @@ class ComfyOutputBrowser {
     this.hiddenFolders = this.loadHiddenFoldersConfig();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.observer = null;
-
+    this.browserMode = localStorage.getItem('comfy_folder_browser_mode') || 'full';
+    this.sidebarWidth = parseInt(localStorage.getItem('comfy_folder_browser_width')) || 450;
+    this.sidebarHeight = parseInt(localStorage.getItem('comfy_folder_browser_height')) || 350;
+    this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
     this.dbPromise = this.initDB();
     this._idleParsingActive = false;
   }
@@ -428,6 +453,8 @@ class ComfyOutputBrowser {
     const savedView = localStorage.getItem('comfy_folder_browser_view') || 'grid';
     this.setViewMode(savedView);
 
+    this.setBrowserMode(this.browserMode);
+
     this.observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -448,6 +475,55 @@ class ComfyOutputBrowser {
     }, { root: this.$("cfobMainContainer"), rootMargin: "200px" });
   }
 
+  setBrowserMode(mode) {
+    this.browserMode = mode;
+    localStorage.setItem('comfy_folder_browser_mode', mode);
+    this.root.classList.remove('mode-full', 'mode-right', 'mode-left', 'mode-down', 'mode-up');
+    this.root.classList.add(`mode-${mode}`);
+
+    // Clear inline styles before applying new layout dimensions
+    this.root.style.width = '';
+    this.root.style.height = '';
+
+    if (mode === 'right' || mode === 'left') {
+      this.root.style.width = `${this.sidebarWidth}px`;
+    } else if (mode === 'up' || mode === 'down') {
+      this.root.style.height = `${this.sidebarHeight}px`;
+    }
+  }
+
+  updateSidebarSize(width, height) {
+    if (width !== null) {
+      this.sidebarWidth = Math.max(250, Math.min(width, window.innerWidth - 100));
+      this.root.style.width = `${this.sidebarWidth}px`;
+    }
+    if (height !== null) {
+      this.sidebarHeight = Math.max(200, Math.min(height, window.innerHeight - 100));
+      this.root.style.height = `${this.sidebarHeight}px`;
+    }
+  }
+
+  showWithTransition() {
+    clearTimeout(this.transitionTimer);
+    this.root.style.display = 'flex';
+
+    // Force browser reflow so the transition registers after removing 'display: none'
+    void this.root.offsetWidth;
+    this.root.classList.remove('cfob-hidden');
+  }
+
+  hideWithTransition() {
+    this.root.classList.add('cfob-hidden');
+    clearTimeout(this.transitionTimer);
+
+    // Wait for the 250ms CSS slide animation to finish before applying display: none
+    this.transitionTimer = setTimeout(() => {
+      if (this.root.classList.contains('cfob-hidden')) {
+        this.root.style.display = 'none';
+      }
+    }, 250);
+  }
+
   injectMenuButton() {
     const updateButtonPlacement = (isAppMode = false) => {
       let menuBtn = document.getElementById("cfob-launcher-btn");
@@ -459,6 +535,7 @@ class ComfyOutputBrowser {
         menuBtn.onclick = () => {
           this.root.style.display = "flex";
           this.fetchServerImages();
+          this.showWithTransition();
         };
       }
       if (isAppMode) {
@@ -644,6 +721,105 @@ class ComfyOutputBrowser {
     });
     this.$("cfobFVActionRename").addEventListener('click', () => this.renameFullViewImage());
     this.$("cfobFVActionDelete").addEventListener('click', () => this.deleteFullViewImage());
+
+    const resizer = this.$("cfob-resizer");
+    let isResizing = false;
+    let startX, startY, startWidth, startHeight;
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = this.sidebarWidth;
+      startHeight = this.sidebarHeight;
+      resizer.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      if (this.browserMode === 'right') {
+        this.updateSidebarSize(startWidth - (e.clientX - startX), null);
+      } else if (this.browserMode === 'left') {
+        this.updateSidebarSize(startWidth + (e.clientX - startX), null);
+      } else if (this.browserMode === 'down') {
+        this.updateSidebarSize(null, startHeight - (e.clientY - startY));
+      } else if (this.browserMode === 'up') {
+        this.updateSidebarSize(null, startHeight + (e.clientY - startY));
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        localStorage.setItem('comfy_folder_browser_width', this.sidebarWidth);
+        localStorage.setItem('comfy_folder_browser_height', this.sidebarHeight);
+      }
+    });
+
+    let autoHideTimer = null;
+    let autoShowTimer = null;
+
+    // 1. Hide on click outside
+    document.addEventListener('mousedown', (e) => {
+      const isOpen = this.root.style.display === 'flex' && !this.root.classList.contains('cfob-hidden');
+
+      if (this.autoHide && isOpen) {
+        const isOutsideRoot = !this.root.contains(e.target);
+        const isOutsidePopover = !(this.activePopover && this.activePopover.contains(e.target));
+
+        if (isOutsideRoot && isOutsidePopover) {
+          const isToggleButton = e.target.closest('#comfy-folder-browser-btn') || e.target.closest('button[id*="browser"]');
+          if (!isToggleButton) {
+            this.hideWithTransition();
+          }
+        }
+      }
+    });
+
+    // 2. Hide on mouse leave (with 350ms delay)
+    this.root.addEventListener('mouseleave', () => {
+      if (this.autoHide && this.browserMode !== 'full') {
+        autoHideTimer = setTimeout(() => {
+          this.hideWithTransition();
+        }, 350);
+      }
+    });
+
+    // Cancel the hide delay if the mouse quickly re-enters the browser
+    this.root.addEventListener('mouseenter', () => {
+      clearTimeout(autoHideTimer);
+    });
+
+    // 3. Show on screen edge touch (with 300ms delay)
+    window.addEventListener('mousemove', (e) => {
+      if (!this.autoHide || this.browserMode === 'full') return;
+
+      const isClosed = this.root.style.display === 'none' || this.root.classList.contains('cfob-hidden');
+      if (!isClosed) return;
+
+      const edgeThreshold = 15; // Trigger distance from edge
+      let hitEdge = false;
+
+      if (this.browserMode === 'left' && e.clientX <= edgeThreshold) hitEdge = true;
+      else if (this.browserMode === 'right' && e.clientX >= window.innerWidth - edgeThreshold) hitEdge = true;
+      else if (this.browserMode === 'up' && e.clientY <= edgeThreshold) hitEdge = true;
+      else if (this.browserMode === 'down' && e.clientY >= window.innerHeight - edgeThreshold) hitEdge = true;
+
+      if (hitEdge) {
+        if (!autoShowTimer) {
+          autoShowTimer = setTimeout(() => {
+            this.showWithTransition();
+            autoShowTimer = null;
+          }, 300); // Hover edge for 300ms to open
+        }
+      } else {
+        clearTimeout(autoShowTimer);
+        autoShowTimer = null;
+      }
+    });
   }
 
   showToast(msg) {
@@ -1582,6 +1758,17 @@ class ComfyOutputBrowser {
     menu.style.left = 'auto';
 
     menu.innerHTML = `
+      <select id="cfobModeSelect" class="btn" style="background: var(--bg); cursor: pointer; margin-bottom: 4px;">
+        <option value="full">Mode: Full Screen</option>
+        <option value="right">Mode: Right Sidebar</option>
+        <option value="left">Mode: Left Sidebar</option>
+        <option value="down">Mode: Bottom Bar</option>
+        <option value="up">Mode: Top Bar</option>
+      </select>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; font-size: 13px; margin-bottom: 4px;">
+        <input type="checkbox" id="cfobAutoHide" ${this.autoHide ? 'checked' : ''}>
+        Auto-hide (Close on click outside)
+      </label>
       <select id="cfobSortSelect" class="btn" style="background: var(--bg); cursor: pointer;">
         <option value="default">Sort: Default</option>
         <option value="name_asc">Sort: Name (A-Z)</option>
@@ -1605,7 +1792,22 @@ class ComfyOutputBrowser {
     this.root.appendChild(menu);
     this.activePopover = menu;
 
+    const modeSelect = menu.querySelector("#cfobModeSelect");
+    modeSelect.value = this.browserMode;
+    modeSelect.addEventListener('change', (e) => {
+      this.setBrowserMode(e.target.value);
+      this.activePopover.remove();
+      this.activePopover = null;
+    });
+
+    const autoHideCheckbox = menu.querySelector("#cfobAutoHide");
+    autoHideCheckbox.addEventListener('change', (e) => {
+      this.autoHide = e.target.checked;
+      localStorage.setItem('comfy_folder_browser_auto_hide', this.autoHide);
+    });
+
     menu.querySelector("#cfobSortSelect").addEventListener('change', (e) => this.sortImages(e.target.value));
+
 
     menu.querySelector('#cfobMenuToggleHidden').addEventListener('click', () => {
       this.showHiddenFolders = !this.showHiddenFolders;
