@@ -35,15 +35,16 @@ export default class COB_API {
   }
 
   /**
-   * @param {string} key
-   * @param {{ prompt: Record<string,any>; workflow: Record<string,any>; }} val
-   */
-  async cacheSet(key, val) {
+    * @param {string} key
+    * @param {{ prompt: Record<string,any>; workflow: Record<string,any>; }} val
+    * @param {number} [mtime]
+    */
+  async cacheSet(key, val, mtime = 0) {
     try {
       const db = await this.dbPromise;
       return new Promise(resolve => {
         const tx = db.transaction('metadata', 'readwrite');
-        tx.objectStore('metadata').put(val, key);
+        tx.objectStore('metadata').put({ ...val, mtime }, key);
         // @ts-ignore
         tx.oncomplete = () => resolve();
       });
@@ -101,11 +102,13 @@ export default class COB_API {
       const data = await res.json();
 
       if (data.success) {
-        await this.cacheSet(data.name, { prompt: meta.prompt, workflow: meta.workflow });
+        const mtime = data.mtime || 0;
+        await this.cacheSet(data.name, { prompt: meta.prompt, workflow: meta.workflow }, mtime);
 
         return {
           name: data.name,
-          url: this.getImageUrl(data.name),
+          mtime: mtime,
+          url: this.getImageUrl(data.name) + (mtime ? `&t=${mtime}` : ''),
           prompt: meta.prompt,
           workflow: meta.workflow,
           isParsed: true
@@ -133,11 +136,11 @@ export default class COB_API {
     img.isParsing = true;
     try {
       let meta = await this.cacheGet(img.name);
-      if (!meta) {
+      if (!meta || (img.mtime && meta.mtime !== img.mtime)) {
         const res = await fetch(img.url);
         const buffer = await res.arrayBuffer();
         meta = await this.parsePngBuffer(buffer) || { prompt: null, workflow: null };
-        await this.cacheSet(img.name, meta);
+        await this.cacheSet(img.name, meta, img.mtime);
       }
       img.prompt = meta.prompt;
       img.workflow = meta.workflow;

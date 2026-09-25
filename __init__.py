@@ -1,3 +1,4 @@
+import base64
 import os
 import server
 import time
@@ -31,13 +32,8 @@ async def get_images(request):
                 rel_path = os.path.relpath(full_path, output_dir).replace("\\", "/")
                 files.append((rel_path, os.path.getmtime(full_path)))
     
-    # Sort files by newest modification time first
     files.sort(key=lambda x: x[1], reverse=True)
-    return web.json_response([f[0] for f in files])
-
-import base64
-import time
-import os
+    return web.json_response([{"name": f[0], "mtime": f[1]} for f in files])
 
 @server.PromptServer.instance.routes.post("/comfyui-output-browser/upload")
 async def upload_image(request):
@@ -75,7 +71,8 @@ async def upload_image(request):
             f.write(binary_data)
 
         clean_name = os.path.relpath(target_path, os.path.abspath(output_dir)).replace("\\", "/")
-        return web.json_response({"success": True, "name": clean_name})
+        mtime = os.path.getmtime(target_path)
+        return web.json_response({"success": True, "name": clean_name, "mtime": mtime})
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
 
@@ -147,9 +144,9 @@ async def rename_image(request):
         try:
             os.makedirs(os.path.dirname(new_path), exist_ok=True)
             os.rename(old_path, new_path)
-            # Standardize returned path separator to forward slashes for URLs
             clean_new_name = os.path.relpath(new_path, os.path.abspath(output_dir)).replace("\\", "/")
-            return web.json_response({"success": True, "new_name": clean_new_name})
+            mtime = os.path.getmtime(new_path)
+            return web.json_response({"success": True, "new_name": clean_new_name, "mtime": mtime})
         except Exception as e:
             return web.json_response({"success": False, "error": str(e)})
             
@@ -193,7 +190,8 @@ async def move_images(request):
         try:
             os.rename(old_path, new_path)
             clean_new_name = os.path.relpath(new_path, os.path.abspath(output_dir)).replace("\\", "/")
-            moved.append({"old_name": f, "new_name": clean_new_name})
+            mtime = os.path.getmtime(new_path)
+            moved.append({"old_name": f, "new_name": clean_new_name, "mtime": mtime})
         except Exception as e:
             errors.append(f"{f}: {str(e)}")
             

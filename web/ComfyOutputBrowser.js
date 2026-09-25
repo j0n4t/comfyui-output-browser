@@ -462,25 +462,35 @@ export default class ComfyOutputBrowser {
 
     try {
       const response = await fetch("/comfyui-output-browser/images");
-      const allFiles = await response.json();
-      this.serverOrder = allFiles;
+      const allFilesData = await response.json();
+      this.serverOrder = allFilesData.map((/** @type {any} */ f) => f.name);
 
       const existingMap = new Map(this.loadedImages.map(img => [img.name, img]));
       const validImages = [];
       const newFilesToFetch = [];
 
-      for (const filename of allFiles) {
-        if (existingMap.has(filename)) {
-          const image = existingMap.get(filename);
-          if (image) validImages.push(image);
+      for (const fileObj of allFilesData) {
+        if (existingMap.has(fileObj.name)) {
+          const image = existingMap.get(fileObj.name);
+          if (image) {
+            if (fileObj.mtime && image.mtime && image.mtime !== fileObj.mtime) {
+              image.mtime = fileObj.mtime;
+              image.isParsed = false;
+              image.prompt = null;
+              image.workflow = null;
+              image.url = this.api.getImageUrl(fileObj.name) + `&t=${fileObj.mtime}`;
+            }
+            validImages.push(image);
+          }
         } else {
-          newFilesToFetch.push(filename);
+          newFilesToFetch.push(fileObj);
         }
       }
 
-      const newImages = newFilesToFetch.map((filename) => {
-        const url = this.api.getImageUrl(filename);
-        return { name: filename, url, prompt: null, workflow: null, isParsed: false, isParsing: false };
+      const newImages = newFilesToFetch.map((fileObj) => {
+        let url = this.api.getImageUrl(fileObj.name);
+        if (fileObj.mtime) url += `&t=${fileObj.mtime}`;
+        return { name: fileObj.name, mtime: fileObj.mtime, url, prompt: null, workflow: null, isParsed: false, isParsing: false };
       });
 
       if (newImages.length > 0 || validImages.length !== this.loadedImages.length) {
@@ -738,10 +748,11 @@ export default class ComfyOutputBrowser {
           const img = this.loadedImages.find(i => i.name === oldName);
           if (img) {
             img.name = data.new_name;
-            img.url = this.api.getImageUrl(data.new_name);
+            img.mtime = data.mtime || img.mtime;
+            img.url = this.api.getImageUrl(data.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
             const meta = await this.api.cacheGet(oldName);
             if (meta) {
-              await this.api.cacheSet(data.new_name, meta);
+              await this.api.cacheSet(data.new_name, meta, img.mtime);
               await this.api.cacheDelete(oldName);
             }
           }
@@ -772,10 +783,11 @@ export default class ComfyOutputBrowser {
             const img = this.loadedImages.find(i => i.name === m.old_name);
             if (img) {
               img.name = m.new_name;
-              img.url = this.api.getImageUrl(m.new_name);
+              img.mtime = m.mtime || img.mtime;
+              img.url = this.api.getImageUrl(m.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
               const meta = await this.api.cacheGet(m.old_name);
               if (meta) {
-                await this.api.cacheSet(m.new_name, meta);
+                await this.api.cacheSet(m.new_name, meta, img.mtime);
                 await this.api.cacheDelete(m.old_name);
               }
             }

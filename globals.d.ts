@@ -1,5 +1,6 @@
 type CFOB_Image = {
   name: string;
+  mtime: number;
   url: string;
   prompt: Record<string, any> | null;
   workflow: Record<string, any> | null;
