@@ -1,6 +1,6 @@
 // @ts-ignore
 import { app } from "../../scripts/app.js";
-import BROWSER_CSS from "./assets/css.js";
+import { CFOB_QUERY_STYLES, CFOB_STYLES } from "./assets/css.js";
 import ICONS from "./assets/icons.js";
 import CFOB_API from "./CFOB_API.js";
 import CFOB_FullView, { CFOB_FULL_VIEW_HTML, CFOB_FULL_VIEW_STYLES } from "./CFOB_FullView.js";
@@ -10,19 +10,18 @@ const BROWSER_HTML = `
 <div id="cfob-resizer"></div>
 
 <div class="top-bar">
-  <div class="logo-group">${ICONS.logo}<h1>ComfyUI Output Browser</h1>
-  <span id="cfobImageCount"></span>
+  <div class="logo-group">
+    <button class="btn" title="Close" id="cfobCloseBrowserBtn">${ICONS.logo}</button>
+    <h1>ComfyUI Output Browser</h1>
+    <span id="cfobImageCount"></span>
   </div>
   <div class="actions-group">
     <div class="search-wrapper">
-      <input type="text" id="cfobSearchInput" class="search-input" placeholder="cat dog, tree !blue (AND / OR / NOT)">
+      <input type="text" id="cfobSearchInput" class="search-input" placeholder="Filter">
       <button id="cfobClearSearchBtn" class="search-clear-btn" title="Clear search">${ICONS.close}</button>
     </div>
     <button class="btn" id="cfobRefreshBtn" title="Sync outputs from Server">${ICONS.refresh}<span>Refresh</span></button>
-    <button class="btn" id="cfobLocalFilesBtn" title="Manually inspect other files">${ICONS.picture}<span>+ PNGs</span></button>
     <button class="btn" id="cfobMenuBtn" title="Options">${ICONS.more}</button>
-    <button class="btn btn-danger" id="cfobCloseBrowserBtn">${ICONS.close}<span>Close</span></button>
-    <input type="file" id="cfobFilesInput" accept="image/png" multiple style="display: none;">
   </div>
 </div>
 
@@ -112,9 +111,10 @@ export default class ComfyOutputBrowser {
   }
 
   init() {
-    this.injectStyles("cfob-main-styles", BROWSER_CSS);
+    this.injectStyles("cfob-main-styles", CFOB_STYLES);
     this.injectStyles("cfob-fv-styles", CFOB_FULL_VIEW_STYLES);
     this.injectStyles("cfob-modal-styles", CFOB_SETTINGS_MODALS_STYLES);
+    this.injectStyles("cfob-query-styles", CFOB_QUERY_STYLES);
 
     this.root = document.createElement("div");
     this.root.id = "cfob-root";
@@ -162,7 +162,7 @@ export default class ComfyOutputBrowser {
   updateSidebarSize(width, height) {
     if (!this.root) return;
     if (width !== null) {
-      this.sidebarWidth = Math.max(250, Math.min(width, window.innerWidth - 100));
+      this.sidebarWidth = Math.max(300, Math.min(width, window.innerWidth - 100));
       this.root.style.width = `${this.sidebarWidth}px`;
     }
     if (height !== null) {
@@ -236,9 +236,7 @@ export default class ComfyOutputBrowser {
   bindEvents() {
     this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.hideWithTransition());
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
-    this.$("cfobLocalFilesBtn").addEventListener('click', () => this.$("cfobFilesInput").click());
     this.$("cfobMenuBtn").addEventListener('click', (e) => this.settings.toggleOptionsMenu(e));
-    this.$("cfobFilesInput").addEventListener('change', (e) => this.api.handleLocalFiles(/** @type {HTMLInputElement} */(e.target).files));
     this.$("cfobSearchInput").addEventListener('input', () => this.filterGallery());
 
     this.$("cfobClearSearchBtn").addEventListener('click', () => {
@@ -921,7 +919,7 @@ export default class ComfyOutputBrowser {
           const workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
 
           if (searchKey) {
-            if (searchKey === 'name') {
+            if (searchKey === 'name' || searchKey === 'path') {
               match = nameStr.includes(searchValue);
             } else if (searchKey === 'prompt') {
               match = promptStr.includes(searchValue);
@@ -940,8 +938,8 @@ export default class ComfyOutputBrowser {
                   const val = this.resolveFieldValue(img, fieldMatch.paths);
                   match = val !== null && String(val).toLowerCase().includes(searchValue);
                 } else {
-                  // Fallback to standard global search if key isn't recognized
-                  match = nameStr.includes(searchValue) || promptStr.includes(searchValue) || workflowStr.includes(searchValue);
+                  // Fallback to show nothing if key isn't recognized (go learn your keys chump)
+                  match = false;
                 }
               }
             }
@@ -994,16 +992,14 @@ export default class ComfyOutputBrowser {
       card.dataset.name = img.name;
       card.dataset.index = String(this.loadedImages.indexOf(img));
 
-      const filenameOnly = img.name.split('/').pop() || "";
-
       card.innerHTML = `
         <div class="checkbox-wrapper">
           <input type="checkbox" class="card-checkbox" value="${this.escapeHtml(img.name)}" ${isSelected ? 'checked' : ''}>
         </div>
-        <img class="card-preview" src="${this.escapeHtml(img.url)}" alt="${this.escapeHtml(filenameOnly)}" loading="lazy">
+        <img class="card-preview" src="${this.escapeHtml(img.url)}" alt="${this.escapeHtml(img.name)}" loading="lazy">
         <div class="card-content-wrapper">
           <div class="card-header" title="${this.escapeHtml(img.name)}">
-            <span class="card-filename">${this.escapeHtml(filenameOnly)}</span>
+            <span class="card-filename">${this.escapeHtml(img.name)}</span>
             ${ICONS.toggle}
           </div>
           <div class="card-body">
