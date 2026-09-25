@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "checkJs": true
+  },
+  "include": ["globals.d.ts", "web/**/*.js"],
+  "exclude": ["node_modules", "dist"]
+}
