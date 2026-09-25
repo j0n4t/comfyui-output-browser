@@ -8,9 +8,9 @@ const BROWSER_CSS = /*css*/ `
       /* Base Scaling Factor - Adjust to scale entire UI proportionally */
       --cfob-scale: 1;
       font-size: calc(16px * var(--cfob-scale));
-      
+
       /* JS-Controlled Sizing */
-      --grid-size: 380px; 
+      --grid-size: 380px;
       --compact-size: 200px;
 
       /* Color Palette: Backgrounds */
@@ -43,11 +43,11 @@ const BROWSER_CSS = /*css*/ `
       --color-accent-alpha: rgba(2, 132, 199, 0.3);
       --color-link: #38bdf8;
       --color-success: #22c55e;
-      
+
       --color-danger-bg: #7f1d1d;
       --color-danger-border: #991b1b;
       --color-danger-text: #fca5a5;
-      
+
       /* Color Palette: Syntax */
       --color-syntax-string: #fde047;
       --color-syntax-key: #38bdf8;
@@ -70,19 +70,19 @@ const BROWSER_CSS = /*css*/ `
       --z-modal: 10010;
       --z-popover: 10020;
       --z-toast: 10030;
-      
+
       /* Structural Base */
-      position: fixed; 
-      z-index: var(--z-base); 
-      font-family: var(--font-sans); 
-      background: var(--color-bg-base); 
-      color: var(--color-text-primary); 
+      position: fixed;
+      z-index: var(--z-base);
+      font-family: var(--font-sans);
+      background: var(--color-bg-base);
+      color: var(--color-text-primary);
       transition: transform 0.25s ease-out, opacity 0.25s ease-out;
-      margin: 0; 
-      padding: 0; 
-      display: none; 
-      flex-direction: column; 
-      overflow: hidden; 
+      margin: 0;
+      padding: 0;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
       box-shadow: 0 0 1.5em rgba(0,0,0,0.6);
     }
 
@@ -90,13 +90,13 @@ const BROWSER_CSS = /*css*/ `
        2. LAYOUT MODES & STRUCTURAL
        ========================================================= */
     #cfob-root *, #cfob-root *::before, #cfob-root *::after { box-sizing: border-box; }
-    
+
     #cfob-root.mode-full { inset: 0; width: 100vw; height: 100vh; border: none; }
     #cfob-root.mode-right { top: 0; right: 0; bottom: 0; height: 100vh; border-left: 1px solid var(--color-border); }
     #cfob-root.mode-left { top: 0; left: 0; bottom: 0; height: 100vh; border-right: 1px solid var(--color-border); }
     #cfob-root.mode-down { left: 0; right: 0; bottom: 0; width: 100vw; border-top: 1px solid var(--color-border); }
     #cfob-root.mode-up { top: 0; left: 0; right: 0; width: 100vw; border-bottom: 1px solid var(--color-border); }
-    
+
     /* Hidden states for smooth sliding */
     #cfob-root.cfob-hidden { opacity: 0; pointer-events: none; }
     #cfob-root.mode-full.cfob-hidden { transform: scale(0.95); }
@@ -116,38 +116,38 @@ const BROWSER_CSS = /*css*/ `
     /* =========================================================
        3. TOP BAR & NAVIGATION
        ========================================================= */
-    #cfob-root .top-bar { 
-      background: var(--color-bg-panel); 
-      border-bottom: 1px solid var(--color-border); 
-      padding: 0.3125em; 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      gap: 0.9375em; 
-      flex-wrap: wrap; 
+    #cfob-root .top-bar {
+      background: var(--color-bg-panel);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0.3125em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.9375em;
+      flex-wrap: wrap;
     }
-    
+
     #cfob-root .logo-group { display: flex; align-items: center; gap: 0.625em; }
     #cfob-root .logo-group h1 { font-size: 1.125em; margin: 0; color: var(--color-text-inverse); white-space: nowrap; }
     #cfobImageCount { color: var(--color-text-muted); font-size: 0.8125em; font-weight: 600; margin-left: 0.375em; }
-    
+
     #cfob-root .actions-group { display: flex; align-items: center; gap: 0.625em; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
-    
+
     /* Buttons */
-    #cfob-root .btn { 
-      background: var(--color-bg-panel-hover); 
-      color: var(--color-text-primary); 
-      border: 1px solid var(--color-border); 
-      padding: 0.375em 0.625em; 
-      border-radius: var(--radius-md); 
-      cursor: pointer; 
-      font-size: 0.8125em; 
-      font-weight: 500; 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 0.375em; 
-      transition: all 0.15s; 
-      white-space: nowrap; 
+    #cfob-root .btn {
+      background: var(--color-bg-panel-hover);
+      color: var(--color-text-primary);
+      border: 1px solid var(--color-border);
+      padding: 0.375em 0.625em;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.8125em;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375em;
+      transition: all 0.15s;
+      white-space: nowrap;
     }
     #cfob-root .btn:hover { background: var(--color-bg-panel-active); border-color: var(--color-border-hover); }
     #cfob-root .btn-primary { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-text-inverse); }
@@ -155,25 +155,25 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .btn-danger { background: var(--color-danger-bg); border-color: var(--color-danger-border); color: var(--color-danger-text); }
     #cfob-root .btn-danger:hover { background: var(--color-danger-border); }
     #cfob-root .btn-xs { padding: 0.1875em 0.375em; font-size: 0.6875em; border-radius: var(--radius-sm); }
-    
+
     /* Search */
     #cfob-root .search-wrapper { position: relative; display: flex; align-items: center; flex: 1; min-width: 9.375em; max-width: 21.875em; }
-    #cfob-root .search-input { 
-      background: var(--color-bg-base); 
-      border: 1px solid var(--color-border); 
-      color: var(--color-text-primary); 
-      padding: 0.5em 1.875em 0.5em 0.75em; 
-      border-radius: var(--radius-md); 
-      font-size: 0.8125em; 
-      width: 100%; 
+    #cfob-root .search-input {
+      background: var(--color-bg-base);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-primary);
+      padding: 0.5em 1.875em 0.5em 0.75em;
+      border-radius: var(--radius-md);
+      font-size: 0.8125em;
+      width: 100%;
     }
     #cfob-root .search-input:focus { outline: none; border-color: var(--color-accent); }
-    #cfob-root .search-clear-btn { 
-      position: absolute; right: 0.375em; 
-      background: transparent; border: none; 
-      color: var(--color-text-muted); cursor: pointer; 
-      padding: 0.25em; display: none; align-items: center; 
-      justify-content: center; transition: color 0.15s; 
+    #cfob-root .search-clear-btn {
+      position: absolute; right: 0.375em;
+      background: transparent; border: none;
+      color: var(--color-text-muted); cursor: pointer;
+      padding: 0.25em; display: none; align-items: center;
+      justify-content: center; transition: color 0.15s;
     }
     #cfob-root .search-clear-btn:hover { color: var(--color-text-inverse); }
 
@@ -181,44 +181,44 @@ const BROWSER_CSS = /*css*/ `
        4. GALLERY MAIN & CARDS
        ========================================================= */
     #cfob-root .main-container { flex: 1; overflow-y: auto; padding: 1.25em; position: relative; }
-    #cfob-root .drop-overlay { 
-      position: absolute; inset: 0.625em; 
-      border: 0.125em dashed var(--color-accent); 
-      border-radius: var(--radius-xl); 
-      background: var(--color-accent-alpha); 
-      display: flex; flex-direction: column; justify-content: center; align-items: center; 
-      z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; 
+    #cfob-root .drop-overlay {
+      position: absolute; inset: 0.625em;
+      border: 0.125em dashed var(--color-accent);
+      border-radius: var(--radius-xl);
+      background: var(--color-accent-alpha);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
     }
     #cfob-root .main-container.dragover .drop-overlay { opacity: 1; pointer-events: all; }
-    
-    #cfob-root .image-card { 
-      position: relative; background: var(--color-bg-panel); 
-      border: 1px solid var(--color-border); 
-      border-radius: var(--radius-xl); 
-      overflow: hidden; display: flex; 
-      box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.25); 
-      transition: border-color 0.15s, box-shadow 0.15s; 
+
+    #cfob-root .image-card {
+      position: relative; background: var(--color-bg-panel);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      overflow: hidden; display: flex;
+      box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.25);
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
     #cfob-root .image-card.selected { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
-    
+
     #cfob-root .checkbox-wrapper { position: absolute; top: 0.5em; left: 0.5em; z-index: 5; background: rgba(0,0,0,0.6); border-radius: var(--radius-sm); padding: 0.25em; display: flex; }
     #cfob-root .card-checkbox { width: 1em; height: 1em; cursor: pointer; accent-color: var(--color-accent); margin: 0; }
-    
+
     #cfob-root .card-content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-    #cfob-root .card-header { 
-      padding: 0.625em 0.875em; 
-      background: var(--color-bg-header); 
-      border-bottom: 1px solid var(--color-border); 
-      display: flex; justify-content: space-between; align-items: center; 
-      cursor: pointer; transition: background 0.15s, color 0.15s; 
+    #cfob-root .card-header {
+      padding: 0.625em 0.875em;
+      background: var(--color-bg-header);
+      border-bottom: 1px solid var(--color-border);
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
     }
     #cfob-root .card-header:hover { background: var(--color-bg-panel-hover); color: var(--color-text-inverse); }
     #cfob-root .card-header .toggle-icon { transition: transform 0.2s ease; }
     #cfob-root .card-filename { font-size: 0.8125em; font-weight: 600; color: var(--color-text-inverse); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 15em; }
-    
+
     #cfob-root .card-body { padding: 0.75em 0.875em; display: flex; flex-direction: column; gap: 0.625em; font-size: 0.75em; }
     #cfob-root .image-card.expanded .card-header .toggle-icon { transform: rotate(180deg); }
-    
+
     /* Layout Configurations */
     #cfob-root .gallery-container { display: grid; gap: 1.25em; align-items: start; padding-bottom: 5em; }
     #cfob-root .gallery-container .image-card .card-body { display: none; }
@@ -227,7 +227,7 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); }
     #cfob-root .gallery-container.view-grid .image-card { flex-direction: column; }
     #cfob-root .gallery-container.view-grid .card-preview { width: 100%; height: calc(var(--grid-size) * 0.63); background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
-    
+
     #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(var(--compact-size), 1fr)); gap: 0.75em; }
     #cfob-root .gallery-container.view-compact .image-card { flex-direction: column; border-radius: var(--radius-md); }
     #cfob-root .gallery-container.view-compact .card-preview { width: 100%; height: calc(var(--compact-size) * 0.75); background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
@@ -245,22 +245,22 @@ const BROWSER_CSS = /*css*/ `
       grid-auto-columns: minmax(var(--compact-size), 1fr);
     }
     #cfob-root .main-container.scroll-horizontal .gallery-container.view-list { grid-template-rows: 1fr; }
-    
+
     #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
     #cfob-root .gallery-container.view-list .image-card { flex-direction: row; }
     #cfob-root .gallery-container.view-list .card-preview { width: 17.5em; height: 100%; min-height: 11.25em; max-height: 17.5em; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-right: 1px solid var(--color-border); }
     #cfob-root .gallery-container.view-list .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.625em, 1fr)); gap: 0.75em; }
 
     /* Floating Action Bar */
-    #cfob-root .action-bar { 
-      position: fixed; bottom: 1.25em; left: 50%; 
-      transform: translateX(-50%) translateY(6.25em); 
-      background: var(--color-bg-panel); border: 1px solid var(--color-accent); 
-      border-radius: var(--radius-lg); padding: 0.625em 1.25em; 
-      display: flex; align-items: center; gap: 0.9375em; 
-      box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.8); 
-      z-index: var(--z-action-bar); opacity: 0; pointer-events: none; 
-      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    #cfob-root .action-bar {
+      position: fixed; bottom: 1.25em; left: 50%;
+      transform: translateX(-50%) translateY(6.25em);
+      background: var(--color-bg-panel); border: 1px solid var(--color-accent);
+      border-radius: var(--radius-lg); padding: 0.625em 1.25em;
+      display: flex; align-items: center; gap: 0.9375em;
+      box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.8);
+      z-index: var(--z-action-bar); opacity: 0; pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     #cfob-root .action-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
 
@@ -272,10 +272,10 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .field-value-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5em; }
     #cfob-root .field-value { color: var(--color-text-primary); word-break: break-word; white-space: pre-wrap; max-height: 7.5em; overflow-y: auto; font-family: var(--font-mono); font-size: 0.75em; flex: 1; }
     #cfob-root .field-value.empty { color: var(--color-text-disabled); font-style: italic; }
-    
+
     #cfob-root .icon-btn { background: transparent; color: var(--color-text-muted); border: none; padding: 0.1875em 0.3125em; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
     #cfob-root .icon-btn:hover { background: var(--color-border-dark); color: var(--color-text-inverse); }
-    
+
     #cfob-root .nodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(20em, 1fr)); gap: 0.875em; align-items: start; }
     #cfob-root .node-card { background: var(--color-bg-base); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
     #cfob-root .node-header { background: var(--color-bg-panel); padding: 0.625em 0.75em; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
@@ -283,7 +283,7 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .node-title small { color: var(--color-text-muted); font-weight: 400; font-size: 0.6875em; display: block; }
     #cfob-root .node-id { background: var(--color-bg-panel-hover); padding: 0.125em 0.375em; border-radius: var(--radius-xl); font-size: 0.625em; font-family: var(--font-mono); color: var(--color-text-inverse); }
     #cfob-root .node-body { padding: 0.625em; font-size: 0.75em; display: flex; flex-direction: column; gap: 0.5em; }
-    
+
     #cfob-root .input-row { display: flex; flex-direction: column; gap: 0.25em; border-bottom: 1px solid var(--color-bg-panel); padding-bottom: 0.375em; }
     #cfob-root .input-row:last-child { border-bottom: none; padding-bottom: 0; }
     #cfob-root .input-header { display: flex; justify-content: space-between; align-items: center; }
@@ -302,101 +302,101 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .modal-header h3 { margin: 0; font-size: 1em; color: var(--color-text-inverse); flex: 1; }
     #cfob-root .modal-body { padding: 1.25em; overflow-y: auto; display: flex; flex-direction: column; gap: 1em; flex: 1; }
     #cfob-root .modal-footer { padding: 0.75em 1.25em; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 0.625em; background: var(--color-bg-header); }
-    
+
     #cfob-root .config-field-item { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 0.75em; display: flex; flex-direction: column; gap: 0.5em; }
     #cfob-root .config-field-header { display: flex; gap: 0.625em; align-items: center; }
     #cfob-root .config-input, #cfob-root .config-paths-textarea { background: var(--color-bg-base); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 0.5em; border-radius: var(--radius-sm); font-size: 0.8125em; }
     #cfob-root .config-input:focus { outline: none; border-color: var(--color-accent); }
     #cfob-root .config-paths-textarea { font-family: var(--font-mono); resize: vertical; height: 3.75em; font-size: 0.75em; }
-    
+
     /* Streamlined Options Popover Menu */
-    #cfob-root .popover-menu { 
-      position: fixed; 
-      background: var(--color-bg-popover); 
-      border: 1px solid var(--color-border); 
-      border-radius: var(--radius-lg); 
-      box-shadow: 0 0.625em 1.5625em rgba(0,0,0,0.6); 
-      padding: 0.5em; 
-      z-index: var(--z-popover); 
-      display: flex; 
-      flex-direction: column; 
-      gap: 0.5em; 
-      min-width: 15em; 
-      max-width: 20em; 
+    #cfob-root .popover-menu {
+      position: fixed;
+      background: var(--color-bg-popover);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 0.625em 1.5625em rgba(0,0,0,0.6);
+      padding: 0.5em;
+      z-index: var(--z-popover);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+      min-width: 15em;
+      max-width: 20em;
     }
-    #cfob-root .popover-section { 
-      display: flex; 
-      flex-direction: column; 
-      gap: 0.25em; 
-      border-bottom: 1px solid var(--color-border-light); 
-      padding-bottom: 0.375em; 
+    #cfob-root .popover-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25em;
+      border-bottom: 1px solid var(--color-border-light);
+      padding-bottom: 0.375em;
     }
-    #cfob-root .popover-section:last-child { 
-      border-bottom: none; 
-      padding-bottom: 0; 
+    #cfob-root .popover-section:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
     }
-    #cfob-root .popover-header { 
-      font-size: 0.625em; 
-      font-weight: 700; 
-      color: var(--color-text-muted); 
-      padding: 0.125em 0.25em; 
-      text-transform: uppercase; 
-      letter-spacing: 0.5px; 
+    #cfob-root .popover-header {
+      font-size: 0.625em;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      padding: 0.125em 0.25em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    #cfob-root .popover-row { 
-      display: flex; 
-      align-items: center; 
-      justify-content: space-between; 
-      gap: 0.5em; 
-      padding: 0.25em 0.375em; 
-      font-size: 0.75em; 
-      color: var(--color-text-primary); 
+    #cfob-root .popover-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5em;
+      padding: 0.25em 0.375em;
+      font-size: 0.75em;
+      color: var(--color-text-primary);
     }
-    #cfob-root .popover-item { 
-      padding: 0.375em 0.625em; 
-      font-size: 0.75em; 
-      color: var(--color-text-inverse); 
-      background: transparent; 
-      border: none; 
-      text-align: left; 
-      border-radius: var(--radius-sm); 
-      cursor: pointer; 
-      display: flex; 
-      align-items: center; 
-      justify-content: space-between; 
-      width: 100%; 
-      transition: background 0.15s; 
+    #cfob-root .popover-item {
+      padding: 0.375em 0.625em;
+      font-size: 0.75em;
+      color: var(--color-text-inverse);
+      background: transparent;
+      border: none;
+      text-align: left;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      transition: background 0.15s;
     }
     #cfob-root .popover-item:hover { background: var(--color-bg-panel-hover); color: var(--color-accent); }
-    
-    #cfob-root .popover-view-toggles { 
-      display: flex; 
-      background: var(--color-bg-base); 
-      border: 1px solid var(--color-border); 
-      border-radius: var(--radius-md); 
-      overflow: hidden; 
-      width: 100%; 
+
+    #cfob-root .popover-view-toggles {
+      display: flex;
+      background: var(--color-bg-base);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      width: 100%;
     }
-    #cfob-root .popover-view-toggles .view-btn { 
-      flex: 1; 
-      background: transparent; 
-      color: var(--color-text-muted); 
-      border: none; 
-      padding: 0.375em 0.5em; 
-      cursor: pointer; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      gap: 0.375em; 
-      font-size: 0.75em; 
-      transition: all 0.15s; 
-      border-right: 1px solid var(--color-border); 
+    #cfob-root .popover-view-toggles .view-btn {
+      flex: 1;
+      background: transparent;
+      color: var(--color-text-muted);
+      border: none;
+      padding: 0.375em 0.5em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375em;
+      font-size: 0.75em;
+      transition: all 0.15s;
+      border-right: 1px solid var(--color-border);
     }
     #cfob-root .popover-view-toggles .view-btn:last-child { border-right: none; }
-    #cfob-root .popover-view-toggles .view-btn:hover, 
-    #cfob-root .popover-view-toggles .view-btn.active { 
-      background: var(--color-bg-panel-hover); 
-      color: var(--color-accent); 
+    #cfob-root .popover-view-toggles .view-btn:hover,
+    #cfob-root .popover-view-toggles .view-btn.active {
+      background: var(--color-bg-panel-hover);
+      color: var(--color-accent);
     }
 
     #cfob-root .popover-slider-container { display: flex; align-items: center; gap: 0.5em; width: 100%; }
@@ -409,19 +409,19 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root .tab.active { background: var(--color-accent); color: var(--color-text-inverse); }
     #cfob-root .tab-content { display: none; padding-top: 0.625em; }
     #cfob-root .tab-content.active { display: block; }
-    
+
     /* Empty State & Toast */
     #cfob-root .empty-state { text-align: center; padding: 5em 1.25em; color: var(--color-text-muted); }
     #cfob-root .empty-state svg { width: 4em; height: 4em; margin-bottom: 1em; stroke: var(--color-bg-panel-active); }
-    
-    #cfob-root .toast { 
-      position: fixed; bottom: 1.25em; right: 1.25em; 
-      background: var(--color-accent); color: var(--color-text-inverse); 
-      padding: 0.625em 1em; border-radius: var(--radius-md); 
-      font-size: 0.8125em; font-weight: 500; 
-      box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.3); 
-      z-index: var(--z-toast); opacity: 0; transform: translateY(0.625em); 
-      transition: all 0.2s ease; pointer-events: none; 
+
+    #cfob-root .toast {
+      position: fixed; bottom: 1.25em; right: 1.25em;
+      background: var(--color-accent); color: var(--color-text-inverse);
+      padding: 0.625em 1em; border-radius: var(--radius-md);
+      font-size: 0.8125em; font-weight: 500;
+      box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.3);
+      z-index: var(--z-toast); opacity: 0; transform: translateY(0.625em);
+      transition: all 0.2s ease; pointer-events: none;
     }
     #cfob-root .toast.show { opacity: 1; transform: translateY(0); }
 
@@ -431,30 +431,30 @@ const BROWSER_CSS = /*css*/ `
     #cfob-root #fullViewModal { padding: 0; z-index: var(--z-modal); }
     #cfob-root .full-view-layout { display: flex; width: 100vw; height: 100vh; background: var(--color-bg-full); }
     #cfob-root .full-view-layout .field-value { max-height: 100%; resize: vertical; }
-    
+
     #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
     #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    
-    #cfob-root .full-view-top-bar { 
-      position: absolute; top: 0; left: 0; right: 0; 
-      padding: 0.9375em 1.5625em; 
-      background: linear-gradient(rgba(0,0,0,0.8), transparent); 
-      display: flex; justify-content: space-between; align-items: center; 
-      color: var(--color-text-inverse); z-index: 10; 
+
+    #cfob-root .full-view-top-bar {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: 0.9375em 1.5625em;
+      background: linear-gradient(rgba(0,0,0,0.8), transparent);
+      display: flex; justify-content: space-between; align-items: center;
+      color: var(--color-text-inverse); z-index: 10;
     }
-    
+
     #cfob-root .full-view-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5em; width: 100%; }
     #cfob-root .full-view-actions .btn { justify-content: center; font-size: 0.6875em; padding: 0.375em 0.5em; }
-    
+
     #cfob-root .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: white; border: none; padding: 1.25em 0.9375em; cursor: pointer; font-size: 1.5em; transition: 0.2s; z-index: 10; }
     #cfob-root .nav-btn:hover { background: rgba(0,0,0,0.9); }
     #cfob-root .prev-btn { left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; }
     #cfob-root .next-btn { right: 0; border-radius: var(--radius-md) 0 0 var(--radius-md); }
-    
+
     /* Sidebar size is controlled by external pixels for JS dragging compatibility, but contents scale */
     #cfob-root .full-view-sidebar { width: 360px; min-width: 360px; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; }
     #cfob-root .full-view-sidebar.collapsed { width: 0; min-width: 0; border-left: none; }
-    
+
     #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 0.9375em 1.25em; background: var(--color-bg-header); }
     #cfob-root .sidebar-header { border-bottom: 1px solid var(--color-border); }
     #cfob-root .sidebar-footer { border-top: 1px solid var(--color-border); }
@@ -463,6 +463,29 @@ const BROWSER_CSS = /*css*/ `
     /* Floating Launcher Button */
     #cfob-launcher-btn.floating { position: fixed; top: 0.25em; right: 2.8125em; z-index: 9998; background: var(--color-bg-panel); color: var(--color-text-inverse); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 1.5em; height: 1.5em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); }
     #cfob-launcher-btn.floating:hover { background: var(--color-border); }
+
+    /* UI Hidden State */
+    #cfob-root .full-view-layout.ui-hidden .full-view-top-bar,
+    #cfob-root .full-view-layout.ui-hidden .nav-btn,
+    #cfob-root .full-view-layout.ui-hidden .full-view-sidebar {
+      opacity: 0; pointer-events: none;
+    }
+
+    #cfob-root .full-view-layout .full-view-top-bar,
+    #cfob-root .full-view-layout .nav-btn,
+    #cfob-root .full-view-layout .full-view-sidebar {
+      transition: opacity 0.2s ease, width 0.3s;
+    }
+
+    /* Image Pan/Zoom States */
+    #cfob-root .full-view-main img {
+      max-width: 100%; max-height: 100%; object-fit: contain;
+      transition: transform 0.1s ease-out; transform-origin: center; cursor: grab;
+    }
+
+    #cfob-root .full-view-main img.dragging {
+      transition: none; cursor: grabbing;
+    }
 
     /* =========================================================
        8. MEDIA QUERIES
@@ -514,6 +537,9 @@ const ICONS = {
   trash: `<svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"/><path fill="currentColor" d="M9 10h2v8H9zm4 0h2v8h-2z"/></svg>`,
   toggle: `<svg class="toggle-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
   workflow: `<svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M9 10c.55 0 1-.45 1-1V7h4.14c.45 1.72 2 3 3.86 3c2.21 0 4-1.79 4-4s-1.79-4-4-4c-1.86 0-3.41 1.28-3.86 3H10V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h2v4.09L1.79 17.3a.996.996 0 0 0 0 1.41l3.5 3.5c.2.2.45.29.71.29s.51-.1.71-.29L9.92 19h4.09v2c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1v2H9.92l-2.91-2.91V10h2Zm9-6c1.1 0 2 .9 2 2s-.9 2-2 2s-2-.9-2-2s.9-2 2-2m-2 12h4v4h-4zM6 20.09L3.91 18L6 15.91L8.09 18zM4 4h4v4H4z"/></svg>`,
+  zoomIn: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+  zoomOut: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+  zoomReset: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>`,
 };
 
 const BROWSER_HTML = `
@@ -580,7 +606,17 @@ const BROWSER_HTML = `
 <div class="modal-overlay" id="cfobFullViewModal">
   <div class="full-view-layout">
     <div class="full-view-main">
-      <div class="full-view-top-bar"><span id="cfobFullViewCount" style="font-weight: 600; font-size: 0.875em;">1 / 10</span><div style="display: flex; gap: 0.5em;"><button class="icon-btn" id="cfobToggleSidebarBtn" title="Toggle Details Pane">${ICONS.pane}</button><button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button></div></div>
+      <div class="full-view-top-bar">
+        <span id="cfobFullViewCount" style="font-weight: 600; font-size: 0.875em;">1 / 10</span>
+        <div style="display: flex; gap: 0.5em; align-items: center;">
+          <button class="icon-btn" id="cfobZoomInBtn" title="Zoom In">${ICONS.zoomIn}</button>
+          <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out">${ICONS.zoomOut}</button>
+          <button class="icon-btn" id="cfobZoomResetBtn" title="Reset Zoom">${ICONS.zoomReset}</button>
+          <div style="width: 1px; height: 1.25em; background: var(--color-border); margin: 0 0.25em;"></div>
+          <button class="icon-btn" id="cfobToggleSidebarBtn" title="Toggle Details Pane">${ICONS.pane}</button>
+          <button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button>
+        </div>
+      </div>
       <button class="nav-btn prev-btn" id="cfobPrevImgBtn" title="Previous (Left Arrow)">❮</button>
       <img id="cfobFullViewImg" src="" alt="Full View">
       <button class="nav-btn next-btn" id="cfobNextImgBtn" title="Next (Right Arrow)">❯</button>
@@ -655,6 +691,13 @@ class ComfyOutputBrowser {
     this.dbPromise = this.initDB();
     this._idleParsingActive = false;
     this.isUiVisible = false;
+    this.fvZoom = 1;
+    this.fvPanX = 0;
+    this.fvPanY = 0;
+    this.fvIsDragging = false;
+    this.fvStartX = 0;
+    this.fvStartY = 0;
+    this.fvHasDragged = false;
   }
 
   $(id) { return this.root.querySelector(`#${id}`); }
@@ -1055,6 +1098,62 @@ class ComfyOutputBrowser {
         }
       }
     }, { passive: true });
+
+    // Zoom Buttons
+    this.$("cfobZoomInBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom * 1.25));
+    this.$("cfobZoomOutBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom / 1.25));
+    this.$("cfobZoomResetBtn").addEventListener('click', () => this.resetFullViewTransform());
+
+    // Auto-reset when navigating or closing
+    // this.$("cfobPrevImgBtn").addEventListener('click', () => this.resetFullViewTransform());
+    // this.$("cfobNextImgBtn").addEventListener('click', () => this.resetFullViewTransform());
+    this.$("cfobCloseFullViewBtn").addEventListener('click', () => this.resetFullViewTransform());
+
+    const fvImg = this.$("cfobFullViewImg");
+
+    // Pan & Click-to-hide Logic
+    fvImg.addEventListener('mousedown', (e) => {
+      this.fvIsDragging = true;
+      this.fvHasDragged = false;
+      this.fvStartX = e.clientX - this.fvPanX;
+      this.fvStartY = e.clientY - this.fvPanY;
+      fvImg.classList.add('dragging');
+      e.preventDefault(); // Prevents native browser image dragging
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!this.fvIsDragging) return;
+      const newX = e.clientX - this.fvStartX;
+      const newY = e.clientY - this.fvStartY;
+
+      // Threshold to distinguish between a drag and a simple click
+      if (Math.abs(newX - this.fvPanX) > 3 || Math.abs(newY - this.fvPanY) > 3) {
+        this.fvHasDragged = true;
+      }
+
+      this.fvPanX = newX;
+      this.fvPanY = newY;
+      this.updateFullViewTransform(false);
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (this.fvIsDragging) {
+        this.fvIsDragging = false;
+        fvImg.classList.remove('dragging');
+
+        // If image was clicked and released without moving, toggle the UI
+        if (!this.fvHasDragged && e.target === fvImg) {
+          this.toggleFullViewUI();
+        }
+      }
+    });
+
+    // Mouse Wheel Zoom Support
+    fvMain.addEventListener('wheel', (e) => {
+      if (!this.$("cfobFullViewModal").classList.contains('active')) return;
+      e.preventDefault();
+      this.setFullViewZoom(this.fvZoom * (e.deltaY > 0 ? 0.9 : 1.1));
+    }, { passive: false });
 
     this.$("cfobFVActionOpen").addEventListener('click', () => {
       const img = this.filteredImages[this.currentImageIndex];
@@ -2022,6 +2121,32 @@ class ComfyOutputBrowser {
     } else {
       this.$("cfobFullViewFields").innerHTML = this.getCardFieldsHtml(img);
     }
+  }
+
+  setFullViewZoom(newZoom) {
+    this.fvZoom = Math.max(0.1, Math.min(newZoom, 15));
+    this.updateFullViewTransform(true);
+  }
+
+  updateFullViewTransform(useTransition = true) {
+    const img = this.$("cfobFullViewImg");
+    if (!img) return;
+    img.style.transition = useTransition ? 'transform 0.1s ease-out' : 'none';
+    img.style.transform = `translate(${this.fvPanX}px, ${this.fvPanY}px) scale(${this.fvZoom})`;
+  }
+
+  resetFullViewTransform() {
+    this.fvZoom = 1;
+    this.fvPanX = 0;
+    this.fvPanY = 0;
+    this.updateFullViewTransform(true);
+    const layout = this.root.querySelector('.full-view-layout');
+    if (layout) layout.classList.remove('ui-hidden');
+  }
+
+  toggleFullViewUI() {
+    const layout = this.root.querySelector('.full-view-layout');
+    if (layout) layout.classList.toggle('ui-hidden');
   }
 
   copyValue(btn, encodedVal) {
