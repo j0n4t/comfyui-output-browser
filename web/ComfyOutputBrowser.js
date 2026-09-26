@@ -358,8 +358,14 @@ export default class ComfyOutputBrowser {
       } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
         if (!noModalOpen) return;
 
-        if ((e.ctrlKey || e.metaKey) && key === 'a') {
+        if (key === '/' && !e.ctrlKey) {
+          e.preventDefault(); e.stopPropagation(); this.$("cfobSearchInput").focus();
+        }
+        else if ((e.ctrlKey || e.metaKey) && key === 'a') {
           e.preventDefault(); e.stopPropagation(); this.selectAllFiltered();
+        }
+        else if ((e.ctrlKey || e.metaKey) && key === 'p') {
+          e.preventDefault(); e.stopPropagation(); this.fetchServerImages();
         }
         else if (key === 'm' || key === 'r' && !e.ctrlKey) {
           if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.renameSelected(); }
