@@ -157,6 +157,133 @@ export default class ComfyOutputBrowser {
   }
 
   /**
+   * @param {string} message 
+   * @param {string} confirmText 
+   * @param {boolean} isDanger 
+   * @returns {Promise<boolean>}
+   */
+  async customConfirm(message, confirmText = "Confirm", isDanger = false) {
+    return new Promise(resolve => {
+      const modal = this.$("cfobConfirmModal");
+      this.$("cfobConfirmMsg").innerText = message;
+
+      const okBtn = this.$("cfobConfirmOkBtn");
+      okBtn.innerText = confirmText;
+      okBtn.className = isDanger ? "btn btn-danger" : "btn btn-primary";
+
+      const cleanup = () => {
+        modal.classList.remove("active");
+        okBtn.removeEventListener("click", onOk);
+        this.$("cfobConfirmCancelBtn").removeEventListener("click", onCancel);
+        this.$("cfobConfirmCloseBtn").removeEventListener("click", onCancel);
+      };
+
+      const onOk = () => { cleanup(); resolve(true); };
+      const onCancel = () => { cleanup(); resolve(false); };
+
+      okBtn.addEventListener("click", onOk);
+      this.$("cfobConfirmCancelBtn").addEventListener("click", onCancel);
+      this.$("cfobConfirmCloseBtn").addEventListener("click", onCancel);
+
+      modal.classList.add("active");
+      okBtn.focus();
+    });
+  }
+
+  /**
+   * @param {string} message 
+   * @param {string} defaultValue 
+   * @param {'none' | 'rename' | 'move'} folderPickerMode 
+   * @returns {Promise<string | null>}
+   */
+  async customPrompt(message, defaultValue = "", folderPickerMode = 'none') {
+    return new Promise(resolve => {
+      const modal = this.$("cfobPromptModal");
+      this.$("cfobPromptMsg").innerText = message;
+      const input = /** @type {HTMLInputElement} */ (this.$("cfobPromptInput"));
+      input.value = defaultValue;
+
+      const folderWrapper = this.$("cfobFolderListWrapper");
+      const folderList = this.$("cfobFolderList");
+
+      if (folderPickerMode !== 'none') {
+        folderWrapper.style.display = "block";
+        const folders = new Set();
+        this.loadedImages.forEach(img => {
+          const parts = img.name.split(/\\|\//);
+          if (parts.length > 1) folders.add(parts.slice(0, -1).join('/'));
+        });
+
+        folderList.innerHTML = "";
+
+        // Add root option
+        const rootChip = document.createElement("div");
+        rootChip.className = "folder-chip";
+        rootChip.innerHTML = `${ICONS.logo} Root (/)`;
+        rootChip.onclick = () => {
+          if (folderPickerMode === 'rename') {
+            input.value = input.value.split(/\\|\//).pop() || "";
+          } else {
+            input.value = "";
+          }
+          input.focus();
+        };
+        folderList.appendChild(rootChip);
+
+        // Add detected folders
+        Array.from(folders).sort().forEach(folder => {
+          const chip = document.createElement("div");
+          chip.className = "folder-chip";
+          chip.innerHTML = `${ICONS.logo} ${this.escapeHtml(folder)}`;
+          chip.onclick = () => {
+            if (folderPickerMode === 'rename') {
+              const fileName = input.value.split(/\\|\//).pop();
+              input.value = folder + "/" + fileName;
+            } else {
+              input.value = folder;
+            }
+            input.focus();
+          };
+          folderList.appendChild(chip);
+        });
+      } else {
+        folderWrapper.style.display = "none";
+      }
+
+      const cleanup = () => {
+        modal.classList.remove("active");
+        this.$("cfobPromptOkBtn").removeEventListener("click", onOk);
+        this.$("cfobPromptCancelBtn").removeEventListener("click", onCancel);
+        this.$("cfobPromptCloseBtn").removeEventListener("click", onCancel);
+        input.removeEventListener("keydown", onKey);
+      };
+
+      const onOk = () => { cleanup(); resolve(input.value); };
+      const onCancel = () => { cleanup(); resolve(null); };
+      const onKey = (/** @type {KeyboardEvent} */ e) => { if (e.key === "Enter") onOk(); };
+
+      this.$("cfobPromptOkBtn").addEventListener("click", onOk);
+      this.$("cfobPromptCancelBtn").addEventListener("click", onCancel);
+      this.$("cfobPromptCloseBtn").addEventListener("click", onCancel);
+      input.addEventListener("keydown", onKey);
+
+      modal.classList.add("active");
+      setTimeout(() => {
+        input.focus();
+        if (folderPickerMode === 'rename') {
+          // Select only the filename, not the path
+          const parts = input.value.split(/\\|\//);
+          const fn = parts.pop() || "";
+          const dirLen = input.value.length - fn.length;
+          input.setSelectionRange(dirLen, input.value.length);
+        } else {
+          input.select();
+        }
+      }, 10);
+    });
+  }
+
+  /**
    * @param {number | null} width
    * @param {number | null} height
    */
@@ -285,6 +412,8 @@ export default class ComfyOutputBrowser {
       const configModal = this.$("cfobConfigModal");
       const inspectorModal = this.$("cfobInspectorModal");
       const hiddenModal = this.$("cfobHiddenFoldersModal");
+      const confirmModal = this.$("cfobConfirmModal");
+      const promptModal = this.$("cfobPromptModal");
 
       if (fvModal.classList.contains('active')) {
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView(); }
@@ -296,7 +425,9 @@ export default class ComfyOutputBrowser {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
           const noModalOpen = !configModal.classList.contains('active') &&
             !inspectorModal.classList.contains('active') &&
-            !hiddenModal.classList.contains('active');
+            !hiddenModal.classList.contains('active') &&
+            !confirmModal.classList.contains('active') &&
+            !promptModal.classList.contains('active');
           if (!isEditing && noModalOpen) {
             e.preventDefault();
             e.stopPropagation();
@@ -304,7 +435,10 @@ export default class ComfyOutputBrowser {
           }
         } else if (e.key === 'Escape') {
           e.stopPropagation();
-          if (configModal.classList.contains('active')) configModal.classList.remove('active');
+          // Close Modals in priority order
+          if (confirmModal.classList.contains('active')) this.$("cfobConfirmCancelBtn").click();
+          else if (promptModal.classList.contains('active')) this.$("cfobPromptCancelBtn").click();
+          else if (configModal.classList.contains('active')) configModal.classList.remove('active');
           else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
           else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
           else if (this.selectedImages.size > 0) this.clearSelection();
@@ -687,11 +821,13 @@ export default class ComfyOutputBrowser {
     if (!files.length) return;
 
     const hasTrashedItems = files.some(f => f.replace(/\\/g, '/').startsWith('.trash/'));
-    const confirmMsg = hasTrashedItems
+    const isTrash = hasTrashedItems;
+    const confirmMsg = isTrash
       ? `Permanently delete at least one of ${files.length} selected image(s)? This cannot be undone.`
       : `Move ${files.length} selected image(s) to Trash?`;
 
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await this.customConfirm(confirmMsg, isTrash ? "Delete Permanently" : "Move to Trash", isTrash);
+    if (!confirmed) return;
 
     try {
       const res = await fetch("/comfyui-output-browser/delete", {
@@ -731,7 +867,7 @@ export default class ComfyOutputBrowser {
 
     if (count === 1) {
       const oldName = Array.from(this.selectedImages)[0];
-      let newName = prompt("Enter new path or filename (e.g. 'etc/thing02.png'):", oldName);
+      let newName = await this.customPrompt("Enter new path or filename:", oldName, 'rename');
 
       if (!newName || newName === oldName) return;
 
@@ -766,7 +902,7 @@ export default class ComfyOutputBrowser {
         this.showToast("Rename request failed.");
       }
     } else {
-      let destFolder = prompt(`Move ${count} items to folder (e.g., 'Favorites'):`, "");
+      let destFolder = await this.customPrompt(`Move ${count} items to folder:`, "", 'move');
       if (destFolder === null || destFolder.trim() === "") return;
 
       try {

@@ -39,14 +39,14 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .config-input:focus { outline: none; border-color: var(--color-accent); }
   #cfob-root .config-paths-textarea { font-family: var(--font-mono); resize: vertical; height: 3.75em; font-size: 0.75em; }
 
-  #cfob-root .popover-menu { position: fixed; background: var(--color-bg-popover); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: 0 0.625em 1.5625em rgba(0,0,0,0.6); padding: 0.5em; z-index: var(--z-popover); display: flex; flex-direction: column; gap: 0.5em; min-width: 15em; max-width: 20em; } 
-  #cfob-root .popover-section { display: flex; flex-direction: column; gap: 0.25em; border-bottom: 1px solid var(--color-border-light); padding-bottom: 0.375em; } 
-  #cfob-root .popover-section:last-child { border-bottom: none; padding-bottom: 0; } 
-  #cfob-root .popover-header { font-size: 0.625em; font-weight: 700; color: var(--color-text-muted); padding: 0.125em 0.25em; text-transform: uppercase; letter-spacing: 0.5px; } 
-  #cfob-root .popover-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5em; padding: 0.25em 0.375em; font-size: 0.75em; color: var(--color-text-primary); } 
-  #cfob-root .popover-item { padding: 0.375em 0.625em; font-size: 0.75em; color: var(--color-text-inverse); background: transparent; border: none; text-align: left; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; transition: background 0.15s; } 
+  #cfob-root .popover-menu { position: fixed; background: var(--color-bg-popover); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: 0 0.625em 1.5625em rgba(0,0,0,0.6); padding: 0.5em; z-index: var(--z-popover); display: flex; flex-direction: column; gap: 0.5em; min-width: 15em; max-width: 20em; }
+  #cfob-root .popover-section { display: flex; flex-direction: column; gap: 0.25em; border-bottom: 1px solid var(--color-border-light); padding-bottom: 0.375em; }
+  #cfob-root .popover-section:last-child { border-bottom: none; padding-bottom: 0; }
+  #cfob-root .popover-header { font-size: 0.625em; font-weight: 700; color: var(--color-text-muted); padding: 0.125em 0.25em; text-transform: uppercase; letter-spacing: 0.5px; }
+  #cfob-root .popover-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5em; padding: 0.25em 0.375em; font-size: 0.75em; color: var(--color-text-primary); }
+  #cfob-root .popover-item { padding: 0.375em 0.625em; font-size: 0.75em; color: var(--color-text-inverse); background: transparent; border: none; text-align: left; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; transition: background 0.15s; }
   #cfob-root .popover-item:hover { background: var(--color-bg-panel-hover); color: var(--color-accent); }
- 
+
   #cfob-root .popover-view-toggles { display: flex; background: var(--color-bg-base); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; width: 100%; }
   #cfob-root .popover-view-toggles .view-btn { flex: 1; background: transparent; color: var(--color-text-muted); border: none; padding: 0.375em 0.5em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.375em; font-size: 0.75em; transition: all 0.15s; border-right: 1px solid var(--color-border); }
   #cfob-root .popover-view-toggles .view-btn:last-child { border-right: none; }
@@ -55,6 +55,10 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .popover-slider-container { display: flex; align-items: center; gap: 0.5em; width: 100%; }
   #cfob-root .popover-slider { flex: 1; accent-color: var(--color-accent); cursor: pointer; height: 0.25em; }
   #cfob-root .popover-select { background: var(--color-bg-base); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: var(--radius-sm); padding: 0.2em 0.4em; font-size: 0.75em; outline: none; }
+
+  #cfob-root .folder-list { display: flex; flex-wrap: wrap; gap: 0.375em; max-height: 10em; overflow-y: auto; margin-top: 0.5em; padding-top: 0.75em; border-top: 1px solid var(--color-border-light); }
+  #cfob-root .folder-chip { background: var(--color-bg-panel-hover); border: 1px solid var(--color-border); padding: 0.375em 0.625em; border-radius: var(--radius-xl); font-size: 0.75em; cursor: pointer; color: var(--color-text-primary); transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.25em; }
+  #cfob-root .folder-chip:hover { background: var(--color-accent); color: white; border-color: var(--color-accent); }
 `;
 
 export const CFOB_SETTINGS_MODALS_HTML = `
@@ -90,18 +94,49 @@ export const CFOB_SETTINGS_MODALS_HTML = `
   </div>
 
   <div class="modal-overlay" id="cfobInspectorModal">
-  <div class="modal-content">
-    <div class="modal-header">${ICONS.inspect}<h3 id="cfobInspectorTitle">Image Metadata Inspector</h3><button class="icon-btn" id="cfobCloseInspectorBtn">${ICONS.close}</button></div>
-    <div class="modal-body">
-      <div class="tabs" id="cfobInspectorTabs">
-      <div class="tab active" data-target="cfobInsNodes">Visual Nodes View</div><div class="tab" data-target="cfobInsPrompt">API Prompt (JSON)</div><div class="tab" data-target="cfobInsWorkflow">UI Workflow (JSON)</div>
+    <div class="modal-content">
+      <div class="modal-header">${ICONS.inspect}<h3 id="cfobInspectorTitle">Image Metadata Inspector</h3><button class="icon-btn" id="cfobCloseInspectorBtn">${ICONS.close}</button></div>
+      <div class="modal-body">
+        <div class="tabs" id="cfobInspectorTabs">
+        <div class="tab active" data-target="cfobInsNodes">Visual Nodes View</div><div class="tab" data-target="cfobInsPrompt">API Prompt (JSON)</div><div class="tab" data-target="cfobInsWorkflow">UI Workflow (JSON)</div>
+        </div>
+        <div class="tab-content active" id="cfobInsNodes"><div class="nodes-grid" id="cfobInsNodesGrid"></div></div>
+        <div class="tab-content" id="cfobInsPrompt"><textarea id="cfobInsPromptText" style="width: 100%; height: 30em; background: var(--color-bg-input); color: var(--color-syntax-string); font-family: var(--font-mono); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md);" readonly></textarea></div>
+        <div class="tab-content" id="cfobInsWorkflow"><textarea id="cfobInsWorkflowText" style="width: 100%; height: 30em; background: var(--color-bg-input); color: var(--color-syntax-key); font-family: var(--font-mono); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md);" readonly></textarea></div>
       </div>
-      <div class="tab-content active" id="cfobInsNodes"><div class="nodes-grid" id="cfobInsNodesGrid"></div></div>
-      <div class="tab-content" id="cfobInsPrompt"><textarea id="cfobInsPromptText" style="width: 100%; height: 30em; background: var(--color-bg-input); color: var(--color-syntax-string); font-family: var(--font-mono); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md);" readonly></textarea></div>
-      <div class="tab-content" id="cfobInsWorkflow"><textarea id="cfobInsWorkflowText" style="width: 100%; height: 30em; background: var(--color-bg-input); color: var(--color-syntax-key); font-family: var(--font-mono); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md);" readonly></textarea></div>
     </div>
   </div>
-</div>
+
+  <!-- Custom Confirm Modal -->
+  <div class="modal-overlay" id="cfobConfirmModal" style="z-index: 9999;">
+    <div class="modal-content" style="max-width: 25em;">
+      <div class="modal-header"><h3 id="cfobConfirmTitle">Confirm</h3><button class="icon-btn" id="cfobConfirmCloseBtn">${ICONS.close}</button></div>
+      <div class="modal-body"><p id="cfobConfirmMsg" style="margin: 0; color: var(--color-text-primary); line-height: 1.4;"></p></div>
+      <div class="modal-footer">
+        <button class="btn" id="cfobConfirmCancelBtn">Cancel</button>
+        <button class="btn" id="cfobConfirmOkBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Prompt Modal with Folder List -->
+  <div class="modal-overlay" id="cfobPromptModal" style="z-index: 9999;">
+    <div class="modal-content" style="max-width: 35em;">
+      <div class="modal-header"><h3 id="cfobPromptTitle">Input Required</h3><button class="icon-btn" id="cfobPromptCloseBtn">${ICONS.close}</button></div>
+      <div class="modal-body">
+        <p id="cfobPromptMsg" style="margin: 0 0 0.75em 0; color: var(--color-text-primary); font-size: 0.875em; line-height: 1.4;"></p>
+        <input type="text" id="cfobPromptInput" class="config-input" style="width: 100%; box-sizing: border-box; font-size: 1em;" autocomplete="off">
+        <div id="cfobFolderListWrapper" style="display: none;">
+          <div style="font-size: 0.75em; font-weight: 600; color: var(--color-text-muted); margin-top: 1.25em; text-transform: uppercase; letter-spacing: 0.5px;">Select Existing Folder</div>
+          <div class="folder-list" id="cfobFolderList"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="cfobPromptCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="cfobPromptOkBtn">Save</button>
+      </div>
+    </div>
+  </div>
 `;
 
 export const DEFAULT_FIELDS = [

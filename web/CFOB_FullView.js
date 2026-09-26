@@ -235,7 +235,7 @@ export default class CFOB_FullView {
   async renameFullViewImage() {
     const img = this.app.filteredImages[this.currentImageIndex];
     if (!img) return;
-    let newName = prompt("Enter new path or filename (e.g. 'etc/thing02.png'):", img.name);
+    let newName = await this.app.customPrompt("Enter new path or filename:", img.name, 'rename');
     if (!newName || newName === img.name) return;
 
     try {
@@ -274,7 +274,8 @@ export default class CFOB_FullView {
       ? `Permanently delete ${img.name}?`
       : `Move ${img.name} to Trash?`;
 
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await this.app.customConfirm(confirmMsg, isTrash ? "Delete Permanently" : "Move to Trash", isTrash);
+    if (!confirmed) return;
 
     try {
       const res = await fetch("/comfyui-output-browser/delete", {
