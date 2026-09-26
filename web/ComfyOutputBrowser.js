@@ -322,6 +322,15 @@ export default class ComfyOutputBrowser {
 
       if (isEditing) return;
 
+      if (noModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey && key >= '1' && key <= '9') {
+        if (isFullView || (this.isUiVisible && !this.root?.classList.contains('cfob-hidden'))) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleFieldCopyKey(key);
+          return;
+        }
+      }
+
       if (isFullView && noModalOpen && !e.ctrlKey) {
         if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
@@ -352,13 +361,13 @@ export default class ComfyOutputBrowser {
         if ((e.ctrlKey || e.metaKey) && key === 'a') {
           e.preventDefault(); e.stopPropagation(); this.selectAllFiltered();
         }
-        else if (key === 'm' || key === 'r') {
+        else if (key === 'm' || key === 'r' && !e.ctrlKey) {
           if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.renameSelected(); }
         }
-        else if (key === 'i') {
+        else if (key === 'i' && !e.ctrlKey) {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.inspectSelected(); }
         }
-        else if (key === 'enter') {
+        else if (key === 'enter' && !e.ctrlKey) {
           if (this.selectedImages.size === 1) {
             e.preventDefault(); e.stopPropagation();
             const img = this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
@@ -663,6 +672,49 @@ export default class ComfyOutputBrowser {
       }
     }
     return null;
+  }
+
+  /** @param {string} digitChar */
+  async handleFieldCopyKey(digitChar) {
+    const fieldIdx = parseInt(digitChar, 10) - 1;
+    const config = this.settings.fieldConfigs[fieldIdx];
+    if (!config) return;
+
+    let targetImg = null;
+    const fvModal = this.$("cfobFullViewModal");
+    const isFullView = fvModal && fvModal.classList.contains('active');
+
+    if (isFullView) {
+      targetImg = this.filteredImages[this.fullView.currentImageIndex];
+    } else {
+      if (this.selectedImages.size === 1) {
+        const filename = Array.from(this.selectedImages)[0];
+        targetImg = this.loadedImages.find(i => i.name === filename);
+      } else if (this.lastSelectedIdx !== -1 && this.filteredImages[this.lastSelectedIdx]) {
+        targetImg = this.filteredImages[this.lastSelectedIdx];
+      } else if (this.selectedImages.size > 0) {
+        const filename = Array.from(this.selectedImages)[0];
+        targetImg = this.loadedImages.find(i => i.name === filename);
+      }
+    }
+
+    if (!targetImg) return;
+
+    if (!targetImg.isParsed) {
+      this.showToast("Loading metadata...");
+      await this.api.loadMetadata(targetImg);
+      this.renderGallery();
+      this.fullView.updateFullViewUI();
+    }
+
+    const val = this.resolveFieldValue(targetImg, config.paths);
+    if (val !== null && val !== undefined && val !== '') {
+      navigator.clipboard.writeText(String(val)).then(() => {
+        this.showToast(`Copied ${config.label}: ${val}`);
+      });
+    } else {
+      this.showToast(`Field "${config.label}" is empty or not found.`);
+    }
   }
 
   /** @param {CFOB_Image} img */
