@@ -322,7 +322,7 @@ export default class ComfyOutputBrowser {
 
       if (isEditing) return;
 
-      if (isFullView) {
+      if (isFullView && !e.ctrlKey) {
         if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
         else if (!noModalOpen) return;
@@ -332,7 +332,20 @@ export default class ComfyOutputBrowser {
         else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
         else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
         else if (key === 'w') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionOpen").click(); }
-
+        else if (key === ' ') { this.fullView.toggleFullViewUI(); }
+        else if (key === 't') { this.$("cfobFullViewSidebar").classList.toggle('collapsed'); }
+        else if (key === '+' || key === '=' || e.code === 'NumpadAdd') {
+          e.preventDefault(); e.stopPropagation();
+          this.fullView.setFullViewZoom(this.fullView.fvZoom * 1.1);
+        }
+        else if (key === '-' || key === '_' || e.code === 'NumpadSubtract') {
+          e.preventDefault(); e.stopPropagation();
+          this.fullView.setFullViewZoom(this.fullView.fvZoom / 1.1);
+        }
+        else if (key === '0') {
+          e.preventDefault(); e.stopPropagation();
+          this.fullView.resetFullViewTransform();
+        }
       } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
         if (!noModalOpen) return;
 

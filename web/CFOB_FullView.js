@@ -150,8 +150,8 @@ export default class CFOB_FullView {
     }, { passive: true });
 
     // Zoom Buttons
-    this.app.$("cfobZoomInBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom * 1.25));
-    this.app.$("cfobZoomOutBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom / 1.25));
+    this.app.$("cfobZoomInBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom * 1.1));
+    this.app.$("cfobZoomOutBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom / 1.1));
     this.app.$("cfobZoomResetBtn").addEventListener('click', () => this.resetFullViewTransform());
 
     // Auto-reset when navigating or closing
