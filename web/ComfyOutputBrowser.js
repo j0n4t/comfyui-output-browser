@@ -11,7 +11,7 @@ const BROWSER_HTML = `
 
 <div class="top-bar">
   <div class="logo-group">
-    <button class="btn" title="Close" id="cfobCloseBrowserBtn">${ICONS.logo}</button>
+    ${ICONS.logo}
     <h1>ComfyUI Output Browser</h1>
     <span id="cfobImageCount"></span>
   </div>
@@ -22,6 +22,7 @@ const BROWSER_HTML = `
     </div>
     <button class="btn" id="cfobRefreshBtn" title="Sync outputs from Server">${ICONS.refresh}<span>Refresh</span></button>
     <button class="btn" id="cfobMenuBtn" title="Options">${ICONS.more}</button>
+    <button class="btn btn-danger" id="cfobCloseBrowserBtn">${ICONS.close}<span>Close</span></button>
   </div>
 </div>
 
@@ -307,7 +308,7 @@ export default class ComfyOutputBrowser {
           else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
           else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
           else if (this.selectedImages.size > 0) this.clearSelection();
-          else this.root.style.display = "none";
+          else this.hideWithTransition();
         }
       }
     }, { capture: true });

@@ -205,10 +205,6 @@ export const CFOB_QUERY_STYLES = /*css*/ `
   }
 
   @container cfob-app (max-width: 600px) {
-    #cfob-root .top-bar h1 { display: none; }
-  }
-
-  @container cfob-app (max-width: 350px) {
-    #cfob-root .top-bar span { display: none; }
+    #cfob-root .logo-group { display: none; }
   }
 `;
