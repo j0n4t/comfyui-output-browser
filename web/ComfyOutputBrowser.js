@@ -176,6 +176,7 @@ export default class ComfyOutputBrowser {
 
   showWithTransition() {
     if (!this.root) return;
+    this.fetchServerImages();
     clearTimeout(this.transitionTimer);
     this.root.style.display = 'flex';
     void this.root.offsetWidth;
@@ -199,7 +200,6 @@ export default class ComfyOutputBrowser {
 
   toggleUi() {
     if (!this.isUiVisible) {
-      this.fetchServerImages();
       this.showWithTransition();
     } else {
       this.hideWithTransition();
@@ -1322,15 +1322,15 @@ app.registerExtension({
   name: "Comfy.OutputBrowser",
   commands: [
     {
-      id: "Comfy.OutputBrowser.toggle",
-      label: "Toggle Comfy Output Browser",
-      function: () => { browser.toggleUi(); },
+      id: "OutputBrowser.FocusSearch",
+      label: "Output Browser: Focus Search",
+      function: () => { browser.showWithTransition(); },
     }
   ],
   keybindings: [
     {
-      combo: { key: "e", ctrl: true },
-      commandId: "Comfy.OutputBrowser.toggle"
+      combo: { key: "?", ctrl: true, shift: true },
+      commandId: "OutputBrowser.FocusSearch"
     }
   ],
   async setup() {

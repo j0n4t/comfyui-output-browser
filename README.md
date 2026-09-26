@@ -26,9 +26,8 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 | Operational Mode     | Key Combination                             | Action / Description                                              |
 | -------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
-| **Global**           | **`Ctrl + E`**                              | Toggle the browser interface open or closed.                      |
+| **Global**           | **`Ctrl + Shift + ?`**                      | Open the browser interface and focus the search bar.              |
 | **Grid / Gallery**   | **`Escape`**                                | Close modals, blur inputs, clear selections, or hide the browser. |
-|                      | **`/`**                                     | Focus the search bar.                                             |
 |                      | **`1` – `9`**                               | Copy the 1st through 9th metadata field value to the clipboard.   |
 |                      | **`Ctrl + A` / `Meta + A`**                 | Select all filtered image cards.                                  |
 |                      | **`Ctrl + Shift + S` / `Meta + Shift + S`** | Sync outputs from server.                                         |
