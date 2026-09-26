@@ -154,9 +154,6 @@ export default class CFOB_FullView {
     this.app.$("cfobZoomOutBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom / 1.1));
     this.app.$("cfobZoomResetBtn").addEventListener('click', () => this.resetFullViewTransform());
 
-    // Auto-reset when navigating or closing
-    // this.app.$("cfobPrevImgBtn").addEventListener('click', () => this.resetFullViewTransform());
-    // this.app.$("cfobNextImgBtn").addEventListener('click', () => this.resetFullViewTransform());
     this.app.$("cfobCloseFullViewBtn").addEventListener('click', () => this.resetFullViewTransform());
 
     const fvImg = this.app.$("cfobFullViewImg");
@@ -168,7 +165,7 @@ export default class CFOB_FullView {
       this.fvStartX = e.clientX - this.fvPanX;
       this.fvStartY = e.clientY - this.fvPanY;
       fvImg.classList.add('dragging');
-      e.preventDefault(); // Prevents native browser image dragging
+      e.preventDefault();
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -176,7 +173,6 @@ export default class CFOB_FullView {
       const newX = e.clientX - this.fvStartX;
       const newY = e.clientY - this.fvStartY;
 
-      // Threshold to distinguish between a drag and a simple click
       if (Math.abs(newX - this.fvPanX) > 3 || Math.abs(newY - this.fvPanY) > 3) {
         this.fvHasDragged = true;
       }
@@ -191,7 +187,6 @@ export default class CFOB_FullView {
         this.fvIsDragging = false;
         fvImg.classList.remove('dragging');
 
-        // If image was clicked and released without moving, toggle the UI
         if (!this.fvHasDragged && e.target === fvImg) {
           this.toggleFullViewUI();
         }
@@ -235,6 +230,7 @@ export default class CFOB_FullView {
   async renameFullViewImage() {
     const img = this.app.filteredImages[this.currentImageIndex];
     if (!img) return;
+    const oldIndex = this.currentImageIndex;
     let newName = await this.app.settings.customPrompt("Enter new path or filename:", img.name, 'rename');
     if (!newName || newName === img.name) return;
 
@@ -255,8 +251,14 @@ export default class CFOB_FullView {
           await this.app.api.cacheDelete(oldName);
         }
         this.app.filterGallery();
-        this.openFullView(img);
         this.app.showToast(`Moved to ${data.new_name}`);
+
+        if (this.app.filteredImages.length > 0) {
+          this.currentImageIndex = Math.min(Math.max(0, oldIndex - 1), this.app.filteredImages.length - 1);
+          this.openFullView(this.app.filteredImages[this.currentImageIndex]);
+        } else {
+          this.closeFullView();
+        }
       } else {
         this.app.showToast(data.error || "Rename failed.");
       }
@@ -269,6 +271,7 @@ export default class CFOB_FullView {
   async deleteFullViewImage() {
     const img = this.app.filteredImages[this.currentImageIndex];
     if (!img) return;
+    const oldIndex = this.currentImageIndex;
     const isTrash = img.name.replace(/\\/g, '/').startsWith('.trash/');
     const confirmMsg = isTrash
       ? `Permanently delete ${img.name}?`
@@ -294,7 +297,7 @@ export default class CFOB_FullView {
         this.app.showToast(data.deleted?.length ? "Permanently deleted image" : "Moved image to Trash");
 
         if (this.app.filteredImages.length > 0) {
-          this.currentImageIndex = Math.min(this.currentImageIndex, this.app.filteredImages.length - 1);
+          this.currentImageIndex = Math.min(Math.max(0, oldIndex - 1), this.app.filteredImages.length - 1);
           this.openFullView(this.app.filteredImages[this.currentImageIndex]);
         } else {
           this.closeFullView();
