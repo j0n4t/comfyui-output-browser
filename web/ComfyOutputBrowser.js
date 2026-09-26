@@ -320,6 +320,8 @@ export default class ComfyOutputBrowser {
           else this.hideWithTransition();
         }
         return;
+      } else if ((e.ctrlKey || e.metaKey) && key === 'p') {
+        e.preventDefault(); e.stopPropagation(); this.fetchServerImages();
       }
 
       if (isEditing) return;
@@ -365,9 +367,6 @@ export default class ComfyOutputBrowser {
         }
         else if ((e.ctrlKey || e.metaKey) && key === 'a') {
           e.preventDefault(); e.stopPropagation(); this.selectAllFiltered();
-        }
-        else if ((e.ctrlKey || e.metaKey) && key === 'p') {
-          e.preventDefault(); e.stopPropagation(); this.fetchServerImages();
         }
         else if (key === 'm' || key === 'r' && !e.ctrlKey) {
           if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.renameSelected(); }
