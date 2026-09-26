@@ -65,6 +65,8 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root #cfobPromptModal .config-input { width: 100%; box-sizing: border-box; font-size: 1em; }
   #cfob-root #cfobPromptModal #cfobFolderListWrapper { display: none; }
   #cfob-root #cfobPromptModal #cfobFolderListWrapper .folder-header { font-size: 0.75em; font-weight: 600; color: var(--color-text-muted); margin-top: 1.25em; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  #cfob-root .tab:focus-visible, #cfob-root .folder-chip:focus-visible, #cfob-root .icon-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
 `;
 
 export const CFOB_SETTINGS_MODALS_HTML = `
@@ -104,7 +106,9 @@ export const CFOB_SETTINGS_MODALS_HTML = `
       <div class="modal-header">${ICONS.inspect}<h3 id="cfobInspectorTitle">Image Metadata Inspector</h3><button class="icon-btn" id="cfobCloseInspectorBtn">${ICONS.close}</button></div>
       <div class="modal-body">
         <div class="tabs" id="cfobInspectorTabs">
-        <div class="tab active" data-target="cfobInsNodes">Visual Nodes View</div><div class="tab" data-target="cfobInsPrompt">API Prompt (JSON)</div><div class="tab" data-target="cfobInsWorkflow">UI Workflow (JSON)</div>
+          <div class="tab active" data-target="cfobInsNodes" tabindex="0">Visual Nodes View</div>
+          <div class="tab" data-target="cfobInsPrompt" tabindex="0">API Prompt (JSON)</div>
+          <div class="tab" data-target="cfobInsWorkflow" tabindex="0">UI Workflow (JSON)</div>
         </div>
         <div class="tab-content active" id="cfobInsNodes"><div class="nodes-grid" id="cfobInsNodesGrid"></div></div>
         <div class="tab-content" id="cfobInsPrompt"><textarea id="cfobInsPromptText" style="width: 100%; height: 30em; background: var(--color-bg-input); color: var(--color-syntax-string); font-family: var(--font-mono); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md);" readonly></textarea></div>
@@ -289,14 +293,53 @@ export default class COB_Settings {
     });
 
     this.app.$("cfobCloseInspectorBtn").addEventListener('click', () => this.app.$("cfobInspectorModal").classList.remove('active'));
+    // Enhanced Inspector Tabs with Keyboard Navigation
     this.app.root?.querySelectorAll('#cfobInspectorTabs .tab').forEach(tab => {
-      tab.addEventListener('click', () => {
+      const activateTab = () => {
         this.app.root?.querySelectorAll('#cfobInspectorTabs .tab').forEach(t => t.classList.remove('active'));
         this.app.root?.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         tab.classList.add('active');
         const target = /** @type {HTMLElement} */(tab).dataset.target;
         if (target) this.app.$(target).classList.add('active');
+      };
+
+      tab.addEventListener('click', activateTab);
+
+      // @ts-ignore
+      tab.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          activateTab();
+        }
+        else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const tabs = Array.from(this.app.root?.querySelectorAll('#cfobInspectorTabs .tab') || []);
+          const idx = tabs.indexOf(/** @type {Element} */(tab));
+          const nextIdx = e.key === 'ArrowRight' ? (idx + 1) % tabs.length : (idx - 1 + tabs.length) % tabs.length;
+          /** @type {HTMLElement} */(tabs[nextIdx]).focus();
+        }
       });
+    });
+
+    // Global Modal Focus Trap (Keeps Tab navigation locked inside active modals)
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab') return;
+      const activeModal = this.app.root?.querySelector('.modal-overlay.active');
+      if (!activeModal) return;
+
+      const focusable = Array.from(activeModal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'));
+      if (!focusable.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        /** @type {HTMLElement} */(last).focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        /** @type {HTMLElement} */(first).focus();
+      }
     });
 
     this.app.$("cfobCloseHiddenFoldersBtn").addEventListener('click', () => this.app.$("cfobHiddenFoldersModal").classList.remove('active'));
@@ -565,26 +608,46 @@ export default class COB_Settings {
 
         folderList.innerHTML = "";
 
+        /** 
+         * @param {string} html
+         * @param {(this: GlobalEventHandlers, ev: PointerEvent) => any | null} onClick 
+         */
+        const createChip = (html, onClick) => {
+          const chip = document.createElement("div");
+          chip.className = "folder-chip";
+          chip.innerHTML = html;
+          chip.tabIndex = 0; // Make focusable
+
+          chip.onclick = onClick;
+          chip.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              chip.click();
+            }
+            else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+              e.preventDefault();
+              const chips = Array.from(folderList.querySelectorAll('.folder-chip'));
+              const idx = chips.indexOf(chip);
+              const nextIdx = ['ArrowRight', 'ArrowDown'].includes(e.key)
+                ? (idx + 1) % chips.length
+                : (idx - 1 + chips.length) % chips.length;
+              /** @type {HTMLElement} */(chips[nextIdx]).focus();
+            }
+          });
+          return chip;
+        };
+
         // Add root option
-        const rootChip = document.createElement("div");
-        rootChip.className = "folder-chip";
-        rootChip.innerHTML = `${ICONS.logo} Root (/)`;
-        rootChip.onclick = () => {
-          if (folderPickerMode === 'rename') {
-            input.value = input.value.split(/\\|\//).pop() || "";
-          } else {
-            input.value = "";
-          }
+        const rootOnClick = () => {
+          if (folderPickerMode === 'rename') input.value = input.value.split(/\\|\//).pop() || "";
+          else input.value = "";
           input.focus();
         };
-        folderList.appendChild(rootChip);
+        folderList.appendChild(createChip(`${ICONS.logo} Root (/)`, rootOnClick));
 
         // Add detected folders
         Array.from(folders).sort().forEach(folder => {
-          const chip = document.createElement("div");
-          chip.className = "folder-chip";
-          chip.innerHTML = `${ICONS.logo} ${this.app.escapeHtml(folder)}`;
-          chip.onclick = () => {
+          const folderOnClick = () => {
             if (folderPickerMode === 'rename') {
               const fileName = input.value.split(/\\|\//).pop();
               input.value = folder + "/" + fileName;
@@ -593,7 +656,7 @@ export default class COB_Settings {
             }
             input.focus();
           };
-          folderList.appendChild(chip);
+          folderList.appendChild(createChip(`${ICONS.logo} ${this.app.escapeHtml(folder)}`, folderOnClick));
         });
       } else {
         folderWrapper.style.display = "none";
@@ -657,6 +720,7 @@ export default class COB_Settings {
     });
 
     modal.classList.add('active');
+    setTimeout(() => this.app.$("cfobAddFieldBtn")?.focus(), 10);
   }
 
   openHiddenFoldersModal() {
@@ -664,6 +728,7 @@ export default class COB_Settings {
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobHiddenFoldersInput"));
     input.value = this.hiddenFolders.join("\n");
     modal.classList.add('active');
+    setTimeout(() => input.focus(), 10);
   }
 
   /** @param {number} idx */
@@ -729,5 +794,8 @@ export default class COB_Settings {
     }
 
     modal.classList.add('active');
+    setTimeout(() => {
+      /** @type {HTMLElement} */(this.app.root?.querySelector('#cfobInspectorTabs .tab.active'))?.focus();
+    }, 10);
   }
 }
