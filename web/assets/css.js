@@ -130,8 +130,12 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .drop-overlay { position: absolute; inset: 0.625em; border: 0.125em dashed var(--color-accent); border-radius: var(--radius-xl); background: var(--color-accent-alpha); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
   #cfob-root .main-container.dragover .drop-overlay { opacity: 1; pointer-events: all; }
 
-  #cfob-root .image-card { position: relative; background: var(--color-bg-panel); border: 1px solid var(--color-border); border-radius: var(--radius-xl); overflow: hidden; display: flex; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.25); transition: border-color 0.15s, box-shadow 0.15s; }
-  #cfob-root .image-card.selected { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); }
+  #cfob-root .image-card { position: relative; background: var(--color-bg-panel); border: 1px solid var(--color-border); border-radius: var(--radius-xl); overflow: hidden; display: flex; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.25); transition: border-color 0.15s, box-shadow 0.15s, transform 0.1 ; }
+  #cfob-root .image-card.selected { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent), 0 0.5em 1em rgba(0,0,0,0.4); transform: translateY(-2px); }
+  #cfob-root .image-card.focused { border-color: var(--color-link); box-shadow: 0 0 0 2px var(--color-bg-base), 0 0 0 4px var(--color-link); }
+  #cfob-root .image-card.selected.focused { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-bg-base), 0 0 0 4px var(--color-accent), 0 0.5em 1em rgba(0,0,0,0.4); }
+  #cfob-root .image-card.selected .checkbox-wrapper { background: var(--color-accent); }
+
   #cfob-root .checkbox-wrapper { position: absolute; top: 0.5em; left: 0.5em; z-index: 5; background: rgba(0,0,0,0.6); border-radius: var(--radius-sm); padding: 0.25em; display: flex; }
   #cfob-root .card-checkbox { width: 1em; height: 1em; cursor: pointer; accent-color: var(--color-accent); margin: 0; }
   #cfob-root .card-content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }

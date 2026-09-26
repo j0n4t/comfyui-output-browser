@@ -179,6 +179,7 @@ export default class ComfyOutputBrowser {
     void this.root.offsetWidth;
     this.root.classList.remove('cfob-hidden');
     this.isUiVisible = true;
+    this.$("cfobSearchInput").focus();
   }
 
   hideWithTransition() {
@@ -288,34 +289,108 @@ export default class ComfyOutputBrowser {
       const confirmModal = this.$("cfobConfirmModal");
       const promptModal = this.$("cfobPromptModal");
 
-      if (fvModal.classList.contains('active')) {
-        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView(); }
-        else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
-      } else if (this.root?.style.display === "flex") {
-        const target = /** @type {HTMLElement} */ (e.target);
-        const isEditing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-          const noModalOpen = !configModal.classList.contains('active') &&
-            !inspectorModal.classList.contains('active') &&
-            !hiddenModal.classList.contains('active') &&
-            !confirmModal.classList.contains('active') &&
-            !promptModal.classList.contains('active');
-          if (!isEditing && noModalOpen) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.selectAllFiltered();
-          }
-        } else if (e.key === 'Escape') {
+      const target = /** @type {HTMLElement} */ (e.target);
+      const isEditing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      const noModalOpen = !configModal.classList.contains('active') &&
+        !inspectorModal.classList.contains('active') &&
+        !hiddenModal.classList.contains('active') &&
+        !confirmModal.classList.contains('active') &&
+        !promptModal.classList.contains('active');
+
+      const isFullView = fvModal.classList.contains('active');
+      const key = e.key.toLowerCase();
+
+      if (e.key === 'Escape') {
+        if (isFullView) {
+          e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
+        } else if (this.root?.style.display === "flex") {
           e.stopPropagation();
-          // Close Modals in priority order
           if (confirmModal.classList.contains('active')) this.$("cfobConfirmCancelBtn").click();
           else if (promptModal.classList.contains('active')) this.$("cfobPromptCancelBtn").click();
           else if (configModal.classList.contains('active')) configModal.classList.remove('active');
           else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
           else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
+          else if (isEditing) target.blur();
           else if (this.selectedImages.size > 0) this.clearSelection();
           else this.hideWithTransition();
+        }
+        return;
+      }
+
+      if (isEditing) return;
+
+      if (isFullView) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
+        else if (!noModalOpen) return;
+
+        else if (key === 'm' || key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
+        else if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionInspect").click(); }
+        else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
+        else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
+        else if (key === 'w') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionOpen").click(); }
+
+      } else if (this.root?.style.display === "flex" && !this.root.classList.contains('cfob-hidden')) {
+        if (!noModalOpen) return;
+
+        if ((e.ctrlKey || e.metaKey) && key === 'a') {
+          e.preventDefault(); e.stopPropagation(); this.selectAllFiltered();
+        }
+        else if (key === 'm' || key === 'r') {
+          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.renameSelected(); }
+        }
+        else if (key === 'i') {
+          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.inspectSelected(); }
+        }
+        else if (key === 'enter') {
+          if (this.selectedImages.size === 1) {
+            e.preventDefault(); e.stopPropagation();
+            const img = this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
+            if (img) this.fullView.openFullView(img);
+          }
+        }
+        else if (key === ' ') {
+          if (e.ctrlKey || e.metaKey) {
+            // Ctrl+Space: Toggle selection of the currently focused item without losing existing selection
+            e.preventDefault(); e.stopPropagation();
+            if (this.lastSelectedIdx !== -1 && this.filteredImages[this.lastSelectedIdx]) {
+              const targetImg = this.filteredImages[this.lastSelectedIdx];
+              if (this.selectedImages.has(targetImg.name)) {
+                this.selectedImages.delete(targetImg.name);
+              } else {
+                this.selectedImages.add(targetImg.name);
+              }
+              this.selectionAnchorIdx = this.lastSelectedIdx; // Reset anchor
+
+              const cards = Array.from(this.$("cfobGalleryGrid").querySelectorAll('.image-card'));
+              const targetCard = cards[this.lastSelectedIdx];
+              if (targetCard) {
+                const cb = /** @type {HTMLInputElement} */ (targetCard.querySelector('.card-checkbox'));
+                if (cb) cb.checked = this.selectedImages.has(targetImg.name);
+              }
+              this.updateCardStyles();
+              this.updateActionBar();
+            }
+          }
+          else if (this.selectedImages.size === 1) {
+            // Standard Space: Open Full View
+            e.preventDefault(); e.stopPropagation();
+            const img = this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
+            if (img) this.fullView.openFullView(img);
+          }
+        }
+        else if (e.key === 'Delete') {
+          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.deleteSelected(); }
+        }
+        else if (key === 'd') {
+          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.downloadSelected(); }
+        }
+        else if (key === 'w') {
+          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.loadWorkflowSelected(); }
+        }
+        else if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+          e.preventDefault(); e.stopPropagation(); this.handleGridNavigation(e);
         }
       }
     }, { capture: true });
@@ -595,37 +670,79 @@ export default class ComfyOutputBrowser {
   }
 
   /**
-   * @param {PointerEvent} e
-   * @param {string} filename
+   * Navigates the grid focus spatially using arrow keys
+   * @param {KeyboardEvent} e 
    */
-  handleCheckboxClick(e, filename) {
-    e.stopPropagation();
-    const target = /** @type {HTMLInputElement} */ (e.target);
-    const fIdx = this.filteredImages.findIndex(img => img.name === filename);
-    if (fIdx === -1) return;
+  handleGridNavigation(e) {
+    if (!this.filteredImages.length) return;
 
-    if (e.shiftKey && this.lastSelectedIdx !== -1) {
-      const start = Math.min(this.lastSelectedIdx, fIdx);
-      const end = Math.max(this.lastSelectedIdx, fIdx);
-      const isChecked = target.checked;
+    const grid = this.$("cfobGalleryGrid");
+    const cards = Array.from(grid.querySelectorAll('.image-card'));
+    if (!cards.length) return;
 
-      for (let i = start; i <= end; i++) {
-        const targetImg = this.filteredImages[i];
-        if (isChecked) this.selectedImages.add(targetImg.name);
-        else this.selectedImages.delete(targetImg.name);
+    const direction = e.key;
+    const isShift = e.shiftKey;
+    const isCtrl = e.ctrlKey || e.metaKey;
+
+    let currentIdx = this.lastSelectedIdx;
+    if (currentIdx === -1) currentIdx = 0;
+
+    let cols = 1;
+    const firstOffset = /** @type {HTMLElement} */(cards[0]).offsetTop;
+    for (let i = 1; i < cards.length; i++) {
+      if (/** @type {HTMLElement} */(cards[i]).offsetTop > firstOffset) {
+        cols = i;
+        break;
       }
-
-      this.root?.querySelectorAll('.card-checkbox').forEach(cb => {
-        /** @type {HTMLInputElement} */ (cb).checked = this.selectedImages.has(/** @type {HTMLInputElement} */(cb).value);
-      });
-    } else {
-      if (target.checked) this.selectedImages.add(filename);
-      else this.selectedImages.delete(filename);
+      if (i === cards.length - 1) cols = cards.length;
     }
 
-    this.lastSelectedIdx = fIdx;
-    this.updateActionBar();
+    let nextIdx = currentIdx;
+    if (direction === 'ArrowLeft') nextIdx--;
+    else if (direction === 'ArrowRight') nextIdx++;
+    else if (direction === 'ArrowUp') nextIdx -= cols;
+    else if (direction === 'ArrowDown') nextIdx += cols;
+
+    nextIdx = Math.max(0, Math.min(nextIdx, this.filteredImages.length - 1));
+
+    if (this.selectionAnchorIdx === undefined) {
+      this.selectionAnchorIdx = currentIdx;
+    }
+
+    if (isShift) {
+      this.clearSelection(false);
+      const start = Math.min(this.selectionAnchorIdx, nextIdx);
+      const end = Math.max(this.selectionAnchorIdx, nextIdx);
+      for (let i = start; i <= end; i++) {
+        this.selectedImages.add(this.filteredImages[i].name);
+      }
+    } else if (isCtrl) {
+      // Move focus only, update anchor for future shift-selects
+      this.selectionAnchorIdx = nextIdx;
+    } else {
+      // Standard single select
+      this.clearSelection(false);
+      this.selectedImages.add(this.filteredImages[nextIdx].name);
+      this.selectionAnchorIdx = nextIdx;
+    }
+
+    this.lastSelectedIdx = nextIdx;
+
+    cards.forEach((c, i) => {
+      const cb = /** @type {HTMLInputElement} */ (c.querySelector('.card-checkbox'));
+      if (cb) cb.checked = this.selectedImages.has(this.filteredImages[i].name);
+
+      const el = /** @type {HTMLElement} */ (c);
+      if (i === nextIdx) {
+        el.classList.toggle('focused', i === nextIdx);
+        el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+      } else {
+        el.classList.toggle('focused', i === nextIdx);
+      }
+    });
+
     this.updateCardStyles();
+    this.updateActionBar();
   }
 
   updateActionBar() {
@@ -654,10 +771,57 @@ export default class ComfyOutputBrowser {
     });
   }
 
-  clearSelection() {
+  /**
+   * @param {PointerEvent} e
+   * @param {string} filename
+   */
+  handleCheckboxClick(e, filename) {
+    e.stopPropagation();
+    const target = /** @type {HTMLInputElement} */ (e.target);
+    const fIdx = this.filteredImages.findIndex(img => img.name === filename);
+    if (fIdx === -1) return;
+
+    if (e.shiftKey && this.selectionAnchorIdx !== undefined && this.selectionAnchorIdx !== -1) {
+      const start = Math.min(this.selectionAnchorIdx, fIdx);
+      const end = Math.max(this.selectionAnchorIdx, fIdx);
+      const isChecked = target.checked;
+
+      for (let i = start; i <= end; i++) {
+        const targetImg = this.filteredImages[i];
+        if (isChecked) this.selectedImages.add(targetImg.name);
+        else this.selectedImages.delete(targetImg.name);
+      }
+
+      this.root?.querySelectorAll('.card-checkbox').forEach(cb => {
+        /** @type {HTMLInputElement} */ (cb).checked = this.selectedImages.has(/** @type {HTMLInputElement} */(cb).value);
+      });
+    } else {
+      if (target.checked) this.selectedImages.add(filename);
+      else this.selectedImages.delete(filename);
+      this.selectionAnchorIdx = fIdx; // Sync anchor for keyboard usage
+    }
+
+    this.lastSelectedIdx = fIdx;
+
+    this.root?.querySelectorAll('.image-card').forEach((c, i) => {
+        /** @type {HTMLElement} */ (c).classList.toggle('focused', i === fIdx);
+    });
+
+    this.updateActionBar();
+    this.updateCardStyles();
+  }
+
+  /** @param {boolean} resetAnchor */
+  clearSelection(resetAnchor = true) {
     this.selectedImages.clear();
-    this.lastSelectedIdx = -1;
     this.root?.querySelectorAll('.card-checkbox').forEach(cb => /** @type {HTMLInputElement} */(cb).checked = false);
+
+    if (resetAnchor) {
+      this.lastSelectedIdx = -1;
+      this.selectionAnchorIdx = -1;
+      this.root?.querySelectorAll('.image-card').forEach(c => /** @type {HTMLElement} */(c).style.boxShadow = '');
+    }
+
     this.updateCardStyles();
     this.updateActionBar();
   }
