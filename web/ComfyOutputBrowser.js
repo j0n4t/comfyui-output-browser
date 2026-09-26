@@ -195,6 +195,15 @@ export default class ComfyOutputBrowser {
     }, 250);
   }
 
+  toggleUi() {
+    if (!this.isUiVisible) {
+      this.fetchServerImages();
+      this.showWithTransition();
+    } else {
+      this.hideWithTransition();
+    }
+  }
+
   injectLauncherButton() {
     const updateButtonPlacement = (isAppMode = false) => {
       let launcherBtn = document.getElementById("cfob-launcher-btn");
@@ -203,14 +212,7 @@ export default class ComfyOutputBrowser {
         launcherBtn.id = "cfob-launcher-btn";
         launcherBtn.innerHTML = ICONS.logo;
         launcherBtn.title = "Browse Outputs";
-        launcherBtn.onclick = () => {
-          if (!this.isUiVisible) {
-            this.fetchServerImages();
-            this.showWithTransition();
-          } else {
-            this.hideWithTransition();
-          }
-        };
+        launcherBtn.onclick = () => this.toggleUi();
       }
       if (isAppMode) {
         launcherBtn.className = "floating";
@@ -304,7 +306,7 @@ export default class ComfyOutputBrowser {
       if (e.key === 'Escape') {
         if (isFullView) {
           e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
-        } else if (this.root?.style.display === "flex") {
+        } else if (this.isUiVisible) {
           e.stopPropagation();
           if (confirmModal.classList.contains('active')) this.$("cfobConfirmCancelBtn").click();
           else if (promptModal.classList.contains('active')) this.$("cfobPromptCancelBtn").click();
@@ -331,7 +333,7 @@ export default class ComfyOutputBrowser {
         else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
         else if (key === 'w') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionOpen").click(); }
 
-      } else if (this.root?.style.display === "flex" && !this.root.classList.contains('cfob-hidden')) {
+      } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
         if (!noModalOpen) return;
 
         if ((e.ctrlKey || e.metaKey) && key === 'a') {
@@ -447,7 +449,7 @@ export default class ComfyOutputBrowser {
     document.addEventListener('mousedown', (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
       if (!target) return;
-      const isOpen = this.root?.style.display === 'flex' && !this.root.classList.contains('cfob-hidden');
+      const isOpen = this.isUiVisible && !this.root?.classList.contains('cfob-hidden');
 
       if (this.settings.autoHide && isOpen) {
         const isOutsideRoot = !this.root?.contains(target);
@@ -477,7 +479,7 @@ export default class ComfyOutputBrowser {
     window.addEventListener('mousemove', (e) => {
       if (!this.settings.autoHide || this.settings.browserMode === 'full') return;
 
-      const isClosed = this.root?.style.display === 'none' || this.root?.classList.contains('cfob-hidden');
+      const isClosed = !this.isUiVisible || this.root?.classList.contains('cfob-hidden');
       if (!isClosed) return;
 
       const edgeThreshold = 15;
@@ -1002,7 +1004,7 @@ export default class ComfyOutputBrowser {
     }
     if (img.workflow) {
       app.loadGraphData(img.workflow);
-      this.root.style.display = 'none';
+      this.hideWithTransition();
       this.clearSelection();
       this.showToast("Workflow loaded successfully!");
     } else {
@@ -1219,10 +1221,24 @@ export default class ComfyOutputBrowser {
   }
 }
 
+const browser = new ComfyOutputBrowser();
+
 app.registerExtension({
   name: "Comfy.OutputBrowser",
+  commands: [
+    {
+      id: "Comfy.OutputBrowser.toggle",
+      label: "Toggle Comfy Output Browser",
+      function: () => { browser.toggleUi(); },
+    }
+  ],
+  keybindings: [
+    {
+      combo: { key: "e", ctrl: true },
+      commandId: "Comfy.OutputBrowser.toggle"
+    }
+  ],
   async setup() {
-    const browser = new ComfyOutputBrowser();
     browser.init();
   }
 });
