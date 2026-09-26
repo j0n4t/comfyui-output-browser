@@ -37,7 +37,7 @@ export const CFOB_FULL_VIEW_HTML = `
 `;
 
 export const CFOB_FULL_VIEW_STYLES = /*css*/ `
-  #cfob-root #fullViewModal { padding: 0; z-index: var(--z-modal); }
+  #cfob-root #fullViewModal { padding: 0; z-index: var(--z-full-view); }
   #cfob-root .full-view-layout { display: flex; width: 100vw; height: 100vh; background: var(--color-bg-full); }
   #cfob-root .full-view-layout .field-value { max-height: 100%; resize: vertical; }
 
@@ -235,7 +235,7 @@ export default class CFOB_FullView {
   async renameFullViewImage() {
     const img = this.app.filteredImages[this.currentImageIndex];
     if (!img) return;
-    let newName = await this.app.customPrompt("Enter new path or filename:", img.name, 'rename');
+    let newName = await this.app.settings.customPrompt("Enter new path or filename:", img.name, 'rename');
     if (!newName || newName === img.name) return;
 
     try {
@@ -274,7 +274,7 @@ export default class CFOB_FullView {
       ? `Permanently delete ${img.name}?`
       : `Move ${img.name} to Trash?`;
 
-    const confirmed = await this.app.customConfirm(confirmMsg, isTrash ? "Delete Permanently" : "Move to Trash", isTrash);
+    const confirmed = await this.app.settings.customConfirm(confirmMsg, isTrash ? "Delete Permanently" : "Move to Trash", isTrash);
     if (!confirmed) return;
 
     try {

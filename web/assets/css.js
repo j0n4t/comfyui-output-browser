@@ -61,8 +61,9 @@ export const CFOB_STYLES = /*css*/ `
     /* Z-Indexes */
     --z-base: 9999;
     --z-resizer: 10000;
-    --z-action-bar: 10005;
-    --z-modal: 10010;
+    --z-full-view: 10005;
+    --z-action-bar: 10010;
+    --z-modal: 10015;
     --z-popover: 10020;
     --z-toast: 10030;
 

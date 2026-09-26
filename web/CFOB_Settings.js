@@ -59,6 +59,12 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .folder-list { display: flex; flex-wrap: wrap; gap: 0.375em; max-height: 10em; overflow-y: auto; margin-top: 0.5em; padding-top: 0.75em; border-top: 1px solid var(--color-border-light); }
   #cfob-root .folder-chip { background: var(--color-bg-panel-hover); border: 1px solid var(--color-border); padding: 0.375em 0.625em; border-radius: var(--radius-xl); font-size: 0.75em; cursor: pointer; color: var(--color-text-primary); transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.25em; }
   #cfob-root .folder-chip:hover { background: var(--color-accent); color: white; border-color: var(--color-accent); }
+
+  #cfob-root #cfobConfirmModal p { margin: 0; color: var(--color-text-primary); line-height: 1.4; }
+  #cfob-root #cfobPromptModal p { margin: 0 0 0.75em 0; color: var(--color-text-primary); font-size: 0.875em; line-height: 1.4; }
+  #cfob-root #cfobPromptModal .config-input { width: 100%; box-sizing: border-box; font-size: 1em; }
+  #cfob-root #cfobPromptModal #cfobFolderListWrapper { display: none; }
+  #cfob-root #cfobPromptModal #cfobFolderListWrapper .folder-header { font-size: 0.75em; font-weight: 600; color: var(--color-text-muted); margin-top: 1.25em; text-transform: uppercase; letter-spacing: 0.5px; }
 `;
 
 export const CFOB_SETTINGS_MODALS_HTML = `
@@ -108,10 +114,13 @@ export const CFOB_SETTINGS_MODALS_HTML = `
   </div>
 
   <!-- Custom Confirm Modal -->
-  <div class="modal-overlay" id="cfobConfirmModal" style="z-index: 9999;">
-    <div class="modal-content" style="max-width: 25em;">
-      <div class="modal-header"><h3 id="cfobConfirmTitle">Confirm</h3><button class="icon-btn" id="cfobConfirmCloseBtn">${ICONS.close}</button></div>
-      <div class="modal-body"><p id="cfobConfirmMsg" style="margin: 0; color: var(--color-text-primary); line-height: 1.4;"></p></div>
+  <div class="modal-overlay" id="cfobConfirmModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="cfobConfirmTitle">Confirm</h3>
+        <button class="icon-btn" id="cfobConfirmCloseBtn">${ICONS.close}</button>
+      </div>
+      <div class="modal-body"><p id="cfobConfirmMsg"></p></div>
       <div class="modal-footer">
         <button class="btn" id="cfobConfirmCancelBtn">Cancel</button>
         <button class="btn" id="cfobConfirmOkBtn">Confirm</button>
@@ -120,14 +129,14 @@ export const CFOB_SETTINGS_MODALS_HTML = `
   </div>
 
   <!-- Custom Prompt Modal with Folder List -->
-  <div class="modal-overlay" id="cfobPromptModal" style="z-index: 9999;">
-    <div class="modal-content" style="max-width: 35em;">
+  <div class="modal-overlay" id="cfobPromptModal">
+    <div class="modal-content">
       <div class="modal-header"><h3 id="cfobPromptTitle">Input Required</h3><button class="icon-btn" id="cfobPromptCloseBtn">${ICONS.close}</button></div>
       <div class="modal-body">
-        <p id="cfobPromptMsg" style="margin: 0 0 0.75em 0; color: var(--color-text-primary); font-size: 0.875em; line-height: 1.4;"></p>
-        <input type="text" id="cfobPromptInput" class="config-input" style="width: 100%; box-sizing: border-box; font-size: 1em;" autocomplete="off">
-        <div id="cfobFolderListWrapper" style="display: none;">
-          <div style="font-size: 0.75em; font-weight: 600; color: var(--color-text-muted); margin-top: 1.25em; text-transform: uppercase; letter-spacing: 0.5px;">Select Existing Folder</div>
+        <p id="cfobPromptMsg"></p>
+        <input type="text" id="cfobPromptInput" class="config-input" autocomplete="off">
+        <div id="cfobFolderListWrapper">
+          <div class="folder-header">Select Existing Folder</div>
           <div class="folder-list" id="cfobFolderList"></div>
         </div>
       </div>
@@ -494,6 +503,133 @@ export default class COB_Settings {
 
     popover.style.top = `${top}px`;
     popover.style.left = `${left}px`;
+  }
+
+  /**
+  * @param {string} message 
+  * @param {string} confirmText 
+  * @param {boolean} isDanger 
+  * @returns {Promise<boolean>}
+  */
+  async customConfirm(message, confirmText = "Confirm", isDanger = false) {
+    return new Promise(resolve => {
+      const modal = this.app.$("cfobConfirmModal");
+      this.app.$("cfobConfirmMsg").innerText = message;
+
+      const okBtn = this.app.$("cfobConfirmOkBtn");
+      okBtn.innerText = confirmText;
+      okBtn.className = isDanger ? "btn btn-danger" : "btn btn-primary";
+
+      const cleanup = () => {
+        modal.classList.remove("active");
+        okBtn.removeEventListener("click", onOk);
+        this.app.$("cfobConfirmCancelBtn").removeEventListener("click", onCancel);
+        this.app.$("cfobConfirmCloseBtn").removeEventListener("click", onCancel);
+      };
+
+      const onOk = () => { cleanup(); resolve(true); };
+      const onCancel = () => { cleanup(); resolve(false); };
+
+      okBtn.addEventListener("click", onOk);
+      this.app.$("cfobConfirmCancelBtn").addEventListener("click", onCancel);
+      this.app.$("cfobConfirmCloseBtn").addEventListener("click", onCancel);
+
+      modal.classList.add("active");
+      okBtn.focus();
+    });
+  }
+
+  /**
+   * @param {string} message 
+   * @param {string} defaultValue 
+   * @param {'none' | 'rename' | 'move'} folderPickerMode 
+   * @returns {Promise<string | null>}
+   */
+  async customPrompt(message, defaultValue = "", folderPickerMode = 'none') {
+    return new Promise(resolve => {
+      const modal = this.app.$("cfobPromptModal");
+      this.app.$("cfobPromptMsg").innerText = message;
+      const input = /** @type {HTMLInputElement} */ (this.app.$("cfobPromptInput"));
+      input.value = defaultValue;
+
+      const folderWrapper = this.app.$("cfobFolderListWrapper");
+      const folderList = this.app.$("cfobFolderList");
+
+      if (folderPickerMode !== 'none') {
+        folderWrapper.style.display = "block";
+        const folders = new Set();
+        this.app.loadedImages.forEach(img => {
+          const parts = img.name.split(/\\|\//);
+          if (parts.length > 1) folders.add(parts.slice(0, -1).join('/'));
+        });
+
+        folderList.innerHTML = "";
+
+        // Add root option
+        const rootChip = document.createElement("div");
+        rootChip.className = "folder-chip";
+        rootChip.innerHTML = `${ICONS.logo} Root (/)`;
+        rootChip.onclick = () => {
+          if (folderPickerMode === 'rename') {
+            input.value = input.value.split(/\\|\//).pop() || "";
+          } else {
+            input.value = "";
+          }
+          input.focus();
+        };
+        folderList.appendChild(rootChip);
+
+        // Add detected folders
+        Array.from(folders).sort().forEach(folder => {
+          const chip = document.createElement("div");
+          chip.className = "folder-chip";
+          chip.innerHTML = `${ICONS.logo} ${this.app.escapeHtml(folder)}`;
+          chip.onclick = () => {
+            if (folderPickerMode === 'rename') {
+              const fileName = input.value.split(/\\|\//).pop();
+              input.value = folder + "/" + fileName;
+            } else {
+              input.value = folder;
+            }
+            input.focus();
+          };
+          folderList.appendChild(chip);
+        });
+      } else {
+        folderWrapper.style.display = "none";
+      }
+
+      const cleanup = () => {
+        modal.classList.remove("active");
+        this.app.$("cfobPromptOkBtn").removeEventListener("click", onOk);
+        this.app.$("cfobPromptCancelBtn").removeEventListener("click", onCancel);
+        this.app.$("cfobPromptCloseBtn").removeEventListener("click", onCancel);
+        input.removeEventListener("keydown", onKey);
+      };
+
+      const onOk = () => { cleanup(); resolve(input.value); };
+      const onCancel = () => { cleanup(); resolve(null); };
+      const onKey = (/** @type {KeyboardEvent} */ e) => { if (e.key === "Enter") onOk(); };
+
+      this.app.$("cfobPromptOkBtn").addEventListener("click", onOk);
+      this.app.$("cfobPromptCancelBtn").addEventListener("click", onCancel);
+      this.app.$("cfobPromptCloseBtn").addEventListener("click", onCancel);
+      input.addEventListener("keydown", onKey);
+
+      modal.classList.add("active");
+      setTimeout(() => {
+        input.focus();
+        if (folderPickerMode === 'rename') {
+          // Select only the filename, not the path
+          const parts = input.value.split(/\\|\//);
+          const fn = parts.pop() || "";
+          const dirLen = input.value.length - fn.length;
+          input.setSelectionRange(dirLen, input.value.length);
+        } else {
+          input.select();
+        }
+      }, 10);
+    });
   }
 
   openConfigModal() {
