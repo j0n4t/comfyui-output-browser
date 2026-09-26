@@ -24,27 +24,27 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 ## Keybindings Reference
 
-| Operational Mode     | Key Combination                | Action / Description                                              |
-| -------------------- | ------------------------------ | ----------------------------------------------------------------- |
-| **Global**           | **`Ctrl + E`**                 | Toggle the browser interface open or closed.                      |
-| **Grid / Gallery**   | **`Escape`**                   | Close modals, blur inputs, clear selections, or hide the browser. |
-|                      | **`/`**                        | Focus the search bar.                                             |
-|                      | **`1` – `9`**                  | Copy the 1st through 9th metadata field value to the clipboard.   |
-|                      | **`Ctrl + A` / `Meta + A`**    | Select all filtered image cards.                                  |
-|                      | **`Ctrl + P` / `Meta + P`**    | Sync outputs from server.                                         |
-|                      | **`M` or `R`**                 | Rename or move selected item(s).                                  |
-|                      | **`I`**                        | Open the metadata inspector popup.                                |
-|                      | **`Enter` or `Space`**         | Open full-screen view for the selected image.                     |
-|                      | **`Ctrl + Space`**             | Toggle selection state for the focused item.                      |
-|                      | **`Delete`**                   | Move selected item(s) to the trash.                               |
-|                      | **`D`**                        | Download selected file(s).                                        |
-|                      | **`W`**                        | Load the embedded workflow into ComfyUI.                          |
-|                      | **`Arrow Keys`**               | Navigate the grid (hold **`Shift`** to select ranges).            |
-| **Full-Screen View** | **`Escape`**                   | Exit full-screen mode and return to the grid.                     |
-|                      | **`ArrowLeft` / `ArrowRight`** | Navigate to the previous or next image in the batch.              |
-|                      | **`Space`**                    | Toggle overlay UI controls.                                       |
-|                      | **`T`**                        | Collapse or expand the metadata sidebar.                          |
-|                      | **`+` / `-` / `0`**            | Zoom In, Zoom Out, or Reset Zoom level.                           |
+| Operational Mode     | Key Combination                             | Action / Description                                              |
+| -------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| **Global**           | **`Ctrl + E`**                              | Toggle the browser interface open or closed.                      |
+| **Grid / Gallery**   | **`Escape`**                                | Close modals, blur inputs, clear selections, or hide the browser. |
+|                      | **`/`**                                     | Focus the search bar.                                             |
+|                      | **`1` – `9`**                               | Copy the 1st through 9th metadata field value to the clipboard.   |
+|                      | **`Ctrl + A` / `Meta + A`**                 | Select all filtered image cards.                                  |
+|                      | **`Ctrl + Shift + S` / `Meta + Shift + S`** | Sync outputs from server.                                         |
+|                      | **`M` or `R`**                              | Rename or move selected item(s).                                  |
+|                      | **`I`**                                     | Open the metadata inspector popup.                                |
+|                      | **`Enter` or `Space`**                      | Open full-screen view for the selected image.                     |
+|                      | **`Ctrl + Space`**                          | Toggle selection state for the focused item.                      |
+|                      | **`Delete`**                                | Move selected item(s) to the trash.                               |
+|                      | **`D`**                                     | Download selected file(s).                                        |
+|                      | **`W`**                                     | Load the embedded workflow into ComfyUI.                          |
+|                      | **`Arrow Keys`**                            | Navigate the grid (hold **`Shift`** to select ranges).            |
+| **Full-Screen View** | **`Escape`**                                | Exit full-screen mode and return to the grid.                     |
+|                      | **`ArrowLeft` / `ArrowRight`**              | Navigate to the previous or next image in the batch.              |
+|                      | **`Space`**                                 | Toggle overlay UI controls.                                       |
+|                      | **`T`**                                     | Collapse or expand the metadata sidebar.                          |
+|                      | **`+` / `-` / `0`**                         | Zoom In, Zoom Out, or Reset Zoom level.                           |
 
 ## Filter syntax
 

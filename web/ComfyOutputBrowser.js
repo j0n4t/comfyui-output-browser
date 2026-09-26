@@ -320,7 +320,7 @@ export default class ComfyOutputBrowser {
           else this.hideWithTransition();
         }
         return;
-      } else if ((e.ctrlKey || e.metaKey) && key === 'p') {
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 's') {
         e.preventDefault(); e.stopPropagation(); this.fetchServerImages();
       }
 
