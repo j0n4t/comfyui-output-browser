@@ -867,93 +867,101 @@ export default class ComfyOutputBrowser {
     const clearBtn = this.$("cfobClearSearchBtn");
     if (clearBtn) clearBtn.style.display = searchStr ? 'flex' : 'none';
 
-    // Parse OR groups (separated by commas)
-    // e.g., "cat dog, tree !blue" -> ["cat dog", "tree !blue"]
-    const orGroups = searchStr.split(',').map((/** @type {string} */ g) => g.trim()).filter(Boolean);
+    // 1. Pre-parse the query outside the image loop to prevent redundant regex and parsing overhead
+    const rawOrGroups = searchStr.split(',').map((/** @type {string} */ g) => g.trim()).filter(Boolean);
+
+    const parsedQuery = rawOrGroups.map(groupStr => {
+      const andTerms = groupStr.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+      return andTerms.map((/** @type {string} */ term) => {
+        const isNot = term.startsWith('!');
+        const actualTerm = isNot ? term.substring(1) : term;
+        if (!actualTerm) return null;
+
+        let searchKey = null;
+        let searchValue = actualTerm;
+
+        const colonIdx = actualTerm.indexOf(':');
+        if (colonIdx > 0 && !actualTerm.startsWith('"')) {
+          searchKey = actualTerm.substring(0, colonIdx).toLowerCase();
+          searchValue = actualTerm.substring(colonIdx + 1);
+        }
+
+        if (searchValue.startsWith('"') && searchValue.endsWith('"') && searchValue.length >= 2) {
+          searchValue = searchValue.substring(1, searchValue.length - 1);
+        }
+
+        searchValue = searchValue.toLowerCase();
+
+        let fieldIdx = NaN;
+        let fieldMatch = null;
+
+        if (searchKey && !['name', 'path', 'prompt', 'workflow'].includes(searchKey)) {
+          fieldIdx = parseInt(searchKey, 10);
+          if (isNaN(fieldIdx) || fieldIdx <= 0 || fieldIdx > this.settings.fieldConfigs.length) {
+            fieldMatch = this.settings.fieldConfigs.find((/** @type {{ label: string; }} */ c) => c.label.toLowerCase() === searchKey);
+          }
+        }
+
+        return { isNot, searchKey, searchValue, fieldIdx, fieldMatch };
+      }).filter(Boolean);
+    }).filter(g => g.length > 0);
 
     this.filteredImages = this.loadedImages.filter(img => {
-      // 1. Check hidden folder constraint
-      if (!effectiveShowHidden && this.isImageInHiddenFolder(img.name)) {
-        return false;
-      }
+      // Check hidden folder constraint first
+      if (!effectiveShowHidden && this.isImageInHiddenFolder(img.name)) return false;
 
-      // If there are no search terms, show everything that passed the hidden check
-      if (orGroups.length === 0) return true;
+      // If no valid search terms, return true
+      if (parsedQuery.length === 0) return true;
 
-      // 2. Evaluate OR groups (returns true if ANY group matches)
-      return orGroups.some((groupStr) => {
+      // 2. Lazy caching avoids calling JSON.stringify thousands of times during broad/multi-term searches
+      /** @type {string | null} */
+      let nameStr = null;
+      /** @type {string | null} */
+      let promptStr = null;
+      /** @type {string | null} */
+      let workflowStr = null;
 
-        // Parse AND terms, keeping quoted strings together 
-        // Matches non-space/non-quote sequences OR anything inside quotes
-        // e.g., 'tree !name:"big tree"' -> ['tree', '!name:"big tree"']
-        const andTerms = groupStr.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-
+      // Evaluate OR groups
+      return parsedQuery.some(andGroup => {
         // Evaluate AND terms
-        return andTerms.every((/** @type {string} */ term) => {
-          const isNot = term.startsWith('!');
-          const actualTerm = isNot ? term.substring(1) : term;
-          if (!actualTerm) return true; // Ignore standalone '!'
-
-          let searchKey = null;
-          let searchValue = actualTerm;
-
-          // Detect key:query syntax 
-          // Ensure the colon isn't inside a global quote by checking startsWith
-          const colonIdx = actualTerm.indexOf(':');
-          if (colonIdx > 0 && !actualTerm.startsWith('"')) {
-            searchKey = actualTerm.substring(0, colonIdx).toLowerCase();
-            searchValue = actualTerm.substring(colonIdx + 1);
-          }
-
-          // Strip surrounding quotes for exact phrase parsing
-          if (searchValue.startsWith('"') && searchValue.endsWith('"') && searchValue.length >= 2) {
-            searchValue = searchValue.substring(1, searchValue.length - 1);
-          }
-
-          searchValue = searchValue.toLowerCase();
+        return andGroup.every(term => {
+          if (!term) return;
           let match = false;
 
-          // Cache strings for generic search
-          const nameStr = (img.name || "").toLowerCase();
-          const promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
-          const workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+          // Generate string cache precisely when requested
+          if (nameStr === null) nameStr = (img.name || "").toLowerCase();
 
-          if (searchKey) {
-            if (searchKey === 'name' || searchKey === 'path') {
-              match = nameStr.includes(searchValue);
-            } else if (searchKey === 'prompt') {
-              match = promptStr.includes(searchValue);
-            } else if (searchKey === 'workflow') {
-              match = workflowStr.includes(searchValue);
+          if (term.searchKey) {
+            if (term.searchKey === 'name' || term.searchKey === 'path') {
+              match = nameStr.includes(term.searchValue);
+            } else if (term.searchKey === 'prompt') {
+              if (promptStr === null) promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
+              match = promptStr.includes(term.searchValue);
+            } else if (term.searchKey === 'workflow') {
+              if (workflowStr === null) workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+              match = workflowStr.includes(term.searchValue);
             } else {
-              // Check if key is an index (e.g., '2' for the 2nd configured field)
-              const fieldIdx = parseInt(searchKey, 10);
-              if (!isNaN(fieldIdx) && fieldIdx > 0 && fieldIdx <= this.settings.fieldConfigs.length) {
-                const val = this.resolveFieldValue(img, this.settings.fieldConfigs[fieldIdx - 1].paths);
-                match = val !== null && String(val).toLowerCase().includes(searchValue);
-              } else {
-                // Check if key matches a specific card field label (e.g., 'model:sdxl')
-                const fieldMatch = this.settings.fieldConfigs.find((/** @type {{ label: string; }} */ c) => c.label.toLowerCase() === searchKey);
-                if (fieldMatch) {
-                  const val = this.resolveFieldValue(img, fieldMatch.paths);
-                  match = val !== null && String(val).toLowerCase().includes(searchValue);
-                } else {
-                  // Fallback to show nothing if key isn't recognized (go learn your keys chump)
-                  match = false;
-                }
+              // Custom field mapping via pre-parsed checks
+              if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= this.settings.fieldConfigs.length) {
+                const val = this.resolveFieldValue(img, this.settings.fieldConfigs[term.fieldIdx - 1].paths);
+                match = val !== null && String(val).toLowerCase().includes(term.searchValue);
+              } else if (term.fieldMatch) {
+                const val = this.resolveFieldValue(img, term.fieldMatch.paths);
+                match = val !== null && String(val).toLowerCase().includes(term.searchValue);
               }
             }
           } else {
-            // Standard global search across filename, prompt, and workflow
-            match = nameStr.includes(searchValue) || promptStr.includes(searchValue) || workflowStr.includes(searchValue);
+            // Standard global search
+            if (promptStr === null) promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
+            if (workflowStr === null) workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+            match = nameStr.includes(term.searchValue) || promptStr.includes(term.searchValue) || workflowStr.includes(term.searchValue);
           }
 
-          return isNot ? !match : match;
+          return term.isNot ? !match : match;
         });
       });
     });
 
-    // Re-render components with the newly filtered array
     if (typeof this.renderGallery === 'function') this.renderGallery();
     if (typeof this.updateActionBar === 'function') this.updateActionBar();
   }
