@@ -304,7 +304,7 @@ export default class ComfyOutputBrowser {
       const key = e.key.toLowerCase();
 
       if (e.key === 'Escape') {
-        if (isFullView) {
+        if (isFullView && noModalOpen) {
           e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
         } else if (this.isUiVisible) {
           e.stopPropagation();
@@ -322,7 +322,7 @@ export default class ComfyOutputBrowser {
 
       if (isEditing) return;
 
-      if (isFullView && !e.ctrlKey) {
+      if (isFullView && noModalOpen && !e.ctrlKey) {
         if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
         else if (!noModalOpen) return;
