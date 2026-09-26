@@ -156,6 +156,7 @@ export default class COB_API {
   startIdleParsing() {
     if (this._idleParsingActive) return;
     this._idleParsingActive = true;
+    this.app.setIdleParsingActive(true);
 
     const parseNext = async () => {
       const img = this.app.loadedImages.find((/** @type {CFOB_Image} */ i) => !i.isParsed && !i.isParsing);
@@ -179,6 +180,7 @@ export default class COB_API {
         }
       } else {
         this._idleParsingActive = false;
+        this.app.setIdleParsingActive(false);
       }
     };
 

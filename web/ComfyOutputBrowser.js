@@ -67,6 +67,8 @@ export default class ComfyOutputBrowser {
     this.serverOrder = [];
     this.lastSelectedIdx = -1;
     this.isUiVisible = false;
+    this.serverImageFetchCount = 0;
+    this.isIdleParsing = false;
 
     this.observer = null;
     this.api = new CFOB_API(this);
@@ -561,6 +563,23 @@ export default class ComfyOutputBrowser {
     }
   }
 
+  updateRefreshButtonAnimation() {
+    const refreshButton = this.$("cfobRefreshBtn");
+    const isFetching = this.serverImageFetchCount > 0;
+    refreshButton.classList.toggle("is-fetching", isFetching || this.isIdleParsing);
+    refreshButton.title = isFetching
+      ? "Fetching images from server..."
+      : this.isIdleParsing
+        ? "Parsing image metadata..."
+        : "Sync outputs from Server";
+  }
+
+  /** @param {boolean} isActive */
+  setIdleParsingActive(isActive) {
+    this.isIdleParsing = isActive;
+    this.updateRefreshButtonAnimation();
+  }
+
   async fetchServerImages() {
     const isFirstLoad = this.loadedImages.length === 0;
 
@@ -570,6 +589,9 @@ export default class ComfyOutputBrowser {
       this.$("cfobEmptyStateDesc").innerText = "Fetching image list from server...";
       this.$("cfobEmptyState").style.display = "block";
     }
+
+    this.serverImageFetchCount++;
+    this.updateRefreshButtonAnimation();
 
     try {
       const response = await fetch("/comfyui-output-browser/images");
@@ -626,6 +648,9 @@ export default class ComfyOutputBrowser {
       this.$("cfobEmptyStateDesc").innerText = "Failed to load outputs from server.";
       this.$("cfobEmptyState").style.display = "block";
       console.error("Output Browser Error:", err);
+    } finally {
+      this.serverImageFetchCount--;
+      this.updateRefreshButtonAnimation();
     }
   }
 

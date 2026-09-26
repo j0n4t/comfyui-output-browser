@@ -119,6 +119,8 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .btn-danger { background: var(--color-danger-bg); border-color: var(--color-danger-border); color: var(--color-danger-text); }
   #cfob-root .btn-danger:hover { background: var(--color-danger-border); }
   #cfob-root .btn-xs { padding: 0.1875em 0.375em; font-size: 0.6875em; border-radius: var(--radius-sm); }
+  #cfob-root #cfobRefreshBtn.is-fetching svg { animation: cfob-refresh-spin 1s linear infinite; transform-origin: center; }
+  @keyframes cfob-refresh-spin { to { transform: rotate(360deg); } }
 
   #cfob-root .search-wrapper { position: relative; display: flex; align-items: center; flex: 1; min-width: 9.375em; max-width: 21.875em; }
   #cfob-root .search-input { background: var(--color-bg-base); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 0.5em 1.875em 0.5em 0.75em; border-radius: var(--radius-md); font-size: 0.8125em; width: 100%; }
