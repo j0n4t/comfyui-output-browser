@@ -66,6 +66,10 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root #cfobPromptModal #cfobFolderListWrapper { display: none; }
   #cfob-root #cfobPromptModal #cfobFolderListWrapper .folder-header { font-size: 0.75em; font-weight: 600; color: var(--color-text-muted); margin-top: 1.25em; text-transform: uppercase; letter-spacing: 0.5px; }
 
+  #cfob-root #cfobPromptThumbWrapper { display: none; align-items: center; gap: 0.75em; background: var(--color-bg-surface); border: 1px solid var(--color-border); padding: 0.2em; border-radius: var(--radius-md); }
+  #cfob-root #cfobPromptThumbWrapper.active { display: flex; justify-content: center; }
+  #cfob-root #cfobPromptThumbImg { max-width: 80%; max-height: 10em; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-bg-base); }
+
   #cfob-root .tab:focus-visible, #cfob-root .folder-chip:focus-visible, #cfob-root .icon-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
 `;
 
@@ -137,6 +141,9 @@ export const CFOB_SETTINGS_MODALS_HTML = `
     <div class="modal-content">
       <div class="modal-header"><h3 id="cfobPromptTitle">Input Required</h3><button class="icon-btn" id="cfobPromptCloseBtn">${ICONS.close}</button></div>
       <div class="modal-body">
+        <div id="cfobPromptThumbWrapper">
+          <img id="cfobPromptThumbImg" src="" alt="Image">
+        </div>
         <p id="cfobPromptMsg"></p>
         <input type="text" id="cfobPromptInput" class="config-input" autocomplete="off">
         <div id="cfobFolderListWrapper">
@@ -586,14 +593,34 @@ export default class COB_Settings {
    * @param {string} message 
    * @param {string} defaultValue 
    * @param {'none' | 'rename' | 'move'} folderPickerMode 
+   * @param {string} [imageUrl]
    * @returns {Promise<string | null>}
    */
-  async customPrompt(message, defaultValue = "", folderPickerMode = 'none') {
+  async customPrompt(message, defaultValue = "", folderPickerMode = 'none', imageUrl = "") {
     return new Promise(resolve => {
       const modal = this.app.$("cfobPromptModal");
       this.app.$("cfobPromptMsg").innerText = message;
       const input = /** @type {HTMLInputElement} */ (this.app.$("cfobPromptInput"));
       input.value = defaultValue;
+
+      const thumbWrapper = this.app.$("cfobPromptThumbWrapper");
+      const thumbImg = /** @type {HTMLImageElement} */ (this.app.$("cfobPromptThumbImg"));
+
+      let resolvedImgUrl = imageUrl;
+      if (!resolvedImgUrl && folderPickerMode === 'rename' && defaultValue) {
+        const found = this.app.loadedImages?.find(img => img.name === defaultValue || img.name.endsWith('/' + defaultValue) || img.name.endsWith('\\' + defaultValue));
+        if (found) {
+          resolvedImgUrl = found.url;
+        }
+      }
+
+      if (resolvedImgUrl) {
+        thumbImg.src = resolvedImgUrl;
+        thumbWrapper.classList.add('active');
+      } else {
+        thumbWrapper.classList.remove('active');
+        thumbImg.src = '';
+      }
 
       const folderWrapper = this.app.$("cfobFolderListWrapper");
       const folderList = this.app.$("cfobFolderList");
@@ -622,10 +649,12 @@ export default class COB_Settings {
           chip.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
+              e.stopPropagation();
               chip.click();
             }
             else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
               e.preventDefault();
+              e.stopPropagation();
               const chips = Array.from(folderList.querySelectorAll('.folder-chip'));
               const idx = chips.indexOf(chip);
               const nextIdx = ['ArrowRight', 'ArrowDown'].includes(e.key)
@@ -664,6 +693,7 @@ export default class COB_Settings {
 
       const cleanup = () => {
         modal.classList.remove("active");
+        thumbWrapper.classList.remove('active');
         this.app.$("cfobPromptOkBtn").removeEventListener("click", onOk);
         this.app.$("cfobPromptCancelBtn").removeEventListener("click", onCancel);
         this.app.$("cfobPromptCloseBtn").removeEventListener("click", onCancel);
