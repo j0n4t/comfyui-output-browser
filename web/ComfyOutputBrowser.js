@@ -385,7 +385,7 @@ export default class ComfyOutputBrowser {
         else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
         else if (key === 'w') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionOpen").click(); }
         else if (key === ' ') { this.fullView.toggleFullViewUI(); }
-        else if (key === 't') { this.$("cfobFullViewSidebar").classList.toggle('collapsed'); }
+        else if (key === 't') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleSidebarMode(); }
         else if (key === '+' || key === '=' || e.code === 'NumpadAdd') {
           e.preventDefault(); e.stopPropagation();
           this.fullView.setFullViewZoom(this.fullView.fvZoom * 1.1);

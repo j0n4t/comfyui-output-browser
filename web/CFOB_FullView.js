@@ -11,7 +11,7 @@ export const CFOB_FULL_VIEW_HTML = `
             <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out">${ICONS.zoomOut}</button>
             <button class="icon-btn" id="cfobZoomResetBtn" title="Reset Zoom">${ICONS.zoomReset}</button>
             <div style="width: 1px; height: 1.25em; background: var(--color-border); margin: 0 0.25em;"></div>
-            <button class="icon-btn" id="cfobToggleSidebarBtn" title="Toggle Details Pane">${ICONS.pane}</button>
+            <button class="icon-btn" id="cfobToggleSidebarBtn" title="Cycle details pane position (T)" aria-label="Cycle details pane position (T)">${ICONS.pane}</button>
             <button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button>
           </div>
         </div>
@@ -19,6 +19,7 @@ export const CFOB_FULL_VIEW_HTML = `
         <img id="cfobFullViewImg" src="" alt="Full View">
         <button class="nav-btn next-btn" id="cfobNextImgBtn" title="Next (Right Arrow)">❯</button>
       </div>
+      <div class="full-view-sidebar-resizer" id="cfobFullViewSidebarResizer" role="separator" aria-label="Resize details pane" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="1200" tabindex="0"></div>
       <div class="full-view-sidebar" id="cfobFullViewSidebar">
         <div class="sidebar-header"><h4 id="cfobFullViewTitle" style="margin: 0; font-size: 0.875em; color: var(--color-text-inverse); word-break: break-all;">Filename.png</h4></div>
         <div class="sidebar-body" id="cfobFullViewFields"></div>
@@ -60,9 +61,21 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .prev-btn { left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; }
   #cfob-root .next-btn { right: 0; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 
-  /* Sidebar size is controlled by external pixels for JS dragging compatibility, but contents scale */
-  #cfob-root .full-view-sidebar { width: 360px; min-width: 360px; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; }
-  #cfob-root .full-view-sidebar.collapsed { width: 0; min-width: 0; border-left: none; }
+  #cfob-root .full-view-sidebar-resizer { flex: 0 0 7px; position: relative; cursor: col-resize; touch-action: none; z-index: 1; }
+  #cfob-root .full-view-sidebar-resizer::after { content: ""; position: absolute; inset: 0 2px; background: var(--color-border); opacity: 0; transition: opacity 0.15s; }
+  #cfob-root .full-view-sidebar-resizer:hover::after,
+  #cfob-root .full-view-sidebar-resizer:focus-visible::after,
+  #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar-resizer::after { opacity: 1; }
+  #cfob-root .full-view-sidebar { width: var(--full-view-sidebar-width, 360px); min-width: 0; flex: 0 0 auto; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; }
+  #cfob-root .full-view-sidebar-resizer.hidden { display: none; }
+  #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar { transition: none; }
+  #cfob-root .full-view-layout.sidebar-below { flex-direction: column; }
+  #cfob-root .full-view-layout.sidebar-below .full-view-main { min-height: 0; }
+  #cfob-root .full-view-layout.sidebar-below .full-view-sidebar { width: 100%; height: var(--full-view-sidebar-height, 50vh); border-left: none; border-top: 1px solid var(--color-border); }
+  #cfob-root .full-view-layout.sidebar-below .full-view-sidebar-resizer { flex-basis: 7px; width: 100%; cursor: row-resize; }
+  #cfob-root .full-view-layout.sidebar-below .full-view-sidebar-resizer::after { inset: 2px 0; }
+  #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar,
+  #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar-resizer { display: none; }
 
   #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 0.9375em 1.25em; background: var(--color-bg-header); }
   #cfob-root .sidebar-header { border-bottom: 1px solid var(--color-border); }
@@ -75,8 +88,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
 
   /* UI Hidden State */
   #cfob-root .full-view-layout.ui-hidden .full-view-top-bar,
-  #cfob-root .full-view-layout.ui-hidden .nav-btn,
-  #cfob-root .full-view-layout.ui-hidden .full-view-sidebar {
+  #cfob-root .full-view-layout.ui-hidden .nav-btn {
     opacity: 0; pointer-events: none;
   }
 
@@ -109,6 +121,15 @@ export default class CFOB_FullView {
     this.fvStartY = 0;
     this.fvHasDragged = false;
     this.currentImageIndex = 0;
+    const savedSidebarWidth = Number(localStorage.getItem('cfob_full_view_sidebar_width'));
+    const savedSidebarHeight = Number(localStorage.getItem('cfob_full_view_sidebar_height'));
+    const savedSidebarMode = localStorage.getItem('cfob_full_view_sidebar_mode');
+    /** @type {'side' | 'below' | 'hidden'} */
+    this.sidebarMode = savedSidebarMode === 'side' || savedSidebarMode === 'below' || savedSidebarMode === 'hidden'
+      ? savedSidebarMode
+      : (window.matchMedia('(max-width: 768px)').matches ? 'below' : 'side');
+    this.sidebarWidth = Number.isFinite(savedSidebarWidth) && savedSidebarWidth > 0 ? savedSidebarWidth : 360;
+    this.sidebarHeight = Number.isFinite(savedSidebarHeight) && savedSidebarHeight > 0 ? savedSidebarHeight : window.innerHeight / 2;
     /** @type {HTMLElement | null} */
     this.returnFocusElement = null;
   }
@@ -123,7 +144,62 @@ export default class CFOB_FullView {
       }
     });
     this.app.$("cfobCloseFullViewBtn").addEventListener('click', () => this.closeFullView());
-    this.app.$("cfobToggleSidebarBtn").addEventListener('click', () => this.app.$("cfobFullViewSidebar").classList.toggle('collapsed'));
+    const layout = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-layout'));
+    const sidebarResizer = this.app.$("cfobFullViewSidebarResizer");
+    this.applySidebarSize();
+    this.applySidebarMode();
+    this.app.$("cfobToggleSidebarBtn").addEventListener('click', () => this.cycleSidebarMode());
+    let resizeStart = 0;
+    let resizeSize = 0;
+    let resizeIsVertical = false;
+    sidebarResizer.addEventListener('pointerdown', (e) => {
+      resizeIsVertical = this.sidebarMode === 'below';
+      resizeStart = resizeIsVertical ? e.clientY : e.clientX;
+      resizeSize = resizeIsVertical ? this.sidebarHeight : this.sidebarWidth;
+      layout.classList.add('resizing-sidebar');
+      document.body.style.userSelect = 'none';
+      sidebarResizer.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    sidebarResizer.addEventListener('pointermove', (e) => {
+      if (!sidebarResizer.hasPointerCapture(e.pointerId)) return;
+      const position = resizeIsVertical ? e.clientY : e.clientX;
+      if (resizeIsVertical) {
+        this.sidebarHeight = this.clampSidebarSize(resizeSize - (position - resizeStart), 140, window.innerHeight - 260);
+      } else {
+        this.sidebarWidth = this.clampSidebarSize(resizeSize - (position - resizeStart), 240, window.innerWidth - 300);
+      }
+      this.applySidebarSize();
+    });
+    /** @param {PointerEvent} e */
+    const finishSidebarResize = (e) => {
+      if (!sidebarResizer.hasPointerCapture(e.pointerId)) return;
+      sidebarResizer.releasePointerCapture(e.pointerId);
+      layout.classList.remove('resizing-sidebar');
+      document.body.style.userSelect = '';
+      localStorage.setItem('cfob_full_view_sidebar_width', String(this.sidebarWidth));
+      localStorage.setItem('cfob_full_view_sidebar_height', String(this.sidebarHeight));
+    };
+    sidebarResizer.addEventListener('pointerup', finishSidebarResize);
+    sidebarResizer.addEventListener('pointercancel', finishSidebarResize);
+    sidebarResizer.addEventListener('keydown', (e) => {
+      const vertical = this.sidebarMode === 'below';
+      const delta = e.shiftKey ? 40 : 10;
+      const change = vertical
+        ? (e.key === 'ArrowUp' ? delta : e.key === 'ArrowDown' ? -delta : 0)
+        : (e.key === 'ArrowLeft' ? delta : e.key === 'ArrowRight' ? -delta : 0);
+      if (!change) return;
+      e.preventDefault();
+      if (vertical) {
+        this.sidebarHeight = this.clampSidebarSize(this.sidebarHeight + change, 140, window.innerHeight - 260);
+      } else {
+        this.sidebarWidth = this.clampSidebarSize(this.sidebarWidth + change, 240, window.innerWidth - 300);
+      }
+      this.applySidebarSize();
+      localStorage.setItem('cfob_full_view_sidebar_width', String(this.sidebarWidth));
+      localStorage.setItem('cfob_full_view_sidebar_height', String(this.sidebarHeight));
+    });
+    window.addEventListener('resize', () => this.applySidebarSize());
     this.app.$("cfobPrevImgBtn").addEventListener('click', () => this.navigateImage(-1));
     this.app.$("cfobNextImgBtn").addEventListener('click', () => this.navigateImage(1));
 
@@ -227,6 +303,53 @@ export default class CFOB_FullView {
     this.app.$("cfobFVActionRename").addEventListener('click', () => this.renameFullViewImage());
     this.app.$("cfobFVActionDelete").addEventListener('click', () => this.deleteFullViewImage());
 
+  }
+
+  /** @param {number} value @param {number} min @param {number} max */
+  clampSidebarSize(value, min, max) {
+    return Math.max(min, Math.min(value, Math.max(min, max)));
+  }
+
+  applySidebarSize() {
+    const sidebar = this.app.$("cfobFullViewSidebar");
+    const isVertical = this.sidebarMode === 'below';
+    if (isVertical) {
+      this.sidebarHeight = this.clampSidebarSize(this.sidebarHeight, 140, window.innerHeight - 260);
+    } else {
+      this.sidebarWidth = this.clampSidebarSize(this.sidebarWidth, 240, window.innerWidth - 300);
+    }
+    sidebar.style.setProperty('--full-view-sidebar-width', `${this.sidebarWidth}px`);
+    sidebar.style.setProperty('--full-view-sidebar-height', `${this.sidebarHeight}px`);
+    const resizer = this.app.$("cfobFullViewSidebarResizer");
+    resizer.setAttribute('aria-orientation', isVertical ? 'horizontal' : 'vertical');
+    resizer.setAttribute('aria-valuemin', String(isVertical ? 140 : 240));
+    resizer.setAttribute('aria-valuemax', String(Math.max(
+      isVertical ? 140 : 240,
+      isVertical ? window.innerHeight - 260 : window.innerWidth - 300
+    )));
+    resizer.setAttribute('aria-valuenow', String(Math.round(isVertical ? this.sidebarHeight : this.sidebarWidth)));
+  }
+
+  applySidebarMode() {
+    const layout = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-layout'));
+    const sidebarResizer = this.app.$("cfobFullViewSidebarResizer");
+    layout.classList.toggle('sidebar-side', this.sidebarMode === 'side');
+    layout.classList.toggle('sidebar-below', this.sidebarMode === 'below');
+    layout.classList.toggle('sidebar-hidden', this.sidebarMode === 'hidden');
+    sidebarResizer.setAttribute('aria-hidden', String(this.sidebarMode === 'hidden'));
+    const button = this.app.$("cfobToggleSidebarBtn");
+    const nextMode = this.sidebarMode === 'side' ? 'below' : this.sidebarMode === 'below' ? 'hidden' : 'side';
+    /** @type {Record<'side' | 'below' | 'hidden', string>} */
+    const descriptions = { side: 'on the side', below: 'below', hidden: 'hidden' };
+    button.title = `Details pane ${descriptions[this.sidebarMode]}. Activate to show ${descriptions[nextMode]} (T)`;
+    button.setAttribute('aria-label', button.title);
+  }
+
+  cycleSidebarMode() {
+    this.sidebarMode = this.sidebarMode === 'side' ? 'below' : this.sidebarMode === 'below' ? 'hidden' : 'side';
+    this.applySidebarMode();
+    this.applySidebarSize();
+    localStorage.setItem('cfob_full_view_sidebar_mode', this.sidebarMode);
   }
 
   async renameFullViewImage() {

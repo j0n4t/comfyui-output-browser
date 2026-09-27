@@ -208,10 +208,9 @@ export const CFOB_QUERY_STYLES = /*css*/ `
   @media (max-width: 768px) {
     #cfob-root .full-view-layout .btn span { display: none; }
     #cfob-root .full-view-actions { display: flex; justify-content: space-around; }
-    #cfob-root .full-view-layout { flex-direction: column; }
-    #cfob-root .full-view-main { height: 50vh; min-height: 15.625em; }
-    #cfob-root .full-view-sidebar { width: 100% !important; min-width: 100% !important; height: 50vh; border-left: none; border-top: 1px solid var(--color-border); }
-    #cfob-root .full-view-sidebar.collapsed { height: 0; min-height: 0; border-top: none; }
+    #cfob-root .full-view-layout.sidebar-below .full-view-main { min-height: 15.625em; }
+    #cfob-root .full-view-layout.sidebar-below .full-view-sidebar { min-width: 0; min-height: 0; }
+    #cfob-root .full-view-layout.sidebar-side .full-view-sidebar { min-width: 0; min-height: 0; }
     #cfob-root #cfobToggleSidebarBtn svg { transform: rotate(90deg); }
   }
 
