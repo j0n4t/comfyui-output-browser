@@ -87,7 +87,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .sidebar-body { padding: 1.25em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
 
   /* Floating Launcher Button */
-  #cfob-launcher-btn.floating { position: fixed; top: 0.25em; right: 2.8125em; z-index: 9998; background: var(--color-bg-panel); color: var(--color-text-inverse); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 1.5em; height: 1.5em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); }
+  #cfob-launcher-btn.floating { position: fixed; top: 0.2em; right: 3em; z-index: 9998; background: var(--color-bg-panel); color: var(--color-text-inverse); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 2em; height: 2em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); }
   #cfob-launcher-btn.floating:hover { background: var(--color-border); }
 
   /* UI Hidden State */
