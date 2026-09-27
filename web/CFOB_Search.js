@@ -2,6 +2,7 @@ export default class CFOB_Search {
   /** @param {import("./ComfyOutputBrowser.js").default} app */
   constructor(app) {
     this.app = app;
+    this.allowEmptySearchSuggestions = false;
   }
 
   /** @param {CFOB_Image} img @param {boolean} [refreshSuggestions] */
@@ -57,7 +58,10 @@ export default class CFOB_Search {
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobSearchInput"));
     const suggestions = this.app.$("cfobSearchSuggestions");
     const options = suggestions.querySelectorAll('[role="option"]');
-    if (e.key === 'Tab') {
+    if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+      e.preventDefault();
+      this.toggleSearchSuggestions();
+    } else if (e.key === 'Tab') {
       const suggestion = options[this.app.activeSearchSuggestionIndex] || options[0];
       if (suggestion) {
         e.preventDefault();
@@ -124,6 +128,7 @@ export default class CFOB_Search {
   }
 
   hideSearchSuggestions() {
+    this.allowEmptySearchSuggestions = false;
     const suggestions = this.app.$("cfobSearchSuggestions");
     suggestions.hidden = true;
     suggestions.replaceChildren();
@@ -135,6 +140,10 @@ export default class CFOB_Search {
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobSearchInput"));
     const suggestions = this.app.$("cfobSearchSuggestions");
     const value = input.value;
+    if (!value.trim() && !this.allowEmptySearchSuggestions) {
+      this.hideSearchSuggestions();
+      return;
+    }
     let inQuotes = false, tokenStart = 0;
     for (let i = 0; i < value.length; i++) {
       if (value[i] === '"') inQuotes = !inQuotes;
@@ -202,6 +211,20 @@ export default class CFOB_Search {
     }
     suggestions.hidden = false;
     input.setAttribute('aria-expanded', 'true');
+  }
+
+  showEmptySearchSuggestions() {
+    this.allowEmptySearchSuggestions = true;
+    this.updateSearchSuggestions(true);
+  }
+
+  toggleSearchSuggestions() {
+    if (this.app.$("cfobSearchSuggestions").hidden) {
+      this.allowEmptySearchSuggestions = true;
+      this.updateSearchSuggestions(true);
+    } else {
+      this.hideSearchSuggestions();
+    }
   }
 
   /** @param {string} completion */

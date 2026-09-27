@@ -262,23 +262,36 @@ export default class ComfyOutputBrowser {
     this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.hideWithTransition());
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
     this.$("cfobMenuBtn").addEventListener('click', (e) => this.settings.toggleOptionsMenu(e));
-    this.$("cfobSearchInput").addEventListener('input', () => {
+    const searchInput = this.$("cfobSearchInput");
+    let searchWasFocusedOnPointerDown = false;
+    searchInput.addEventListener('pointerdown', () => {
+      searchWasFocusedOnPointerDown = document.activeElement === searchInput;
+    });
+    searchInput.addEventListener('click', () => {
+      if (searchWasFocusedOnPointerDown) {
+        this.search.toggleSearchSuggestions();
+      }
+      searchWasFocusedOnPointerDown = false;
+    });
+    searchInput.addEventListener('input', () => {
       this.searchHistoryIndex = this.searchHistory.length;
       this.activeSearchSuggestionIndex = -1;
+      this.search.allowEmptySearchSuggestions = false;
       this.gallery.filterGallery();
       this.search.updateSearchSuggestions(true);
     });
-    this.$("cfobSearchInput").addEventListener('focus', () => this.search.updateSearchSuggestions(true));
-    this.$("cfobSearchInput").addEventListener('blur', () => {
+    searchInput.addEventListener('focus', () => this.search.updateSearchSuggestions(true));
+    searchInput.addEventListener('blur', () => {
       this.search.addSearchHistory();
       this.search.hideSearchSuggestions();
     });
-    this.$("cfobSearchInput").addEventListener('keydown', (e) => this.search.handleSearchKeydown(e));
+    searchInput.addEventListener('keydown', (e) => this.search.handleSearchKeydown(e));
 
     this.$("cfobClearSearchBtn").addEventListener('click', () => {
-      /** @type {HTMLInputElement} */ (this.$("cfobSearchInput")).value = "";
+      /** @type {HTMLInputElement} */ (searchInput).value = "";
       this.searchHistoryIndex = this.searchHistory.length;
       this.gallery.filterGallery();
+      this.search.hideSearchSuggestions();
       this.search.updateSearchSuggestions(true);
     });
 
