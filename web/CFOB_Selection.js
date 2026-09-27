@@ -55,6 +55,14 @@ export default class CFOB_Selection {
     else if (direction === 'ArrowRight') nextIdx++;
     else if (direction === 'ArrowUp') nextIdx -= cols;
     else if (direction === 'ArrowDown') nextIdx += cols;
+    else if (direction === 'PageUp' || direction === 'PageDown') {
+      const container = app.$("cfobMainContainer");
+      const pageRows = Math.max(1, Math.floor(container.clientHeight / Math.max(1, cards[0].clientHeight)));
+      const pageItems = cols * pageRows;
+      nextIdx += direction === 'PageUp' ? -pageItems : pageItems;
+    }
+    else if (direction === 'Home') nextIdx = 0;
+    else if (direction === 'End') nextIdx = app.filteredImages.length - 1;
 
     nextIdx = Math.max(0, Math.min(nextIdx, app.filteredImages.length - 1));
 

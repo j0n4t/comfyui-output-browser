@@ -48,6 +48,8 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 |                      | **`D`**                                        | Download selected file(s).                                            |
 |                      | **`W`**                                        | Load the embedded workflow into ComfyUI.                              |
 |                      | **`Arrow Keys`**                               | Navigate the grid (hold **`Shift`** to select ranges).                |
+|                      | **`PageUp` / `PageDown`**                      | Move up or down by about one grid page.                               |
+|                      | **`Home` / `End`**                             | Focus the first or last image in the grid.                            |
 | **Full-Screen View** | **`Escape`**                                   | Exit full-screen mode and return to the grid.                         |
 |                      | **`ArrowLeft` / `ArrowRight`**                 | Navigate to the previous or next image in the batch.                  |
 |                      | **`M` / `R`**                                  | Move the image to a folder / rename the image.                        |

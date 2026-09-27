@@ -510,7 +510,7 @@ export default class ComfyOutputBrowser {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.loadWorkflowSelected(); }
         }
         else if (
-          ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key) &&
+          ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', 'home', 'end'].includes(key) &&
           !target.closest('button, a, [role="button"]')
         ) {
           if (e.key === 'ArrowUp' && this.lastSelectedIdx < 0) {
