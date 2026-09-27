@@ -879,6 +879,10 @@ export default class ComfyOutputBrowser {
       this.loadedImages.sort((a, b) => a.name.localeCompare(b.name));
     } else if (this.settings.currentSort === 'name_desc') {
       this.loadedImages.sort((a, b) => b.name.localeCompare(a.name));
+    } else if (this.settings.currentSort === 'mtime_asc') {
+      this.loadedImages.sort((a, b) => (a.mtime || 0) - (b.mtime || 0));
+    } else if (this.settings.currentSort === 'mtime_desc') {
+      this.loadedImages.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
     } else if (this.settings.currentSort === 'default') {
       const orderMap = new Map(this.serverOrder.map((name, i) => [name, i]));
       this.loadedImages.sort((a, b) => {

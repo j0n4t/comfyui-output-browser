@@ -482,6 +482,8 @@ export default class COB_Settings {
             <option value="default" ${this.currentSort === 'default' ? 'selected' : ''}>Server Order</option>
             <option value="name_asc" ${this.currentSort === 'name_asc' ? 'selected' : ''}>Name (A-Z)</option>
             <option value="name_desc" ${this.currentSort === 'name_desc' ? 'selected' : ''}>Name (Z-A)</option>
+            <option value="mtime_asc" ${this.currentSort === 'mtime_asc' ? 'selected' : ''}>Older First</option>
+            <option value="mtime_desc" ${this.currentSort === 'mtime_desc' ? 'selected' : ''}>Newer First</option>
           </select>
         </div>
       </div>
