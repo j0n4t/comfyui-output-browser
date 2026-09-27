@@ -292,6 +292,7 @@ export default class CFOB_FullView {
       if (removed.length > 0) {
         const imgName = img.name;
         this.app.loadedImages = this.app.loadedImages.filter((/** @type {CFOB_Image} */ i) => i.name !== imgName);
+        this.app.removeImageKeywords(imgName);
         await this.app.api.cacheDelete(imgName);
         this.app.filterGallery();
         this.app.showToast(data.deleted?.length ? "Permanently deleted image" : "Moved image to Trash");

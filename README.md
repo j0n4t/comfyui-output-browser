@@ -7,6 +7,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 ### 1. Grid / Gallery Mode
 
 - **Spatial Navigation:** Browse through generated image cards seamlessly using your keyboard arrow keys (`↑`, `↓`, `←`, `→`). Combine with **`Shift`** to select ranges or **`Ctrl`** to shift focus without altering selections.
+- **Search Navigation:** Type in the search bar and press **`Tab`** to complete the selected suggestion. While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image. In the grid, **`↑`** from its first row returns to search.
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Ctrl + Space`** to toggle individual item selections.
 - **File Management:** Instantly send unwanted outputs to the trash (`Delete`), download files locally (`D`), or rename/move items (`M` or `R`).
 - **Workflow Recovery:** Select any image card and press **`W`** to extract and load its embedded workflow straight back into your ComfyUI workspace.
@@ -27,6 +28,11 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 | Operational Mode     | Key Combination                             | Action / Description                                              |
 | -------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
 | **Global**           | **`Ctrl + Shift + ?`**                      | Open the browser interface and focus the search bar.              |
+| **Search**           | **`Tab`**                                    | Complete the selected suggestion (or the first if none is selected). |
+|                      | **`ArrowUp` / `ArrowDown`** (suggestions open) | Cycle through autocomplete suggestions.                            |
+|                      | **`ArrowDown`** (suggestions closed)         | Focus the first matching grid item.                                |
+|                      | **`ArrowUp`** (suggestions closed)           | Recall the previous search query.                                  |
+|                      | **`ArrowUp`** (first grid row)               | Return focus to the search bar.                                    |
 | **Grid / Gallery**   | **`Escape`**                                | Close modals, blur inputs, clear selections, or hide the browser. |
 |                      | **`1` – `9`**                               | Copy the 1st through 9th metadata field value to the clipboard.   |
 |                      | **`Ctrl + A` / `Meta + A`**                 | Select all filtered image cards.                                  |

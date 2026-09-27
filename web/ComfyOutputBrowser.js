@@ -17,7 +17,8 @@ const BROWSER_HTML = `
   </div>
   <div class="actions-group">
     <div class="search-wrapper">
-      <input type="text" id="cfobSearchInput" class="search-input" placeholder="Filter">
+      <input type="text" id="cfobSearchInput" class="search-input" placeholder="Filter" autocomplete="off" aria-autocomplete="list" aria-controls="cfobSearchSuggestions" aria-expanded="false">
+      <div id="cfobSearchSuggestions" class="search-suggestions" role="listbox" aria-label="Search suggestions" hidden></div>
       <button id="cfobClearSearchBtn" class="search-clear-btn" title="Clear search">${ICONS.close}</button>
     </div>
     <button class="btn" id="cfobRefreshBtn" title="Sync outputs from Server">${ICONS.refresh}<span>Refresh</span></button>
@@ -69,6 +70,16 @@ export default class ComfyOutputBrowser {
     this.isUiVisible = false;
     this.serverImageFetchCount = 0;
     this.isIdleParsing = false;
+    /** @type {string[]} */
+    this.searchHistory = JSON.parse(localStorage.getItem('cfob_search_history') || '[]');
+    /** @type {number} */
+    this.searchHistoryIndex = this.searchHistory.length;
+    /** @type {number} */
+    this.activeSearchSuggestionIndex = -1;
+    /** @type {Map<string, Set<string>>} */
+    this.imageKeywordIndex = new Map();
+    /** @type {Map<string, number>} */
+    this.keywordDictionary = new Map();
 
     this.observer = null;
     this.api = new CFOB_API(this);
@@ -243,11 +254,24 @@ export default class ComfyOutputBrowser {
     this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.hideWithTransition());
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
     this.$("cfobMenuBtn").addEventListener('click', (e) => this.settings.toggleOptionsMenu(e));
-    this.$("cfobSearchInput").addEventListener('input', () => this.filterGallery());
+    this.$("cfobSearchInput").addEventListener('input', () => {
+      this.searchHistoryIndex = this.searchHistory.length;
+      this.activeSearchSuggestionIndex = -1;
+      this.filterGallery();
+      this.updateSearchSuggestions();
+    });
+    this.$("cfobSearchInput").addEventListener('focus', () => this.updateSearchSuggestions());
+    this.$("cfobSearchInput").addEventListener('blur', () => {
+      this.addSearchHistory();
+      this.hideSearchSuggestions();
+    });
+    this.$("cfobSearchInput").addEventListener('keydown', (e) => this.handleSearchKeydown(e));
 
     this.$("cfobClearSearchBtn").addEventListener('click', () => {
       /** @type {HTMLInputElement} */ (this.$("cfobSearchInput")).value = "";
+      this.searchHistoryIndex = this.searchHistory.length;
       this.filterGallery();
+      this.updateSearchSuggestions();
     });
 
     this.fullView.bindEvents();
@@ -304,6 +328,7 @@ export default class ComfyOutputBrowser {
 
       const isFullView = fvModal.classList.contains('active');
       const key = e.key.toLowerCase();
+      const searchInput = this.$("cfobSearchInput");
 
       if (e.key === 'Escape') {
         if (isFullView && noModalOpen) {
@@ -421,6 +446,21 @@ export default class ComfyOutputBrowser {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.loadWorkflowSelected(); }
         }
         else if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+          if (e.key === 'ArrowUp' && this.lastSelectedIdx < 0) {
+            e.preventDefault(); e.stopPropagation();
+            searchInput.focus();
+            return;
+          }
+          if (e.key === 'ArrowUp' && this.lastSelectedIdx >= 0) {
+            const grid = this.$("cfobGalleryGrid");
+            const firstCard = grid.querySelector('.image-card');
+            const currentCard = grid.querySelectorAll('.image-card')[this.lastSelectedIdx];
+            if (firstCard && currentCard && /** @type {HTMLElement} */ (currentCard).offsetTop <= /** @type {HTMLElement} */ (firstCard).offsetTop) {
+              e.preventDefault(); e.stopPropagation();
+              searchInput.focus();
+              return;
+            }
+          }
           e.preventDefault(); e.stopPropagation(); this.handleGridNavigation(e);
         }
       }
@@ -533,6 +573,260 @@ export default class ComfyOutputBrowser {
     });
   }
 
+  /**
+   * @param {CFOB_Image} img
+   * @param {boolean} [refreshSuggestions]
+   */
+  indexImageKeywords(img, refreshSuggestions = true) {
+    this.removeImageKeywords(img.name, false);
+
+    /** @type {Set<string>} */
+    const keywords = new Set();
+    /** @type {any[]} */
+    const values = [img.name, img.prompt, img.workflow];
+    while (values.length) {
+      const value = values.pop();
+      if (typeof value === 'string') {
+        for (const match of value.matchAll(/[\p{L}\p{N}_-]{2,}/gu)) {
+          keywords.add(match[0].toLowerCase());
+        }
+      } else if (Array.isArray(value)) {
+        for (const item of value) values.push(item);
+      } else if (value && typeof value === 'object') {
+        for (const item of Object.values(value)) values.push(item);
+      }
+    }
+
+    this.imageKeywordIndex.set(img.name, keywords);
+    for (const keyword of keywords) {
+      this.keywordDictionary.set(keyword, (this.keywordDictionary.get(keyword) || 0) + 1);
+    }
+
+    if (refreshSuggestions && document.activeElement === this.$("cfobSearchInput")) {
+      this.updateSearchSuggestions();
+    }
+  }
+
+  /**
+   * @param {string} imageName
+   * @param {boolean} [refreshSuggestions]
+   */
+  removeImageKeywords(imageName, refreshSuggestions = true) {
+    const keywords = this.imageKeywordIndex.get(imageName);
+    if (!keywords) return;
+
+    for (const keyword of keywords) {
+      const count = this.keywordDictionary.get(keyword) || 0;
+      if (count <= 1) this.keywordDictionary.delete(keyword);
+      else this.keywordDictionary.set(keyword, count - 1);
+    }
+    this.imageKeywordIndex.delete(imageName);
+    if (refreshSuggestions && document.activeElement === this.$("cfobSearchInput")) {
+      this.updateSearchSuggestions();
+    }
+  }
+
+  rebuildKeywordDictionary() {
+    this.imageKeywordIndex.clear();
+    this.keywordDictionary.clear();
+    for (const img of this.loadedImages) {
+      if (img.isParsed) this.indexImageKeywords(img, false);
+    }
+    if (document.activeElement === this.$("cfobSearchInput")) this.updateSearchSuggestions();
+  }
+
+  /**
+   * @param {KeyboardEvent} e
+   */
+  handleSearchKeydown(e) {
+    const input = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
+    const suggestions = this.$("cfobSearchSuggestions");
+    const options = suggestions.querySelectorAll('[role="option"]');
+
+    if (e.key === 'Tab') {
+      const suggestion = options[this.activeSearchSuggestionIndex] || options[0];
+      if (suggestion) {
+        e.preventDefault();
+        this.completeSearchSuggestion(/** @type {HTMLElement} */ (suggestion).dataset.value || "");
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (!suggestions.hidden && options.length) {
+        e.preventDefault();
+        this.cycleSearchSuggestions(-1, options.length);
+        return;
+      }
+      if (!this.searchHistory.length) return;
+      e.preventDefault();
+      this.searchHistoryIndex = Math.max(0, this.searchHistoryIndex - 1);
+      input.value = this.searchHistory[this.searchHistoryIndex];
+      this.activeSearchSuggestionIndex = -1;
+      this.filterGallery();
+      this.updateSearchSuggestions();
+    } else if (e.key === 'ArrowDown') {
+      if (!suggestions.hidden && options.length) {
+        e.preventDefault();
+        this.cycleSearchSuggestions(1, options.length);
+        return;
+      }
+      e.preventDefault();
+      this.addSearchHistory();
+      this.hideSearchSuggestions();
+      this.focusFirstGridItem();
+    } else if (e.key === 'Enter') {
+      this.addSearchHistory();
+      this.hideSearchSuggestions();
+    }
+  }
+
+  /**
+   * @param {number} direction
+   * @param {number} optionCount
+   */
+  cycleSearchSuggestions(direction, optionCount) {
+    if (this.activeSearchSuggestionIndex < 0) {
+      this.activeSearchSuggestionIndex = direction > 0 ? 0 : optionCount - 1;
+    } else {
+      this.activeSearchSuggestionIndex = (this.activeSearchSuggestionIndex + direction + optionCount) % optionCount;
+    }
+    const options = this.$("cfobSearchSuggestions").querySelectorAll('[role="option"]');
+    options.forEach((option, index) => {
+      const isActive = index === this.activeSearchSuggestionIndex;
+      option.setAttribute('aria-selected', String(isActive));
+      if (isActive) option.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  addSearchHistory() {
+    const query = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput")).value.trim();
+    if (!query || this.searchHistory[this.searchHistory.length - 1] === query) {
+      this.searchHistoryIndex = this.searchHistory.length;
+      return;
+    }
+
+    this.searchHistory = [...this.searchHistory.filter(item => item !== query), query].slice(-50);
+    this.searchHistoryIndex = this.searchHistory.length;
+    localStorage.setItem('cfob_search_history', JSON.stringify(this.searchHistory));
+  }
+
+  hideSearchSuggestions() {
+    const suggestions = this.$("cfobSearchSuggestions");
+    suggestions.hidden = true;
+    suggestions.replaceChildren();
+    this.$("cfobSearchInput").setAttribute('aria-expanded', 'false');
+  }
+
+  updateSearchSuggestions() {
+    const input = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
+    const suggestions = this.$("cfobSearchSuggestions");
+    const value = input.value;
+    let inQuotes = false;
+    let tokenStart = 0;
+    for (let i = 0; i < value.length; i++) {
+      if (value[i] === '"') inQuotes = !inQuotes;
+      else if (!inQuotes && (value[i] === ' ' || value[i] === ',')) tokenStart = i + 1;
+    }
+
+    const token = value.slice(tokenStart);
+    const colonIndex = token.indexOf(':');
+    const key = colonIndex >= 0 ? token.slice(0, colonIndex).toLowerCase() : "";
+    this.activeSearchSuggestionIndex = -1;
+    const candidates = ['name:', 'path:', 'prompt:', 'workflow:'];
+    this.settings.fieldConfigs.forEach((field, index) => {
+      candidates.push(`${index + 1}:`);
+      if (!/\s/.test(field.label)) candidates.push(`${field.label}:`);
+    });
+
+    const prefix = token.toLowerCase();
+    const matches = new Set(candidates.filter(candidate =>
+      candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix
+    ));
+    const keywordPrefix = colonIndex >= 0 ? token.slice(colonIndex + 1).toLowerCase() : prefix;
+    const keywordQualifier = colonIndex >= 0 ? token.slice(0, colonIndex + 1) : "";
+    if (keywordPrefix && key !== 'name' && key !== 'path') {
+      const keywords = Array.from(this.keywordDictionary.entries())
+        .filter(([keyword]) => keyword.startsWith(keywordPrefix) && keyword !== keywordPrefix)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      for (const [keyword] of keywords) {
+        const suggestion = `${keywordQualifier}${keyword}`;
+        if (!matches.has(suggestion)) matches.add(suggestion);
+        if (matches.size >= 8) break;
+      }
+    }
+
+    if (!/\s/.test(token.slice(colonIndex + 1))) {
+      const imageKey = key === 'name' || key === 'path' ? `${key}:` : "";
+      if ((!key || imageKey) && matches.size < 8) {
+        for (const image of this.loadedImages) {
+          if (/\s/.test(image.name)) continue;
+          const candidate = `${imageKey}${image.name}`;
+          if (candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix) {
+            matches.add(candidate);
+            if (matches.size >= 8) break;
+          }
+        }
+      }
+    }
+
+    suggestions.replaceChildren();
+
+    if (!matches.size || document.activeElement !== input) {
+      this.hideSearchSuggestions();
+      return;
+    }
+
+    for (const match of Array.from(matches).slice(0, 8)) {
+      const option = document.createElement('div');
+      option.className = 'search-suggestion';
+      option.setAttribute('role', 'option');
+      option.setAttribute('aria-selected', String(false));
+      option.dataset.value = match;
+      option.textContent = match;
+      option.addEventListener('mousedown', event => event.preventDefault());
+      option.addEventListener('click', () => this.completeSearchSuggestion(match));
+      suggestions.appendChild(option);
+    }
+
+    suggestions.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  /**
+   * @param {string} completion
+   */
+  completeSearchSuggestion(completion) {
+    const input = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
+    const value = input.value;
+    let inQuotes = false;
+    let tokenStart = 0;
+    for (let i = 0; i < value.length; i++) {
+      if (value[i] === '"') inQuotes = !inQuotes;
+      else if (!inQuotes && (value[i] === ' ' || value[i] === ',')) tokenStart = i + 1;
+    }
+
+    const suffix = completion.endsWith(':') ? '' : ' ';
+    input.value = `${value.slice(0, tokenStart)}${completion}${suffix}`;
+    input.setSelectionRange(input.value.length, input.value.length);
+    this.searchHistoryIndex = this.searchHistory.length;
+    this.activeSearchSuggestionIndex = -1;
+    this.filterGallery();
+    this.updateSearchSuggestions();
+  }
+
+  focusFirstGridItem() {
+    if (!this.filteredImages.length) return;
+
+    this.clearSelection(false);
+    this.lastSelectedIdx = 0;
+    this.selectionAnchorIdx = 0;
+    this.selectedImages.add(this.filteredImages[0].name);
+    const cards = Array.from(this.$("cfobGalleryGrid").querySelectorAll('.image-card'));
+    cards.forEach((card, index) => /** @type {HTMLElement} */ (card).classList.toggle('focused', index === 0));
+    const firstCard = cards[0];
+    firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    this.updateCardStyles();
+    this.updateActionBar();
+  }
+
   /** @param {string} msg  */
   showToast(msg) {
     const t = this.$("cfobToastNotice");
@@ -606,6 +900,7 @@ export default class ComfyOutputBrowser {
           const image = existingMap.get(fileObj.name);
           if (image) {
             if (fileObj.mtime && image.mtime && image.mtime !== fileObj.mtime) {
+              this.removeImageKeywords(image.name);
               image.mtime = fileObj.mtime;
               image.isParsed = false;
               image.prompt = null;
@@ -627,6 +922,7 @@ export default class ComfyOutputBrowser {
 
       if (newImages.length > 0 || validImages.length !== this.loadedImages.length) {
         this.loadedImages = [...newImages, ...validImages];
+        this.rebuildKeywordDictionary();
         this.applySort();
 
         const validNames = new Set(this.loadedImages.map(img => img.name));
@@ -977,6 +1273,7 @@ export default class ComfyOutputBrowser {
         this.loadedImages = this.loadedImages.filter(img => !removed.includes(img.name));
 
         for (const file of removed) {
+          this.removeImageKeywords(file);
           await this.api.cacheDelete(file);
         }
 
@@ -1016,9 +1313,11 @@ export default class ComfyOutputBrowser {
         if (data.success) {
           const img = this.loadedImages.find(i => i.name === oldName);
           if (img) {
+            this.removeImageKeywords(oldName);
             img.name = data.new_name;
             img.mtime = data.mtime || img.mtime;
             img.url = this.api.getImageUrl(data.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
+            this.indexImageKeywords(img);
             const meta = await this.api.cacheGet(oldName);
             if (meta) {
               await this.api.cacheSet(data.new_name, meta, img.mtime);
@@ -1051,9 +1350,11 @@ export default class ComfyOutputBrowser {
           for (const m of data.moved) {
             const img = this.loadedImages.find(i => i.name === m.old_name);
             if (img) {
+              this.removeImageKeywords(m.old_name);
               img.name = m.new_name;
               img.mtime = m.mtime || img.mtime;
               img.url = this.api.getImageUrl(m.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
+              this.indexImageKeywords(img);
               const meta = await this.api.cacheGet(m.old_name);
               if (meta) {
                 await this.api.cacheSet(m.new_name, meta, img.mtime);
