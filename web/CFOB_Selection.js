@@ -108,7 +108,6 @@ export default class CFOB_Selection {
       app.$("cfobActionMove").style.display = 'inline-flex';
     } else {
       bar.classList.remove('show');
-      app.lastSelectedIdx = -1;
     }
   }
 
@@ -129,8 +128,9 @@ export default class CFOB_Selection {
     const app = this.app;
     e.stopPropagation();
     const target = /** @type {HTMLInputElement} */ (e.target);
+    const card = target.closest('.image-card');
     const fIdx = app.filteredImages.findIndex(img => img.name === filename);
-    if (fIdx === -1) return;
+    if (fIdx === -1 || !card) return;
 
     if (e.shiftKey && app.selectionAnchorIdx !== undefined && app.selectionAnchorIdx !== -1) {
       const start = Math.min(app.selectionAnchorIdx, fIdx);
@@ -159,22 +159,40 @@ export default class CFOB_Selection {
 
     app.selection.updateActionBar();
     app.selection.updateCardStyles();
+    /** @type {HTMLElement} */ (card).focus();
   }
 
   /** @param {boolean} resetAnchor */
   clearSelection(resetAnchor = true) {
     const app = this.app;
+    const activeElement = document.activeElement;
+    const restoreGridFocus = activeElement instanceof HTMLElement && app.$("cfobActionBar").contains(activeElement);
+    const focusedCard = activeElement instanceof HTMLElement ? activeElement.closest('.image-card') : null;
+    const focusedIndex = focusedCard instanceof HTMLElement
+      ? app.filteredImages.findIndex(img => img.name === focusedCard.dataset.name)
+      : -1;
+    const previousIndex = app.lastSelectedIdx;
     app.selectedImages.clear();
     app.root?.querySelectorAll('.card-checkbox').forEach(cb => /** @type {HTMLInputElement} */(cb).checked = false);
 
     if (resetAnchor) {
-      app.lastSelectedIdx = -1;
+      app.lastSelectedIdx = focusedIndex >= 0 ? focusedIndex : restoreGridFocus ? previousIndex : -1;
       app.selectionAnchorIdx = -1;
       app.root?.querySelectorAll('.image-card').forEach(c => /** @type {HTMLElement} */(c).style.boxShadow = '');
     }
 
     app.selection.updateCardStyles();
     app.selection.updateActionBar();
+
+    if (restoreGridFocus) {
+      const cards = app.$("cfobGalleryGrid").querySelectorAll('.image-card');
+      const card = cards[Math.max(0, Math.min(previousIndex, cards.length - 1))];
+      if (card) {
+        app.lastSelectedIdx = Math.max(0, Math.min(previousIndex, cards.length - 1));
+        /** @type {HTMLElement} */ (card).focus();
+      }
+      else app.$("cfobSearchInput").focus();
+    }
   }
 
   selectAllFiltered() {

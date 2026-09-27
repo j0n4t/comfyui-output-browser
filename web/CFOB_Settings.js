@@ -193,6 +193,8 @@ export default class COB_Settings {
   /** @param {import("./ComfyOutputBrowser.js").default} app  */
   constructor(app) {
     this.app = app;
+    /** @type {WeakMap<HTMLElement, HTMLElement | null>} */
+    this.modalReturnFocus = new WeakMap();
     this.currentSort = localStorage.getItem('cfob_sort') || 'default';
     this.fieldConfigs = this.loadConfig();
     this.hiddenFolders = this.loadHiddenFoldersConfig();
@@ -319,7 +321,7 @@ export default class COB_Settings {
       }
     });
 
-    this.app.$("cfobCloseConfigBtn").addEventListener('click', () => this.app.$("cfobConfigModal").classList.remove('active'));
+    this.app.$("cfobCloseConfigBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobConfigModal")));
     this.app.$("cfobAddFieldBtn").addEventListener('click', () => { this.fieldConfigs.push({ label: "Custom Field", paths: "" }); this.openConfigModal(); });
     this.app.$("cfobResetConfigBtn").addEventListener('click', () => { this.resetConfig(); this.openConfigModal(); });
     this.app.$("cfobSaveConfigBtn").addEventListener('click', () => {
@@ -331,11 +333,11 @@ export default class COB_Settings {
         if (label) newCfgs.push({ label, paths });
       });
       this.saveConfig(newCfgs);
-      this.app.$("cfobConfigModal").classList.remove('active');
       this.app.gallery.renderGallery();
+      this.closeModal(this.app.$("cfobConfigModal"));
     });
 
-    this.app.$("cfobCloseInspectorBtn").addEventListener('click', () => this.app.$("cfobInspectorModal").classList.remove('active'));
+    this.app.$("cfobCloseInspectorBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobInspectorModal")));
     // Enhanced Inspector Tabs with Keyboard Navigation
     this.app.root?.querySelectorAll('#cfobInspectorTabs .tab').forEach(tab => {
       const activateTab = () => {
@@ -370,13 +372,17 @@ export default class COB_Settings {
       const activeModal = this.app.root?.querySelector('.modal-overlay.active');
       if (!activeModal) return;
 
-      const focusable = Array.from(activeModal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'));
+      const focusable = Array.from(activeModal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'))
+        .filter(element => element.getClientRects().length > 0);
       if (!focusable.length) return;
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
 
-      if (e.shiftKey && document.activeElement === first) {
+      if (!activeModal.contains(document.activeElement)) {
+        e.preventDefault();
+        /** @type {HTMLElement} */ (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         /** @type {HTMLElement} */(last).focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -385,7 +391,7 @@ export default class COB_Settings {
       }
     });
 
-    this.app.$("cfobCloseHiddenFoldersBtn").addEventListener('click', () => this.app.$("cfobHiddenFoldersModal").classList.remove('active'));
+    this.app.$("cfobCloseHiddenFoldersBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobHiddenFoldersModal")));
     this.app.$("cfobResetHiddenFoldersBtn").addEventListener('click', () => {
       this.saveHiddenFoldersConfig(["temp", "trash"]);
       this.openHiddenFoldersModal();
@@ -394,12 +400,12 @@ export default class COB_Settings {
       const val = /** @type {HTMLInputElement} */ (this.app.$("cfobHiddenFoldersInput")).value;
       const list = val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean);
       this.saveHiddenFoldersConfig(list);
-      this.app.$("cfobHiddenFoldersModal").classList.remove('active');
       this.app.gallery.filterGallery();
+      this.closeModal(this.app.$("cfobHiddenFoldersModal"));
       this.app.showToast("Saved hidden folders configuration");
     });
 
-    this.app.$("cfobCloseIgnoredKeywordsBtn").addEventListener('click', () => this.app.$("cfobIgnoredKeywordsModal").classList.remove('active'));
+    this.app.$("cfobCloseIgnoredKeywordsBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobIgnoredKeywordsModal")));
     this.app.$("cfobResetIgnoredKeywordsBtn").addEventListener('click', () => {
       this.saveIgnoredAutocompleteKeywords([]);
       this.openIgnoredAutocompleteKeywordsModal();
@@ -408,8 +414,8 @@ export default class COB_Settings {
       const val = /** @type {HTMLInputElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value;
       const keywords = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim().toLowerCase()).filter(Boolean))];
       this.saveIgnoredAutocompleteKeywords(keywords);
-      this.app.$("cfobIgnoredKeywordsModal").classList.remove('active');
       this.app.search.updateSearchSuggestions(true);
+      this.closeModal(this.app.$("cfobIgnoredKeywordsModal"));
       this.app.showToast("Saved ignored autocomplete keywords");
     });
   }
@@ -617,6 +623,39 @@ export default class COB_Settings {
     popover.style.left = `${left}px`;
   }
 
+  /** @param {HTMLElement} modal */
+  rememberModalFocus(modal) {
+    if (modal.classList.contains('active')) return;
+    const activeElement = document.activeElement;
+    const activeModal = activeElement instanceof HTMLElement ? activeElement.closest('.modal-overlay') : null;
+    this.modalReturnFocus.set(
+      modal,
+      activeElement instanceof HTMLElement &&
+        this.app.root?.contains(activeElement) &&
+        !modal.contains(activeElement) &&
+        (!activeModal || activeModal.classList.contains('active'))
+        ? activeElement
+        : null
+    );
+  }
+
+  /** @param {HTMLElement} modal */
+  closeModal(modal) {
+    modal.classList.remove('active');
+    this.restoreModalFocus(modal);
+  }
+
+  /** @param {HTMLElement} modal */
+  restoreModalFocus(modal) {
+    const returnFocus = this.modalReturnFocus.get(modal);
+    this.modalReturnFocus.delete(modal);
+    if (returnFocus?.isConnected && this.app.root?.contains(returnFocus) && !modal.contains(returnFocus)) {
+      returnFocus.focus();
+    } else if (this.app.root?.isConnected && !this.app.root.classList.contains('cfob-hidden')) {
+      this.app.$("cfobSearchInput").focus();
+    }
+  }
+
   /**
   * @param {string} message 
   * @param {string} confirmText 
@@ -626,6 +665,7 @@ export default class COB_Settings {
   async customConfirm(message, confirmText = "Confirm", isDanger = false) {
     return new Promise(resolve => {
       const modal = this.app.$("cfobConfirmModal");
+      this.rememberModalFocus(modal);
       this.app.$("cfobConfirmMsg").innerText = message;
 
       const okBtn = this.app.$("cfobConfirmOkBtn");
@@ -634,6 +674,7 @@ export default class COB_Settings {
 
       const cleanup = () => {
         modal.classList.remove("active");
+        this.restoreModalFocus(modal);
         okBtn.removeEventListener("click", onOk);
         this.app.$("cfobConfirmCancelBtn").removeEventListener("click", onCancel);
         this.app.$("cfobConfirmCloseBtn").removeEventListener("click", onCancel);
@@ -661,6 +702,7 @@ export default class COB_Settings {
   async customPrompt(message, defaultValue = "", folderPickerMode = 'none', imageUrl = "") {
     return new Promise(resolve => {
       const modal = this.app.$("cfobPromptModal");
+      this.rememberModalFocus(modal);
       this.app.$("cfobPromptMsg").innerText = message;
       const input = /** @type {HTMLInputElement} */ (this.app.$("cfobPromptInput"));
       input.value = defaultValue;
@@ -768,7 +810,7 @@ export default class COB_Settings {
           selectedFolder = null;
           folderList.querySelectorAll('.folder-chip').forEach(item => item.classList.remove('selected'));
           newFolderChip.classList.add('selected');
-          newFolderEntry.style.display = "flex";
+          if (newFolderEntry) newFolderEntry.style.display = "flex";
           this.app.$("cfobPromptOkBtn").setAttribute("disabled", "");
           newFolderInput.focus();
         };
@@ -798,6 +840,7 @@ export default class COB_Settings {
 
       const cleanup = () => {
         modal.classList.remove("active");
+        this.restoreModalFocus(modal);
         thumbWrapper.classList.remove('active');
         this.app.$("cfobPromptOkBtn").removeEventListener("click", onOk);
         this.app.$("cfobPromptCancelBtn").removeEventListener("click", onCancel);
@@ -838,6 +881,7 @@ export default class COB_Settings {
 
   openConfigModal() {
     const modal = this.app.$("cfobConfigModal");
+    this.rememberModalFocus(modal);
     const list = this.app.$("cfobConfigFieldsList");
     list.innerHTML = "";
 
@@ -866,6 +910,7 @@ export default class COB_Settings {
 
   openHiddenFoldersModal() {
     const modal = this.app.$("cfobHiddenFoldersModal");
+    this.rememberModalFocus(modal);
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobHiddenFoldersInput"));
     input.value = this.hiddenFolders.join("\n");
     modal.classList.add('active');
@@ -874,6 +919,7 @@ export default class COB_Settings {
 
   openIgnoredAutocompleteKeywordsModal() {
     const modal = this.app.$("cfobIgnoredKeywordsModal");
+    this.rememberModalFocus(modal);
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobIgnoredKeywordsInput"));
     input.value = this.ignoredAutocompleteKeywords.join("\n");
     modal.classList.add('active');
@@ -931,6 +977,8 @@ export default class COB_Settings {
   /** @param {number} idx */
   async openInspector(idx) {
     const img = this.app.loadedImages[idx];
+    const inspectorModal = this.app.$("cfobInspectorModal");
+    this.rememberModalFocus(inspectorModal);
 
     if (!img.isParsed) {
       this.app.$("cfobInspectorTitle").innerText = `Loading Metadata...`;
@@ -992,6 +1040,7 @@ export default class COB_Settings {
     grid.querySelectorAll('.cp-val').forEach(b => b.addEventListener('click', (e) => this.app.actions.copyValue(/** @type {HTMLElement} */(e.currentTarget), /** @type {HTMLElement} */(e.currentTarget).dataset.val)));
     grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, /** @type {HTMLElement} */(e.currentTarget)?.dataset.path)));
 
-    this.app.$("cfobInspectorModal").classList.add('active');
+    inspectorModal.classList.add('active');
+    this.app.$("cfobCloseInspectorBtn").focus();
   }
 }

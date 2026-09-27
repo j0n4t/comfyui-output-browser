@@ -207,6 +207,11 @@ export default class ComfyOutputBrowser {
 
   hideWithTransition() {
     if (!this.root) return;
+    if (this.root.contains(document.activeElement)) {
+      const launcher = document.getElementById("cfob-launcher-btn");
+      if (launcher instanceof HTMLElement) launcher.focus();
+      else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    }
     this.root.classList.add('cfob-hidden');
     clearTimeout(this.transitionTimer);
     this.transitionTimer = setTimeout(() => {
@@ -344,7 +349,12 @@ export default class ComfyOutputBrowser {
       const promptModal = this.$("cfobPromptModal");
 
       const target = /** @type {HTMLElement} */ (e.target);
-      const isEditing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      const isEditing = target && (
+        (target.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(/** @type {HTMLInputElement} */(target).type)) ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
 
       const noModalOpen = !configModal.classList.contains('active') &&
         !inspectorModal.classList.contains('active') &&
@@ -364,10 +374,18 @@ export default class ComfyOutputBrowser {
           e.stopPropagation();
           if (confirmModal.classList.contains('active')) this.$("cfobConfirmCancelBtn").click();
           else if (promptModal.classList.contains('active')) this.$("cfobPromptCancelBtn").click();
-          else if (configModal.classList.contains('active')) configModal.classList.remove('active');
-          else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
-          else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
-          else if (ignoredKeywordsModal.classList.contains('active')) ignoredKeywordsModal.classList.remove('active');
+          else if (configModal.classList.contains('active')) {
+            this.settings.closeModal(configModal);
+          }
+          else if (inspectorModal.classList.contains('active')) {
+            this.settings.closeModal(inspectorModal);
+          }
+          else if (hiddenModal.classList.contains('active')) {
+            this.settings.closeModal(hiddenModal);
+          }
+          else if (ignoredKeywordsModal.classList.contains('active')) {
+            this.settings.closeModal(ignoredKeywordsModal);
+          }
           else if (target === searchInput && !this.$("cfobSearchSuggestions").hidden) this.search.hideSearchSuggestions();
           else if (isEditing) target.blur();
           else if (this.selectedImages.size > 0) this.selection.clearSelection();
@@ -402,6 +420,7 @@ export default class ComfyOutputBrowser {
         else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
         else if (key === 'w') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionOpen").click(); }
         else if (key === ' ') {
+          if (target.closest('button, a, [role="button"]')) return;
           e.preventDefault(); e.stopPropagation();
           this.fullView.toggleFullViewUI();
         }
@@ -438,15 +457,17 @@ export default class ComfyOutputBrowser {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected(); }
         }
         else if (key === 'enter' && !e.ctrlKey) {
-          if (this.selectedImages.size === 1) {
-            e.preventDefault(); e.stopPropagation();
-            const img = this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
-            if (img) this.fullView.openFullView(img);
+          if (!target.closest('button, a, [role="button"]')) {
+            const focusedImage = this.filteredImages[this.lastSelectedIdx];
+            if (focusedImage || this.selectedImages.size === 1) {
+              e.preventDefault(); e.stopPropagation();
+              const img = focusedImage || this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
+              if (img) this.fullView.openFullView(img);
+            }
           }
         }
         else if (key === ' ') {
           if (e.ctrlKey || e.metaKey) {
-            // Ctrl+Space: Toggle selection of the currently focused item without losing existing selection
             e.preventDefault(); e.stopPropagation();
             if (this.lastSelectedIdx !== -1 && this.filteredImages[this.lastSelectedIdx]) {
               const targetImg = this.filteredImages[this.lastSelectedIdx];
@@ -467,10 +488,15 @@ export default class ComfyOutputBrowser {
               this.selection.updateActionBar();
             }
           }
-          else if (this.selectedImages.size === 1) {
+          else if (
+            target.tagName !== 'INPUT' &&
+            !target.closest('button, a, [role="button"]') &&
+            (this.filteredImages[this.lastSelectedIdx] || this.selectedImages.size === 1)
+          ) {
             // Standard Space: Open Full View
             e.preventDefault(); e.stopPropagation();
-            const img = this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
+            const img = this.filteredImages[this.lastSelectedIdx] ||
+              this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
             if (img) this.fullView.openFullView(img);
           }
         }
@@ -483,7 +509,10 @@ export default class ComfyOutputBrowser {
         else if (key === 'w') {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.loadWorkflowSelected(); }
         }
-        else if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+        else if (
+          ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key) &&
+          !target.closest('button, a, [role="button"]')
+        ) {
           if (e.key === 'ArrowUp' && this.lastSelectedIdx < 0) {
             e.preventDefault(); e.stopPropagation();
             searchInput.focus();

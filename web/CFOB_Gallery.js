@@ -143,6 +143,15 @@ export default class CFOB_Gallery {
     const grid = this.app.$("cfobGalleryGrid");
     if (!grid) return;
 
+    const activeElement = document.activeElement;
+    const focusedCard = activeElement instanceof HTMLElement && grid.contains(activeElement)
+      ? activeElement.closest('.image-card')
+      : null;
+    const focusedName = focusedCard instanceof HTMLElement ? focusedCard.dataset.name : null;
+    const previousIndex = focusedName
+      ? this.app.filteredImages.findIndex(img => img.name === focusedName)
+      : -1;
+
     grid.innerHTML = "";
 
     const countSpan = this.app.$("cfobImageCount");
@@ -159,6 +168,10 @@ export default class CFOB_Gallery {
           ? "Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect."
           : "No images match the current filter or hidden folder settings.";
       }
+      if (focusedCard) {
+        this.app.lastSelectedIdx = -1;
+        this.app.$("cfobSearchInput").focus();
+      }
       return;
     } else {
       if (emptyState) emptyState.style.display = "none";
@@ -169,7 +182,7 @@ export default class CFOB_Gallery {
     this.app.filteredImages.forEach((img, idx) => {
       const isSelected = this.app.selectedImages.has(img.name);
       const card = document.createElement("div");
-      card.className = `image-card ${isSelected ? 'selected' : ''}`;
+      card.className = `image-card ${isSelected ? 'selected' : ''} ${idx === this.app.lastSelectedIdx ? 'focused' : ''}`;
       card.tabIndex = -1;
       card.dataset.name = img.name;
       card.dataset.index = String(this.app.loadedImages.indexOf(img));
@@ -194,7 +207,14 @@ export default class CFOB_Gallery {
       cb.addEventListener('click', (e) => this.app.selection.handleCheckboxClick(e, img.name));
 
       const previewImg = /** @type {HTMLImageElement} */ (card.querySelector('.card-preview'));
-      previewImg.addEventListener('click', () => this.app.fullView.openFullView(img));
+      previewImg.addEventListener('click', () => {
+        this.app.lastSelectedIdx = idx;
+        this.app.root?.querySelectorAll('.image-card').forEach((item, index) => {
+          item.classList.toggle('focused', index === idx);
+        });
+        card.focus();
+        this.app.fullView.openFullView(img);
+      });
 
       const header = /** @type {HTMLElement} */ (card.querySelector('.card-header'));
       header.addEventListener('click', () => {
@@ -207,6 +227,15 @@ export default class CFOB_Gallery {
         if (copyBtn) {
           e.stopPropagation();
           this.app.actions.copyValue(copyBtn, copyBtn.dataset.val);
+          return;
+        }
+        const target = /** @type {HTMLElement} */ (e.target);
+        if (!target.closest('.card-preview, button, input, a, [contenteditable="true"]')) {
+          this.app.lastSelectedIdx = idx;
+          this.app.root?.querySelectorAll('.image-card').forEach((item, index) => {
+            item.classList.toggle('focused', index === idx);
+          });
+          card.focus();
         }
       });
 
@@ -216,5 +245,20 @@ export default class CFOB_Gallery {
     });
 
     grid.appendChild(fragment);
+    if (focusedCard) {
+      const focusIndex = this.app.filteredImages.findIndex(img => img.name === focusedName);
+      const targetIndex = focusIndex >= 0 ? focusIndex : Math.min(previousIndex, this.app.filteredImages.length - 1);
+      const card = grid.querySelectorAll('.image-card')[targetIndex];
+      if (card) {
+        this.app.lastSelectedIdx = targetIndex;
+        grid.querySelectorAll('.image-card').forEach((item, index) => {
+          item.classList.toggle('focused', index === targetIndex);
+        });
+        /** @type {HTMLElement} */ (card).focus();
+      } else {
+        this.app.lastSelectedIdx = -1;
+        this.app.$("cfobSearchInput").focus();
+      }
+    }
   }
 }
