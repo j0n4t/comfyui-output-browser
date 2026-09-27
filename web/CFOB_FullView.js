@@ -3,7 +3,7 @@ import ICONS from "./assets/icons.js";
 export const CFOB_FULL_VIEW_HTML = `
   <div class="modal-overlay" id="cfobFullViewModal">
     <div class="full-view-layout">
-      <div class="full-view-main">
+      <div class="full-view-main" tabindex="-1">
         <div class="full-view-top-bar">
           <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
           <div style="display: flex; gap: 0.5em; align-items: center;">
@@ -43,6 +43,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-layout .field-value { max-height: 100%; resize: vertical; }
 
   #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+  #cfob-root .full-view-main:focus { outline: none; }
   #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
   #cfob-root .full-view-top-bar {
@@ -448,6 +449,7 @@ export default class CFOB_FullView {
         ? activeElement
         : null;
     }
+    this.setFullViewUIHidden(false);
     this.currentImageIndex = this.app.filteredImages.indexOf(img);
     this.updateFullViewUI();
     modal.classList.add('active');
@@ -528,13 +530,34 @@ export default class CFOB_FullView {
     this.fvPanX = 0;
     this.fvPanY = 0;
     this.updateFullViewTransform(true);
-    const layout = this.app.root?.querySelector('.full-view-layout');
-    if (layout) layout.classList.remove('ui-hidden');
+    this.setFullViewUIHidden(false);
   }
 
   toggleFullViewUI() {
     const layout = this.app.root?.querySelector('.full-view-layout');
-    if (layout) layout.classList.toggle('ui-hidden');
+    if (layout) this.setFullViewUIHidden(!layout.classList.contains('ui-hidden'));
+  }
+
+  /** @param {boolean} hidden */
+  setFullViewUIHidden(hidden) {
+    const layout = this.app.root?.querySelector('.full-view-layout');
+    const topBar = this.app.root?.querySelector('.full-view-top-bar');
+    const previousButton = this.app.$("cfobPrevImgBtn");
+    const nextButton = this.app.$("cfobNextImgBtn");
+    if (!layout || !topBar) return;
+
+    if (hidden && (topBar.contains(document.activeElement) ||
+      previousButton === document.activeElement || nextButton === document.activeElement)) {
+      /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'))?.focus();
+    }
+
+    layout.classList.toggle('ui-hidden', hidden);
+    /** @type {HTMLElement} */ (topBar).inert = hidden;
+    topBar.setAttribute('aria-hidden', String(hidden));
+    previousButton.inert = hidden;
+    previousButton.setAttribute('aria-hidden', String(hidden));
+    nextButton.inert = hidden;
+    nextButton.setAttribute('aria-hidden', String(hidden));
   }
 
 }

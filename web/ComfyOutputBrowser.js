@@ -397,7 +397,10 @@ export default class ComfyOutputBrowser {
         else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
         else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
         else if (key === 'w') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionOpen").click(); }
-        else if (key === ' ') { this.fullView.toggleFullViewUI(); }
+        else if (key === ' ') {
+          e.preventDefault(); e.stopPropagation();
+          this.fullView.toggleFullViewUI();
+        }
         else if (key === 't') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleSidebarMode(); }
         else if (key === '+' || key === '=' || e.code === 'NumpadAdd') {
           e.preventDefault(); e.stopPropagation();
