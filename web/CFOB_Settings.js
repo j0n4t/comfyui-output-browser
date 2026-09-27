@@ -58,7 +58,9 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
 
   #cfob-root .folder-list { display: flex; flex-wrap: wrap; gap: 0.375em; max-height: 10em; overflow-y: auto; margin-top: 0.5em; padding-top: 0.75em; border-top: 1px solid var(--color-border-light); }
   #cfob-root .folder-chip { background: var(--color-bg-panel-hover); border: 1px solid var(--color-border); padding: 0.375em 0.625em; border-radius: var(--radius-xl); font-size: 0.75em; cursor: pointer; color: var(--color-text-primary); transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.25em; }
-  #cfob-root .folder-chip:hover { background: var(--color-accent); color: white; border-color: var(--color-accent); }
+  #cfob-root .folder-chip:hover, #cfob-root .folder-chip.selected { background: var(--color-accent); color: white; border-color: var(--color-accent); }
+  #cfob-root .folder-new-entry { display: flex; flex: 1 0 100%; gap: 0.375em; }
+  #cfob-root .folder-new-entry .config-input { flex: 1; min-width: 0; }
 
   #cfob-root #cfobConfirmModal p { margin: 0; color: var(--color-text-primary); line-height: 1.4; }
   #cfob-root #cfobPromptModal p { margin: 0 0 0.75em 0; color: var(--color-text-primary); font-size: 0.875em; line-height: 1.4; }
@@ -652,7 +654,7 @@ export default class COB_Settings {
   /**
    * @param {string} message 
    * @param {string} defaultValue 
-   * @param {'none' | 'rename' | 'move'} folderPickerMode 
+   * @param {'none' | 'rename' | 'move'} folderPickerMode
    * @param {string} [imageUrl]
    * @returns {Promise<string | null>}
    */
@@ -662,18 +664,12 @@ export default class COB_Settings {
       this.app.$("cfobPromptMsg").innerText = message;
       const input = /** @type {HTMLInputElement} */ (this.app.$("cfobPromptInput"));
       input.value = defaultValue;
+      input.style.display = folderPickerMode === 'move' ? 'none' : '';
 
       const thumbWrapper = this.app.$("cfobPromptThumbWrapper");
       const thumbImg = /** @type {HTMLImageElement} */ (this.app.$("cfobPromptThumbImg"));
 
       let resolvedImgUrl = imageUrl;
-      if (!resolvedImgUrl && folderPickerMode === 'rename' && defaultValue) {
-        const found = this.app.loadedImages?.find(img => img.name === defaultValue || img.name.endsWith('/' + defaultValue) || img.name.endsWith('\\' + defaultValue));
-        if (found) {
-          resolvedImgUrl = found.url;
-        }
-      }
-
       if (resolvedImgUrl) {
         thumbImg.src = resolvedImgUrl;
         thumbWrapper.classList.add('active');
@@ -685,8 +681,14 @@ export default class COB_Settings {
       const folderWrapper = this.app.$("cfobFolderListWrapper");
       const folderList = this.app.$("cfobFolderList");
 
-      if (folderPickerMode !== 'none') {
+      /** @type {string | null} */
+      let selectedFolder = null;
+      /** @type {HTMLElement | null} */
+      let newFolderEntry = null;
+      if (folderPickerMode === 'move') {
         folderWrapper.style.display = "block";
+        this.app.$("cfobPromptOkBtn").setAttribute("disabled", "");
+        this.app.$("cfobPromptMsg").innerText = "Choose a destination folder:";
         const folders = new Set();
         this.app.loadedImages.forEach(img => {
           const parts = img.name.split(/\\|\//);
@@ -697,15 +699,22 @@ export default class COB_Settings {
 
         /** 
          * @param {string} html
-         * @param {(this: GlobalEventHandlers, ev: PointerEvent) => any | null} onClick 
+         * @param {string} folder 
          */
-        const createChip = (html, onClick) => {
+        const createChip = (html, folder) => {
           const chip = document.createElement("div");
           chip.className = "folder-chip";
           chip.innerHTML = html;
           chip.tabIndex = 0; // Make focusable
 
-          chip.onclick = onClick;
+          chip.onclick = () => {
+            selectedFolder = folder;
+            input.value = folder;
+            folderList.querySelectorAll('.folder-chip').forEach(item => item.classList.remove('selected'));
+            chip.classList.add('selected');
+            if (newFolderEntry) newFolderEntry.style.display = "none";
+            this.app.$("cfobPromptOkBtn").removeAttribute("disabled");
+          };
           chip.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -727,28 +736,60 @@ export default class COB_Settings {
         };
 
         // Add root option
-        const rootOnClick = () => {
-          if (folderPickerMode === 'rename') input.value = input.value.split(/\\|\//).pop() || "";
-          else input.value = "";
-          input.focus();
-        };
-        folderList.appendChild(createChip(`${ICONS.logo} Root (/)`, rootOnClick));
+        folderList.appendChild(createChip(`${ICONS.logo} Root (/)`, ""));
 
         // Add detected folders
         Array.from(folders).sort().forEach(folder => {
-          const folderOnClick = () => {
-            if (folderPickerMode === 'rename') {
-              const fileName = input.value.split(/\\|\//).pop();
-              input.value = folder + "/" + fileName;
-            } else {
-              input.value = folder;
-            }
-            input.focus();
-          };
-          folderList.appendChild(createChip(`${ICONS.logo} ${this.app.escapeHtml(folder)}`, folderOnClick));
+          folderList.appendChild(createChip(`${ICONS.logo} ${this.app.escapeHtml(folder)}`, folder));
+        });
+
+        const newFolderChip = createChip(`${ICONS.logo} New folder...`, "");
+        folderList.appendChild(newFolderChip);
+
+        newFolderEntry = document.createElement("div");
+        newFolderEntry.className = "folder-new-entry";
+        newFolderEntry.style.display = "none";
+        const newFolderInput = document.createElement("input");
+        newFolderInput.type = "text";
+        newFolderInput.className = "config-input";
+        newFolderInput.placeholder = "New folder name (or path)";
+        const useNewFolderButton = document.createElement("button");
+        useNewFolderButton.type = "button";
+        useNewFolderButton.className = "btn";
+        useNewFolderButton.innerText = "Use folder";
+        newFolderEntry.append(newFolderInput, useNewFolderButton);
+        folderList.appendChild(newFolderEntry);
+
+        newFolderChip.onclick = () => {
+          selectedFolder = null;
+          folderList.querySelectorAll('.folder-chip').forEach(item => item.classList.remove('selected'));
+          newFolderChip.classList.add('selected');
+          newFolderEntry.style.display = "flex";
+          this.app.$("cfobPromptOkBtn").setAttribute("disabled", "");
+          newFolderInput.focus();
+        };
+
+        const selectNewFolder = () => {
+          const folder = newFolderInput.value.trim();
+          if (!folder) return;
+          selectedFolder = folder;
+          input.value = folder;
+          this.app.$("cfobPromptOkBtn").removeAttribute("disabled");
+        };
+        useNewFolderButton.addEventListener("click", selectNewFolder);
+        newFolderInput.addEventListener("input", () => {
+          selectedFolder = null;
+          this.app.$("cfobPromptOkBtn").setAttribute("disabled", "");
+        });
+        newFolderInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            selectNewFolder();
+          }
         });
       } else {
         folderWrapper.style.display = "none";
+        this.app.$("cfobPromptOkBtn").removeAttribute("disabled");
       }
 
       const cleanup = () => {
@@ -760,7 +801,11 @@ export default class COB_Settings {
         input.removeEventListener("keydown", onKey);
       };
 
-      const onOk = () => { cleanup(); resolve(input.value); };
+      const onOk = () => {
+        if (folderPickerMode === 'move' && selectedFolder === null) return;
+        cleanup();
+        resolve(folderPickerMode === 'move' ? selectedFolder : input.value);
+      };
       const onCancel = () => { cleanup(); resolve(null); };
       const onKey = (/** @type {KeyboardEvent} */ e) => { if (e.key === "Enter") onOk(); };
 
@@ -771,14 +816,10 @@ export default class COB_Settings {
 
       modal.classList.add("active");
       setTimeout(() => {
-        input.focus();
-        if (folderPickerMode === 'rename') {
-          // Select only the filename, not the path
-          const parts = input.value.split(/\\|\//);
-          const fn = parts.pop() || "";
-          const dirLen = input.value.length - fn.length;
-          input.setSelectionRange(dirLen, input.value.length);
+        if (folderPickerMode === 'move') {
+          /** @type {HTMLElement | null} */ (folderList.querySelector('.folder-chip'))?.focus();
         } else {
+          input.focus();
           input.select();
         }
       }, 10);

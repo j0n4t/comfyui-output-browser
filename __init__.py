@@ -13,8 +13,11 @@ def get_safe_path(base_dir, req_path):
     """Resolves target path and prevents directory traversal outside base_dir."""
     abs_base = os.path.abspath(base_dir)
     abs_target = os.path.abspath(os.path.join(abs_base, req_path))
-    if abs_target.startswith(abs_base):
-        return abs_target
+    try:
+        if os.path.commonpath([abs_base, abs_target]) == abs_base:
+            return abs_target
+    except ValueError:
+        pass
     return None
 
 @server.PromptServer.instance.routes.get("/comfyui-output-browser/images")
@@ -125,6 +128,10 @@ async def rename_image(request):
     if not old_name or not new_name:
         return web.json_response({"success": False, "error": "Invalid file names provided."})
 
+    if "/" not in new_name and "\\" not in new_name:
+        old_dir = os.path.dirname(old_name.replace("\\", "/"))
+        new_name = os.path.join(old_dir, new_name) if old_dir else new_name
+
     if not new_name.lower().endswith('.png'):
         new_name += '.png'
         
@@ -158,8 +165,8 @@ async def move_images(request):
     files = data.get("files", [])
     dest_folder = data.get("dest_folder", "").strip()
 
-    if not files or not dest_folder:
-        return web.json_response({"success": False, "error": "Invalid files or destination folder provided."})
+    if not files:
+        return web.json_response({"success": False, "error": "No files provided."})
 
     output_dir = folder_paths.get_output_directory()
     safe_dest_dir = get_safe_path(output_dir, dest_folder)

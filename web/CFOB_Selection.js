@@ -104,8 +104,8 @@ export default class CFOB_Selection {
       const isSingle = count === 1;
       app.$("cfobActionInspect").style.display = isSingle ? 'inline-flex' : 'none';
       app.$("cfobActionOpen").style.display = isSingle ? 'inline-flex' : 'none';
-      app.$("cfobActionRename").style.display = 'inline-flex';
-      /** @type {HTMLElement} */ (app.$("cfobActionRename").querySelector('span')).innerText = isSingle ? 'Move/Rename' : 'Move to Folder';
+      app.$("cfobActionRename").style.display = isSingle ? 'inline-flex' : 'none';
+      app.$("cfobActionMove").style.display = 'inline-flex';
     } else {
       bar.classList.remove('show');
       app.lastSelectedIdx = -1;

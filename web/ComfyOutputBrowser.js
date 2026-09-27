@@ -45,7 +45,8 @@ const BROWSER_HTML = `
     <button class="btn btn-primary" id="cfobActionOpen">${ICONS.workflow}<span>Load Workflow</span></button>
     <button class="btn" id="cfobActionInspect">${ICONS.inspect}<span>Inspect Nodes</span></button>
     <button class="btn" id="cfobActionDownload">${ICONS.download}<span>Download</span></button>
-    <button class="btn" id="cfobActionRename">${ICONS.move}<span>Move/Rename</span></button>
+    <button class="btn" id="cfobActionRename">${ICONS.rename}<span>Rename</span></button>
+    <button class="btn" id="cfobActionMove">${ICONS.move}<span>Move</span></button>
     <button class="btn btn-danger" id="cfobActionDelete">${ICONS.trash}<span>Delete</span></button>
     <div style="width: 1px; height: 1.25em; background: var(--color-border);"></div>
     <button class="icon-btn" id="cfobActionClear" title="Clear Selection">${ICONS.close}</button>
@@ -300,6 +301,7 @@ export default class ComfyOutputBrowser {
     this.$("cfobActionClear").addEventListener('click', () => this.selection.clearSelection());
     this.$("cfobActionDelete").addEventListener('click', () => this.actions.deleteSelected());
     this.$("cfobActionRename").addEventListener('click', () => this.actions.renameSelected());
+    this.$("cfobActionMove").addEventListener('click', () => this.actions.moveSelected());
     this.$("cfobActionDownload").addEventListener('click', () => this.actions.downloadSelected());
     this.$("cfobActionOpen").addEventListener('click', () => this.actions.loadWorkflowSelected());
     this.$("cfobActionInspect").addEventListener('click', () => this.actions.inspectSelected());
@@ -392,7 +394,8 @@ export default class ComfyOutputBrowser {
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
         else if (!noModalOpen) return;
 
-        else if (key === 'm' || key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
+        else if (key === 'm') { e.preventDefault(); e.stopPropagation(); this.fullView.moveFullViewImage(); }
+        else if (key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
         else if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionInspect").click(); }
         else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
         else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
@@ -423,8 +426,12 @@ export default class ComfyOutputBrowser {
         else if ((e.ctrlKey || e.metaKey) && key === 'a') {
           e.preventDefault(); e.stopPropagation(); this.selection.selectAllFiltered();
         }
-        else if (key === 'm' || key === 'r' && !e.ctrlKey) {
-          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.actions.renameSelected(); }
+        else if ((key === 'm' || key === 'r') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          if (key === 'm' ? this.selectedImages.size > 0 : this.selectedImages.size === 1) {
+            e.preventDefault(); e.stopPropagation();
+            if (key === 'm') this.actions.moveSelected();
+            else this.actions.renameSelected();
+          }
         }
         else if (key === 'i' && !e.ctrlKey) {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected(); }

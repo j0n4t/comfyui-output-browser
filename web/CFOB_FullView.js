@@ -28,7 +28,8 @@ export const CFOB_FULL_VIEW_HTML = `
             <button class="btn btn-primary" id="cfobFVActionOpen">${ICONS.workflow}<span>Workflow</span></button>
             <button class="btn" id="cfobFVActionInspect">${ICONS.inspect}<span>Inspect</span></button>
             <button class="btn" id="cfobFVActionDownload">${ICONS.download}<span>Download</span></button>
-            <button class="btn" id="cfobFVActionRename">${ICONS.move}<span>Move/Rename</span></button>
+            <button class="btn" id="cfobFVActionRename">${ICONS.rename}<span>Rename</span></button>
+            <button class="btn" id="cfobFVActionMove">${ICONS.move}<span>Move</span></button>
             <button class="btn btn-danger" id="cfobFVActionDelete">${ICONS.trash}<span>Delete</span></button>
           </div>
         </div>
@@ -306,6 +307,7 @@ export default class CFOB_FullView {
       }
     });
     this.app.$("cfobFVActionRename").addEventListener('click', () => this.renameFullViewImage());
+    this.app.$("cfobFVActionMove").addEventListener('click', () => this.moveFullViewImage());
     this.app.$("cfobFVActionDelete").addEventListener('click', () => this.deleteFullViewImage());
 
   }
@@ -361,8 +363,9 @@ export default class CFOB_FullView {
     const img = this.app.filteredImages[this.currentImageIndex];
     if (!img) return;
     const oldIndex = this.currentImageIndex;
-    let newName = await this.app.settings.customPrompt("Enter new path or filename:", img.name, 'rename');
-    if (!newName || newName === img.name) return;
+    const initialFilename = img.name.split(/\\|\//).pop() || img.name;
+    const newName = await this.app.settings.customPrompt("Enter a new filename or path:", initialFilename, 'rename');
+    if (!newName || newName === img.name || newName === initialFilename) return;
 
     try {
       const res = await fetch("/comfyui-output-browser/rename", {
@@ -374,14 +377,17 @@ export default class CFOB_FullView {
       if (data.success) {
         const oldName = img.name;
         img.name = data.new_name;
-        img.url = this.app.api.getImageUrl(data.new_name);
+        img.mtime = data.mtime || img.mtime;
+        img.url = this.app.api.getImageUrl(data.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
+        this.app.search.removeImageKeywords(oldName);
+        this.app.search.indexImageKeywords(img);
         const meta = await this.app.api.cacheGet(oldName);
         if (meta) {
-          await this.app.api.cacheSet(data.new_name, meta);
+          await this.app.api.cacheSet(data.new_name, meta, img.mtime);
           await this.app.api.cacheDelete(oldName);
         }
         this.app.gallery.filterGallery();
-        this.app.showToast(`Moved to ${data.new_name}`);
+        this.app.showToast(`Renamed to ${data.new_name}`);
 
         if (this.app.filteredImages.length > 0) {
           this.currentImageIndex = Math.min(Math.max(0, oldIndex - 1), this.app.filteredImages.length - 1);
@@ -395,6 +401,55 @@ export default class CFOB_FullView {
     } catch (e) {
       console.error(e);
       this.app.showToast("Rename request failed.");
+    }
+  }
+
+  async moveFullViewImage() {
+    const img = this.app.filteredImages[this.currentImageIndex];
+    if (!img) return;
+    const oldIndex = this.currentImageIndex;
+    const destFolder = await this.app.settings.customPrompt("Choose a destination folder:", "", 'move');
+    if (destFolder === null) return;
+
+    try {
+      const res = await fetch("/comfyui-output-browser/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: [img.name], dest_folder: destFolder })
+      });
+      const data = await res.json();
+      const moved = data.moved?.[0];
+      if (!data.success || !moved) {
+        this.app.showToast(data.errors?.[0] || data.error || "Move failed.");
+        return;
+      }
+
+      const oldName = img.name;
+      this.app.search.removeImageKeywords(oldName);
+      img.name = moved.new_name;
+      img.mtime = moved.mtime || img.mtime;
+      img.url = this.app.api.getImageUrl(moved.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
+      this.app.search.indexImageKeywords(img);
+      const meta = await this.app.api.cacheGet(oldName);
+      if (meta) {
+        await this.app.api.cacheSet(moved.new_name, meta, img.mtime);
+        await this.app.api.cacheDelete(oldName);
+      }
+      this.app.gallery.filterGallery();
+      const newIndex = this.app.filteredImages.indexOf(img);
+      if (newIndex >= 0) {
+        this.currentImageIndex = newIndex;
+        this.updateFullViewUI();
+      } else if (this.app.filteredImages.length > 0) {
+        this.currentImageIndex = Math.min(oldIndex, this.app.filteredImages.length - 1);
+        this.updateFullViewUI();
+      } else {
+        this.closeFullView();
+      }
+      this.app.showToast(`Moved to ${moved.new_name}`);
+    } catch (e) {
+      console.error(e);
+      this.app.showToast("Move request failed.");
     }
   }
 

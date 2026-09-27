@@ -75,90 +75,91 @@ export default class CFOB_ImageActions {
 
   async renameSelected() {
     const app = this.app;
-    const count = app.selectedImages.size;
-    if (count === 0) return;
+    if (app.selectedImages.size !== 1) return;
+    const oldName = Array.from(app.selectedImages)[0];
+    const initialFilename = oldName.split(/\\|\//).pop() || oldName;
+    const newName = await app.settings.customPrompt("Enter a new filename or path:", initialFilename, 'rename');
+    if (!newName || newName === oldName || newName === initialFilename) return;
 
-    if (count === 1) {
-      const oldName = Array.from(app.selectedImages)[0];
-      const newName = await app.settings.customPrompt("Enter new path or filename:", oldName, 'rename');
+    try {
+      const res = await fetch("/comfyui-output-browser/rename", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ old_name: oldName, new_name: newName })
+      });
+      const data = await res.json();
 
-      if (!newName || newName === oldName) return;
-
-      try {
-        const res = await fetch("/comfyui-output-browser/rename", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ old_name: oldName, new_name: newName })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          const img = app.loadedImages.find(i => i.name === oldName);
-          if (img) {
-            app.search.removeImageKeywords(oldName);
-            img.name = data.new_name;
-            img.mtime = data.mtime || img.mtime;
-            img.url = app.api.getImageUrl(data.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
-            app.search.indexImageKeywords(img);
-            const meta = await app.api.cacheGet(oldName);
-            if (meta) {
-              await app.api.cacheSet(data.new_name, meta, img.mtime);
-              await app.api.cacheDelete(oldName);
-            }
+      if (data.success) {
+        const img = app.loadedImages.find(i => i.name === oldName);
+        if (img) {
+          app.search.removeImageKeywords(oldName);
+          img.name = data.new_name;
+          img.mtime = data.mtime || img.mtime;
+          img.url = app.api.getImageUrl(data.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
+          app.search.indexImageKeywords(img);
+          const meta = await app.api.cacheGet(oldName);
+          if (meta) {
+            await app.api.cacheSet(data.new_name, meta, img.mtime);
+            await app.api.cacheDelete(oldName);
           }
-          app.selection.clearSelection();
-          app.gallery.filterGallery();
-          app.showToast(`Moved to ${data.new_name}`);
-        } else {
-          app.showToast(data.error || "Rename failed.");
         }
-      } catch (e) {
-        console.error(e);
-        app.showToast("Rename request failed.");
+        app.selection.clearSelection();
+        app.gallery.filterGallery();
+        app.showToast(`Renamed to ${data.new_name}`);
+      } else {
+        app.showToast(data.error || "Rename failed.");
       }
-    } else {
-      const destFolder = await app.settings.customPrompt(`Move ${count} items to folder:`, "", 'move');
-      if (destFolder === null || destFolder.trim() === "") return;
+    } catch (e) {
+      console.error(e);
+      app.showToast("Rename request failed.");
+    }
+  }
 
-      try {
-        const res = await fetch("/comfyui-output-browser/move", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ files: Array.from(app.selectedImages), dest_folder: destFolder })
-        });
-        const data = await res.json();
+  async moveSelected() {
+    const app = this.app;
+    const files = Array.from(app.selectedImages);
+    if (!files.length) return;
 
-        if (data.success) {
-          for (const m of data.moved) {
-            const img = app.loadedImages.find(i => i.name === m.old_name);
-            if (img) {
-              app.search.removeImageKeywords(m.old_name);
-              img.name = m.new_name;
-              img.mtime = m.mtime || img.mtime;
-              img.url = app.api.getImageUrl(m.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
-              app.search.indexImageKeywords(img);
-              const meta = await app.api.cacheGet(m.old_name);
-              if (meta) {
-                await app.api.cacheSet(m.new_name, meta, img.mtime);
-                await app.api.cacheDelete(m.old_name);
-              }
-            }
+    const destFolder = await app.settings.customPrompt(`Move ${files.length} item(s) to folder:`, "", 'move');
+    if (destFolder === null) return;
+
+    try {
+      const res = await fetch("/comfyui-output-browser/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files, dest_folder: destFolder })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        for (const moved of data.moved) {
+          const img = app.loadedImages.find(i => i.name === moved.old_name);
+          if (!img) continue;
+          app.search.removeImageKeywords(moved.old_name);
+          img.name = moved.new_name;
+          img.mtime = moved.mtime || img.mtime;
+          img.url = app.api.getImageUrl(moved.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
+          app.search.indexImageKeywords(img);
+          const meta = await app.api.cacheGet(moved.old_name);
+          if (meta) {
+            await app.api.cacheSet(moved.new_name, meta, img.mtime);
+            await app.api.cacheDelete(moved.old_name);
           }
-          app.selection.clearSelection();
-          app.gallery.filterGallery();
-          if (data.errors && data.errors.length > 0) {
-            app.showToast(`Moved ${data.moved.length}, but ${data.errors.length} failed.`);
-            console.warn("Move errors:", data.errors);
-          } else {
-            app.showToast(`Moved ${data.moved.length} item(s) to ${destFolder}`);
-          }
-        } else {
-          app.showToast(data.error || "Move failed.");
         }
-      } catch (e) {
-        console.error(e);
-        app.showToast("Move request failed.");
+        app.selection.clearSelection();
+        app.gallery.filterGallery();
+        if (data.errors && data.errors.length > 0) {
+          app.showToast(`Moved ${data.moved.length}, but ${data.errors.length} failed.`);
+          console.warn("Move errors:", data.errors);
+        } else {
+          app.showToast(`Moved ${data.moved.length} item(s) to ${destFolder || "root"}`);
+        }
+      } else {
+        app.showToast(data.error || "Move failed.");
       }
+    } catch (e) {
+      console.error(e);
+      app.showToast("Move request failed.");
     }
   }
 
