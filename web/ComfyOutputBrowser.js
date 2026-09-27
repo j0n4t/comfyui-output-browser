@@ -310,6 +310,8 @@ export default class ComfyOutputBrowser {
     this.settings.bindEvents();
 
     document.addEventListener('keydown', (e) => {
+      if (!this.root?.contains(document.activeElement)) return;
+
       const fvModal = this.$("cfobFullViewModal");
       const configModal = this.$("cfobConfigModal");
       const inspectorModal = this.$("cfobInspectorModal");
@@ -343,6 +345,7 @@ export default class ComfyOutputBrowser {
           else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
           else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
           else if (ignoredKeywordsModal.classList.contains('active')) ignoredKeywordsModal.classList.remove('active');
+          else if (target === searchInput && !this.$("cfobSearchSuggestions").hidden) this.hideSearchSuggestions();
           else if (isEditing) target.blur();
           else if (this.selectedImages.size > 0) this.clearSelection();
           else this.hideWithTransition();
@@ -675,9 +678,16 @@ export default class ComfyOutputBrowser {
       this.addSearchHistory();
       this.hideSearchSuggestions();
       this.focusFirstGridItem();
+      if (this.filteredImages.length) input.blur();
     } else if (e.key === 'Enter') {
-      this.addSearchHistory();
-      this.hideSearchSuggestions();
+      const suggestion = options[this.activeSearchSuggestionIndex] || options[0];
+      if (!suggestions.hidden && suggestion) {
+        e.preventDefault();
+        this.completeSearchSuggestion(/** @type {HTMLElement} */(suggestion).dataset.value || "");
+      } else {
+        this.addSearchHistory();
+        this.hideSearchSuggestions();
+      }
     }
   }
 
@@ -743,31 +753,48 @@ export default class ComfyOutputBrowser {
 
     const prefix = token.toLowerCase();
     const ignoredKeywords = new Set(this.settings.ignoredAutocompleteKeywords.map(keyword => keyword.toLowerCase()));
-    const matches = new Set(candidates.filter(candidate =>
-      candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix
-    ));
     const keywordPrefix = colonIndex >= 0 ? token.slice(colonIndex + 1).toLowerCase() : prefix;
     const keywordQualifier = colonIndex >= 0 ? token.slice(0, colonIndex + 1) : "";
-    if (keywordPrefix && key !== 'name' && key !== 'path') {
+    /** @type {string[]} */
+    const matches = [];
+    const addMatch = (/** @type {string} */ match) => {
+      if (!matches.includes(match) && matches.length < 8) matches.push(match);
+    };
+
+    if (!token.trim()) {
+      for (const candidate of candidates) addMatch(candidate);
+    } else if (key === 'name') {
+      const filenames = new Set(this.loadedImages.map(image => image.name.replace(/\\/g, '/').split('/').pop() || ""));
+      for (const filename of filenames) {
+        if (!filename.toLowerCase().startsWith(keywordPrefix) || filename.toLowerCase() === keywordPrefix) continue;
+        addMatch(`name:${filename.slice(0, keywordPrefix.length + 5)}`);
+      }
+    } else if (key === 'path') {
+      const directories = new Set();
+      for (const image of this.loadedImages) {
+        const parts = image.name.replace(/\\/g, '/').split('/');
+        parts.pop();
+        for (let i = 1; i <= parts.length; i++) directories.add(parts.slice(0, i).join('/') + '/');
+      }
+      const matchingDirectories = Array.from(directories)
+        .filter(directory => directory.toLowerCase().startsWith(keywordPrefix))
+        .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
+      for (const directory of matchingDirectories) addMatch(`path:${directory}`);
+    } else {
       const keywords = Array.from(this.keywordDictionary.entries())
         .filter(([keyword]) => !ignoredKeywords.has(keyword) && keyword.startsWith(keywordPrefix) && keyword !== keywordPrefix)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-      for (const [keyword] of keywords) {
-        const suggestion = `${keywordQualifier}${keyword}`;
-        if (!matches.has(suggestion)) matches.add(suggestion);
-        if (matches.size >= 8) break;
-      }
-    }
+      for (const [keyword] of keywords) addMatch(`${keywordQualifier}${keyword}`);
 
-    if (!/\s/.test(token.slice(colonIndex + 1))) {
-      const imageKey = key === 'name' || key === 'path' ? `${key}:` : "";
-      if ((!key || imageKey) && matches.size < 8) {
-        for (const image of this.loadedImages) {
-          if (/\s/.test(image.name)) continue;
-          const candidate = `${imageKey}${image.name}`;
-          if (candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix) {
-            matches.add(candidate);
-            if (matches.size >= 8) break;
+      for (const candidate of candidates) {
+        if (candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix) addMatch(candidate);
+      }
+
+      if (!key && !/\s/.test(token)) {
+        const filenames = new Set(this.loadedImages.map(image => image.name.replace(/\\/g, '/').split('/').pop() || ""));
+        for (const filename of filenames) {
+          if (filename.toLowerCase().startsWith(prefix) && filename.toLowerCase() !== prefix) {
+            addMatch(`${filename.slice(0, prefix.length + 5)}`);
           }
         }
       }
@@ -775,12 +802,12 @@ export default class ComfyOutputBrowser {
 
     suggestions.replaceChildren();
 
-    if (!matches.size || document.activeElement !== input) {
+    if (!matches.length || document.activeElement !== input) {
       this.hideSearchSuggestions();
       return;
     }
 
-    for (const match of Array.from(matches).slice(0, 8)) {
+    for (const match of matches) {
       const option = document.createElement('div');
       option.className = 'search-suggestion';
       option.setAttribute('role', 'option');
@@ -829,6 +856,7 @@ export default class ComfyOutputBrowser {
     cards.forEach((card, index) => /** @type {HTMLElement} */(card).classList.toggle('focused', index === 0));
     const firstCard = cards[0];
     firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    /** @type {HTMLElement | undefined} */ (firstCard)?.focus();
     this.updateCardStyles();
     this.updateActionBar();
   }
@@ -1141,6 +1169,7 @@ export default class ComfyOutputBrowser {
         el.classList.toggle('focused', i === nextIdx);
       }
     });
+    /** @type {HTMLElement} */ (cards[nextIdx]).focus();
 
     this.updateCardStyles();
     this.updateActionBar();
@@ -1577,6 +1606,7 @@ export default class ComfyOutputBrowser {
       const isSelected = this.selectedImages.has(img.name);
       const card = document.createElement("div");
       card.className = `image-card ${isSelected ? 'selected' : ''}`;
+      card.tabIndex = -1;
       card.dataset.name = img.name;
       card.dataset.index = String(this.loadedImages.indexOf(img));
 

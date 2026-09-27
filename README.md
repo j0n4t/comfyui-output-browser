@@ -7,7 +7,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 ### 1. Grid / Gallery Mode
 
 - **Spatial Navigation:** Browse through generated image cards seamlessly using your keyboard arrow keys (`↑`, `↓`, `←`, `→`). Combine with **`Shift`** to select ranges or **`Ctrl`** to shift focus without altering selections.
-- **Search Navigation:** Type in the search bar and press **`Tab`** to complete the selected suggestion. While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image. In the grid, **`↑`** from its first row returns to search.
+- **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image. In the grid, **`↑`** from its first row returns to search.
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Ctrl + Space`** to toggle individual item selections.
 - **File Management:** Instantly send unwanted outputs to the trash (`Delete`), download files locally (`D`), or rename/move items (`M` or `R`).
 - **Workflow Recovery:** Select any image card and press **`W`** to extract and load its embedded workflow straight back into your ComfyUI workspace.
@@ -28,7 +28,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 | Operational Mode     | Key Combination                             | Action / Description                                              |
 | -------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
 | **Global**           | **`Ctrl + Shift + ?`**                      | Open the browser interface and focus the search bar.              |
-| **Search**           | **`Tab`**                                    | Complete the selected suggestion (or the first if none is selected). |
+| **Search**           | **`Enter` / `Tab`**                          | Complete the selected suggestion (or the first if none is selected). |
 |                      | **`ArrowUp` / `ArrowDown`** (suggestions open) | Cycle through autocomplete suggestions.                            |
 |                      | **`ArrowDown`** (suggestions closed)         | Focus the first matching grid item.                                |
 |                      | **`ArrowUp`** (suggestions closed)           | Recall the previous search query.                                  |
@@ -65,3 +65,5 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 | **Combined**         | Syntaxes can be chained to create complex queries.                                                                  | `prompt:"blue sky" !name:test, 1:sdxl` |
 
 Use **Options → Ignore Autocomplete Keywords...** to hide exact words from autocomplete suggestions. Enter one keyword per line or separate them with commas. Ignored words still work in filters; the list is empty by default because no workflow-independent terms can be safely assumed useless.
+
+Autocomplete ranks matching keywords by how many images contain them. `name:` suggests filenames (not folder names), completing at most five characters beyond the typed prefix; `path:` suggests directories, with root folders before nested folders. Starting a new comma-separated filter group also opens suggestions for that group.

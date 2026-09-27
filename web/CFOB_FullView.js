@@ -109,6 +109,8 @@ export default class CFOB_FullView {
     this.fvStartY = 0;
     this.fvHasDragged = false;
     this.currentImageIndex = 0;
+    /** @type {HTMLElement | null} */
+    this.returnFocusElement = null;
   }
 
   bindEvents() {
@@ -312,14 +314,26 @@ export default class CFOB_FullView {
 
   /** @param {any} img */
   openFullView(img) {
+    const modal = this.app.$("cfobFullViewModal");
+    if (!modal.classList.contains('active')) {
+      const activeElement = document.activeElement;
+      this.returnFocusElement = activeElement instanceof HTMLElement && this.app.root?.contains(activeElement)
+        ? activeElement
+        : null;
+    }
     this.currentImageIndex = this.app.filteredImages.indexOf(img);
     this.updateFullViewUI();
-    this.app.$("cfobFullViewModal").classList.add('active');
+    modal.classList.add('active');
+    this.app.$("cfobCloseFullViewBtn").focus();
   }
 
   closeFullView() {
     this.app.$("cfobFullViewModal").classList.remove('active');
     /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = "";
+    const returnFocus = this.returnFocusElement;
+    this.returnFocusElement = null;
+    if (returnFocus?.isConnected && this.app.root?.contains(returnFocus)) returnFocus.focus();
+    else this.app.$("cfobSearchInput").focus();
   }
 
   /** @param {number} dir */
