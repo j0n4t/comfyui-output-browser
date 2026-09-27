@@ -829,71 +829,118 @@ export default class COB_Settings {
     setTimeout(() => input.focus(), 10);
   }
 
-  /** @param {number} idx */
-  openInspector(idx) {
-    const img = this.app.loadedImages[idx];
-    if (!img) return;
+  /**
+   * @param {Event} e
+   * @param {any} safePath
+   */
+  openAddPathMenu(e, safePath) {
+    e.stopPropagation();
+    if (this.activePopover) this.activePopover.remove();
 
-    const modal = this.app.$("cfobInspectorModal");
-    this.app.$("cfobInspectorTitle").innerText = `Inspector - ${img.name.split('/').pop()}`;
+    const rect = /** @type {HTMLElement} */ (e.currentTarget)?.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'popover-menu';
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
 
-    const promptText = img.prompt ? JSON.stringify(img.prompt, null, 2) : "No API Prompt data available";
-    const workflowText = img.workflow ? JSON.stringify(img.workflow, null, 2) : "No UI Workflow data available";
+    let html = `<div class="popover-header">Add Path To Field:</div>`;
+    this.fieldConfigs.forEach((/** @type {{ label: any; }} */ cfg, /** @type {any} */ i) => html += `<button class="popover-item append-path" data-idx="${i}" data-path="${safePath}"><span>${this.app.escapeHtml(cfg.label)}</span></button>`);
+    html += `<div style="border-top: 1px solid var(--border); margin: 4px 0;"></div><button class="popover-item new-path" data-path="${safePath}"><span style="color: var(--link);">+ Create New Field</span></button>`;
 
-    /** @type {HTMLInputElement} */ (this.app.$("cfobInsPromptText")).value = promptText;
-    /** @type {HTMLInputElement} */ (this.app.$("cfobInsWorkflowText")).value = workflowText;
+    menu.innerHTML = html;
+    this.app.root?.appendChild(menu);
+    this.activePopover = menu;
 
-    const nodesGrid = this.app.$("cfobInsNodesGrid");
-    nodesGrid.innerHTML = "";
-
-    if (img.prompt) {
-      for (const [nodeId, nodeData] of Object.entries(img.prompt)) {
-        const nodeCard = document.createElement("div");
-        nodeCard.className = "node-card";
-
-        const title = nodeData._meta?.title || nodeData.class_type || `Node ${nodeId}`;
-        const classType = nodeData.class_type || "";
-
-        let inputsHtml = "";
-        if (nodeData.inputs) {
-          for (const [inKey, inVal] of Object.entries(nodeData.inputs)) {
-            const valDisplay = Array.isArray(inVal) ? `Link: Node ${inVal[0]}, Output ${inVal[1]}` : String(inVal);
-            inputsHtml += `
-              <div class="input-row">
-                <div class="input-header">
-                  <span class="input-name">${this.app.escapeHtml(inKey)}</span>
-                </div>
-                <div class="input-value-wrapper">
-                  <span class="input-value-text">${this.app.escapeHtml(valDisplay)}</span>
-                  <button class="icon-btn copy-val-btn" data-val="${encodeURIComponent(valDisplay)}" title="Copy">${ICONS.copy}</button>
-                </div>
-              </div>
-            `;
-          }
+    menu.querySelectorAll('.append-path').forEach(b => {
+      b.addEventListener('click', () => {
+        const field = this.fieldConfigs[/** @type {HTMLElement} */ (b).dataset.idx || 0];
+        const p = /** @type {HTMLElement} */ (b).dataset.path;
+        if (!field.paths?.includes(p)) {
+          field.paths = field.paths ? `${field.paths}, ${p}` : p;
+          this.saveConfig(this.fieldConfigs);
+          this.app.gallery.renderGallery();
+          this.app.showToast(`Added to '${field.label}'`);
         }
+        this.activePopover?.remove(); this.activePopover = null;
+      });
+    });
 
-        nodeCard.innerHTML = `
-          <div class="node-header">
-            <div class="node-title">
-              ${this.app.escapeHtml(title)}
-              <small>${this.app.escapeHtml(classType)}</small>
-            </div>
-            <span class="node-id">#${nodeId}</span>
-          </div>
-          <div class="node-body">
-            ${inputsHtml || '<i style="color: var(--color-text-disabled);">No inputs</i>'}
-          </div>
-        `;
-
-        nodesGrid.appendChild(nodeCard);
+    menu.querySelector('.new-path')?.addEventListener('click', async () => {
+      const lbl = await this.customPrompt("Enter a label for the new card field:", "Custom Field");
+      if (lbl) {
+        this.fieldConfigs.push({ label: lbl, paths: /** @type {HTMLElement} */ (menu.querySelector('.new-path'))?.dataset.path });
+        this.saveConfig(this.fieldConfigs);
+        this.app.gallery.renderGallery();
+        this.app.showToast(`Created field '${lbl}'`);
       }
-    } else {
-      nodesGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--color-text-muted); padding: 2em;">No node structure parsed from image metadata.</div>`;
+      this.activePopover?.remove(); this.activePopover = null;
+    });
+  }
+
+  /** @param {number} idx */
+  async openInspector(idx) {
+    const img = this.app.loadedImages[idx];
+
+    if (!img.isParsed) {
+      this.app.$("cfobInspectorTitle").innerText = `Loading Metadata...`;
+      await this.app.api.loadMetadata(img);
     }
 
-    modal.classList.add('active');
-    setTimeout(() => {
-      /** @type {HTMLElement} */(this.app.root?.querySelector('#cfobInspectorTabs .tab.active'))?.focus();
-    }, 10);
+    this.app.$("cfobInspectorTitle").innerText = `Metadata: ${img.name}`;
+    /** @type {HTMLInputElement} */ (this.app.$("cfobInsPromptText")).value = img.prompt ? JSON.stringify(img.prompt, null, 2) : 'No API Prompt Metadata';
+    /** @type {HTMLInputElement} */ (this.app.$("cfobInsWorkflowText")).value = img.workflow ? JSON.stringify(img.workflow, null, 2) : 'No UI Workflow Metadata';
+
+    const grid = this.app.$("cfobInsNodesGrid");
+    grid.innerHTML = '';
+
+    if (img.workflow?.nodes) {
+      img.workflow.nodes.forEach((/** @type {any} */ node) => {
+        const titleText = node.title || node.type || node.id;
+        let html = `<div class="node-card"><div class="node-header"><div class="node-title">${this.app.escapeHtml(titleText)}</div><span class="node-id">#${node.id}</span></div><div class="node-body">`;
+
+        /**
+         * @type {{ key: string; val: any; }[]}
+         */
+        let w = [];
+        if (node.widgets_values_named) Object.entries(node.widgets_values_named).forEach(([key, val]) => w.push({ key, val }));
+        else if (node.widgets_values) node.widgets_values.forEach((/** @type {any} */ val, /** @type {any} */ i) => w.push({ key: `widget[${i}]`, val }));
+
+        if (w.length > 0) {
+          w.forEach(({ key, val }) => {
+            const pPath = this.app.escapeHtml(`${titleText}.${key}`);
+            const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
+            html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+          });
+        } else {
+          html += `<i style="color:#666">No widgets</i>`;
+        }
+        grid.innerHTML += html + `</div></div>`;
+      });
+    } else if (img.prompt) {
+      for (const [id, node] of Object.entries(img.prompt)) {
+        const titleText = node._meta?.title || node.class_type || 'Unknown Node';
+        let html = `<div class="node-card"><div class="node-header"><div class="node-title">${this.app.escapeHtml(titleText)}<small>${this.app.escapeHtml(node.class_type)}</small></div><span class="node-id">#${id}</span></div><div class="node-body">`;
+
+        if (node.inputs && Object.keys(node.inputs).length > 0) {
+          for (const [key, val] of Object.entries(node.inputs)) {
+            const pPath = this.app.escapeHtml(`${titleText}.${key}`);
+            if (Array.isArray(val) && val.length >= 2 && typeof val[0] === 'string' && !isNaN(val[1])) {
+              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span></div><span style="color: var(--link); font-style: italic; font-size: 11px;">➔ Connected to #${val[0]}</span></div>`;
+            } else {
+              const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
+              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">➕ Field</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+            }
+          }
+        } else {
+          html += `<i style="color:#666">No inputs</i>`;
+        }
+        grid.innerHTML += html + `</div></div>`;
+      }
+    }
+
+    grid.querySelectorAll('.cp-val').forEach(b => b.addEventListener('click', (e) => this.app.actions.copyValue(/** @type {HTMLElement} */(e.currentTarget), /** @type {HTMLElement} */(e.currentTarget).dataset.val)));
+    grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, /** @type {HTMLElement} */(e.currentTarget)?.dataset.path)));
+
+    this.app.$("cfobInspectorModal").classList.add('active');
   }
 }

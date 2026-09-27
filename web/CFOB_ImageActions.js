@@ -199,10 +199,11 @@ export default class CFOB_ImageActions {
   }
 
   /**
-   * @param {{ innerHTML: string; }} btn
+   * @param {HTMLElement | null} btn
    * @param {any} encodedVal
    */
   copyValue(btn, encodedVal) {
+    if (!btn) return;
     const val = decodeURIComponent(encodedVal || "");
     navigator.clipboard.writeText(val).then(() => {
       const origHtml = btn.innerHTML;
