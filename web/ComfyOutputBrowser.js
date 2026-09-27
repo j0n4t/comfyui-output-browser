@@ -258,9 +258,9 @@ export default class ComfyOutputBrowser {
       this.searchHistoryIndex = this.searchHistory.length;
       this.activeSearchSuggestionIndex = -1;
       this.filterGallery();
-      this.updateSearchSuggestions();
+      this.updateSearchSuggestions(true);
     });
-    this.$("cfobSearchInput").addEventListener('focus', () => this.updateSearchSuggestions());
+    this.$("cfobSearchInput").addEventListener('focus', () => this.updateSearchSuggestions(true));
     this.$("cfobSearchInput").addEventListener('blur', () => {
       this.addSearchHistory();
       this.hideSearchSuggestions();
@@ -271,7 +271,7 @@ export default class ComfyOutputBrowser {
       /** @type {HTMLInputElement} */ (this.$("cfobSearchInput")).value = "";
       this.searchHistoryIndex = this.searchHistory.length;
       this.filterGallery();
-      this.updateSearchSuggestions();
+      this.updateSearchSuggestions(true);
     });
 
     this.fullView.bindEvents();
@@ -650,7 +650,7 @@ export default class ComfyOutputBrowser {
       const suggestion = options[this.activeSearchSuggestionIndex] || options[0];
       if (suggestion) {
         e.preventDefault();
-        this.completeSearchSuggestion(/** @type {HTMLElement} */ (suggestion).dataset.value || "");
+        this.completeSearchSuggestion(/** @type {HTMLElement} */(suggestion).dataset.value || "");
       }
     } else if (e.key === 'ArrowUp') {
       if (!suggestions.hidden && options.length) {
@@ -664,7 +664,7 @@ export default class ComfyOutputBrowser {
       input.value = this.searchHistory[this.searchHistoryIndex];
       this.activeSearchSuggestionIndex = -1;
       this.filterGallery();
-      this.updateSearchSuggestions();
+      this.updateSearchSuggestions(true);
     } else if (e.key === 'ArrowDown') {
       if (!suggestions.hidden && options.length) {
         e.preventDefault();
@@ -718,7 +718,9 @@ export default class ComfyOutputBrowser {
     this.$("cfobSearchInput").setAttribute('aria-expanded', 'false');
   }
 
-  updateSearchSuggestions() {
+  updateSearchSuggestions(force = false) {
+    if (!force && (this.serverImageFetchCount > 0 || this.isIdleParsing)) return;
+
     const input = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
     const suggestions = this.$("cfobSearchSuggestions");
     const value = input.value;
@@ -734,7 +736,7 @@ export default class ComfyOutputBrowser {
     const key = colonIndex >= 0 ? token.slice(0, colonIndex).toLowerCase() : "";
     this.activeSearchSuggestionIndex = -1;
     const candidates = ['name:', 'path:', 'prompt:', 'workflow:'];
-    this.settings.fieldConfigs.forEach((field, index) => {
+    this.settings.fieldConfigs.forEach((/** @type {{ label: string; }} */ field, /** @type {number} */ index) => {
       candidates.push(`${index + 1}:`);
       if (!/\s/.test(field.label)) candidates.push(`${field.label}:`);
     });
@@ -813,7 +815,7 @@ export default class ComfyOutputBrowser {
     this.searchHistoryIndex = this.searchHistory.length;
     this.activeSearchSuggestionIndex = -1;
     this.filterGallery();
-    this.updateSearchSuggestions();
+    this.updateSearchSuggestions(true);
   }
 
   focusFirstGridItem() {
@@ -824,7 +826,7 @@ export default class ComfyOutputBrowser {
     this.selectionAnchorIdx = 0;
     this.selectedImages.add(this.filteredImages[0].name);
     const cards = Array.from(this.$("cfobGalleryGrid").querySelectorAll('.image-card'));
-    cards.forEach((card, index) => /** @type {HTMLElement} */ (card).classList.toggle('focused', index === 0));
+    cards.forEach((card, index) => /** @type {HTMLElement} */(card).classList.toggle('focused', index === 0));
     const firstCard = cards[0];
     firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     this.updateCardStyles();
@@ -875,6 +877,7 @@ export default class ComfyOutputBrowser {
   setIdleParsingActive(isActive) {
     this.isIdleParsing = isActive;
     this.updateRefreshButtonAnimation();
+    if (!isActive && this.serverImageFetchCount === 0) this.updateSearchSuggestions();
   }
 
   async fetchServerImages() {
@@ -950,6 +953,7 @@ export default class ComfyOutputBrowser {
     } finally {
       this.serverImageFetchCount--;
       this.updateRefreshButtonAnimation();
+      if (this.serverImageFetchCount === 0 && !this.isIdleParsing) this.updateSearchSuggestions();
     }
   }
 

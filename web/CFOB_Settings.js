@@ -407,7 +407,7 @@ export default class COB_Settings {
       const keywords = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim().toLowerCase()).filter(Boolean))];
       this.saveIgnoredAutocompleteKeywords(keywords);
       this.app.$("cfobIgnoredKeywordsModal").classList.remove('active');
-      this.app.updateSearchSuggestions();
+      this.app.updateSearchSuggestions(true);
       this.app.showToast("Saved ignored autocomplete keywords");
     });
   }
