@@ -5,7 +5,7 @@ export const CFOB_FULL_VIEW_HTML = `
     <div class="full-view-layout">
       <div class="full-view-main">
         <div class="full-view-top-bar">
-          <span id="cfobFullViewCount" style="font-weight: 600; font-size: 0.875em;">1 / 10</span>
+          <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
           <div style="display: flex; gap: 0.5em; align-items: center;">
             <button class="icon-btn" id="cfobZoomInBtn" title="Zoom In">${ICONS.zoomIn}</button>
             <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out">${ICONS.zoomOut}</button>
@@ -52,6 +52,9 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
     display: flex; justify-content: space-between; align-items: center;
     color: var(--color-text-inverse); z-index: 10;
   }
+  #cfob-root .full-view-count { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; font-size: 0.875em; cursor: pointer; }
+  #cfob-root .full-view-count:hover { text-decoration: underline; }
+  #cfob-root .full-view-count:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
 
   #cfob-root .full-view-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5em; width: 100%; }
   #cfob-root .full-view-actions .btn { justify-content: center; font-size: 0.6875em; padding: 0.375em 0.5em; }
@@ -144,6 +147,7 @@ export default class CFOB_FullView {
       }
     });
     this.app.$("cfobCloseFullViewBtn").addEventListener('click', () => this.closeFullView());
+    this.app.$("cfobFullViewCount").addEventListener('click', () => this.goToImageNumber());
     const layout = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-layout'));
     const sidebarResizer = this.app.$("cfobFullViewSidebarResizer");
     this.applySidebarSize();
@@ -465,6 +469,23 @@ export default class CFOB_FullView {
     this.currentImageIndex += dir;
     if (this.currentImageIndex < 0) this.currentImageIndex = this.app.filteredImages.length - 1;
     if (this.currentImageIndex >= this.app.filteredImages.length) this.currentImageIndex = 0;
+    this.updateFullViewUI();
+  }
+
+  async goToImageNumber() {
+    const imageCount = this.app.filteredImages.length;
+    if (!imageCount) return;
+    const value = await this.app.settings.customPrompt(
+      `Go to image number (1-${imageCount}):`,
+      String(this.currentImageIndex + 1)
+    );
+    if (value === null) return;
+    const imageNumber = Number(value.trim());
+    if (!/^\d+$/.test(value.trim()) || !Number.isInteger(imageNumber) || imageNumber < 1 || imageNumber > imageCount) {
+      this.app.showToast(`Enter an image number from 1 to ${imageCount}.`);
+      return;
+    }
+    this.currentImageIndex = imageNumber - 1;
     this.updateFullViewUI();
   }
 
