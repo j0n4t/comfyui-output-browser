@@ -105,6 +105,25 @@ export const CFOB_SETTINGS_MODALS_HTML = `
     </div>
   </div>
 
+  <div class="modal-overlay" id="cfobIgnoredKeywordsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Ignore Autocomplete Keywords</h3>
+        <button class="icon-btn" id="cfobCloseIgnoredKeywordsBtn">${ICONS.close}</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">
+          Hide exact keywords from search autocomplete (one per line or comma-separated). This does not affect filtering. Only add terms that are always present and never useful to search for; the sample workflows do not establish any universal terms.
+        </p>
+        <textarea id="cfobIgnoredKeywordsInput" class="config-paths-textarea" style="height: 8.75em; width: 100%;" placeholder="No ignored keywords"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="cfobResetIgnoredKeywordsBtn">Reset Defaults</button>
+        <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="cfobInspectorModal">
     <div class="modal-content">
       <div class="modal-header">${ICONS.inspect}<h3 id="cfobInspectorTitle">Image Metadata Inspector</h3><button class="icon-btn" id="cfobCloseInspectorBtn">${ICONS.close}</button></div>
@@ -175,6 +194,8 @@ export default class COB_Settings {
     this.currentSort = localStorage.getItem('cfob_sort') || 'default';
     this.fieldConfigs = this.loadConfig();
     this.hiddenFolders = this.loadHiddenFoldersConfig();
+    /** @type {string[]} */
+    this.ignoredAutocompleteKeywords = this.loadIgnoredAutocompleteKeywords();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.browserMode = localStorage.getItem('comfy_folder_browser_mode') || 'full';
     this.sidebarWidth = Number(localStorage.getItem('comfy_folder_browser_width') || 450);
@@ -216,6 +237,19 @@ export default class COB_Settings {
   saveHiddenFoldersConfig(folders) {
     this.hiddenFolders = folders;
     localStorage.setItem('comfy_folder_browser_hidden_folders', JSON.stringify(folders));
+  }
+
+  loadIgnoredAutocompleteKeywords() {
+    const saved = localStorage.getItem('cfob_ignored_autocomplete_keywords');
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  /**
+   * @param {string[]} keywords
+   */
+  saveIgnoredAutocompleteKeywords(keywords) {
+    this.ignoredAutocompleteKeywords = keywords;
+    localStorage.setItem('cfob_ignored_autocomplete_keywords', JSON.stringify(keywords));
   }
 
   /**
@@ -362,6 +396,20 @@ export default class COB_Settings {
       this.app.filterGallery();
       this.app.showToast("Saved hidden folders configuration");
     });
+
+    this.app.$("cfobCloseIgnoredKeywordsBtn").addEventListener('click', () => this.app.$("cfobIgnoredKeywordsModal").classList.remove('active'));
+    this.app.$("cfobResetIgnoredKeywordsBtn").addEventListener('click', () => {
+      this.saveIgnoredAutocompleteKeywords([]);
+      this.openIgnoredAutocompleteKeywordsModal();
+    });
+    this.app.$("cfobSaveIgnoredKeywordsBtn").addEventListener('click', () => {
+      const val = /** @type {HTMLInputElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value;
+      const keywords = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim().toLowerCase()).filter(Boolean))];
+      this.saveIgnoredAutocompleteKeywords(keywords);
+      this.app.$("cfobIgnoredKeywordsModal").classList.remove('active');
+      this.app.updateSearchSuggestions();
+      this.app.showToast("Saved ignored autocomplete keywords");
+    });
   }
 
   /** @param {Event} e  */
@@ -447,6 +495,9 @@ export default class COB_Settings {
         <button class="popover-item" id="cfobConfigHiddenBtn">
           <span>Configure Hidden Paths...</span>
         </button>
+        <button class="popover-item" id="cfobConfigIgnoredKeywordsBtn">
+          <span>Ignore Autocomplete Keywords...</span>
+        </button>
         <button class="popover-item" id="cfobConfigFieldsBtn">
           <span>Customize Card Fields...</span>
         </button>
@@ -519,6 +570,13 @@ export default class COB_Settings {
     const configHiddenBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobConfigHiddenBtn'));
     configHiddenBtn.addEventListener('click', () => {
       this.openHiddenFoldersModal();
+      popover.remove();
+      this.activePopover = null;
+    });
+
+    const configIgnoredKeywordsBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobConfigIgnoredKeywordsBtn'));
+    configIgnoredKeywordsBtn.addEventListener('click', () => {
+      this.openIgnoredAutocompleteKeywordsModal();
       popover.remove();
       this.activePopover = null;
     });
@@ -757,6 +815,14 @@ export default class COB_Settings {
     const modal = this.app.$("cfobHiddenFoldersModal");
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobHiddenFoldersInput"));
     input.value = this.hiddenFolders.join("\n");
+    modal.classList.add('active');
+    setTimeout(() => input.focus(), 10);
+  }
+
+  openIgnoredAutocompleteKeywordsModal() {
+    const modal = this.app.$("cfobIgnoredKeywordsModal");
+    const input = /** @type {HTMLInputElement} */ (this.app.$("cfobIgnoredKeywordsInput"));
+    input.value = this.ignoredAutocompleteKeywords.join("\n");
     modal.classList.add('active');
     setTimeout(() => input.focus(), 10);
   }

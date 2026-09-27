@@ -63,3 +63,5 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 | **`index:value`**    | **Index Search:** Restricts the search to a custom configured field by its numeric order (1-based).                 | `1:sdxl`, `2:1024`                     |
 | **`.` (Prefix)**     | **Force Show Hidden:** Temporarily overrides the hidden folder filter if the entire query starts with a dot.        | `.drafts`, `. name:test`               |
 | **Combined**         | Syntaxes can be chained to create complex queries.                                                                  | `prompt:"blue sky" !name:test, 1:sdxl` |
+
+Use **Options → Ignore Autocomplete Keywords...** to hide exact words from autocomplete suggestions. Enter one keyword per line or separate them with commas. Ignored words still work in filters; the list is empty by default because no workflow-independent terms can be safely assumed useless.

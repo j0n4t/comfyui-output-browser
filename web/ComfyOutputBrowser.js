@@ -314,6 +314,7 @@ export default class ComfyOutputBrowser {
       const configModal = this.$("cfobConfigModal");
       const inspectorModal = this.$("cfobInspectorModal");
       const hiddenModal = this.$("cfobHiddenFoldersModal");
+      const ignoredKeywordsModal = this.$("cfobIgnoredKeywordsModal");
       const confirmModal = this.$("cfobConfirmModal");
       const promptModal = this.$("cfobPromptModal");
 
@@ -323,6 +324,7 @@ export default class ComfyOutputBrowser {
       const noModalOpen = !configModal.classList.contains('active') &&
         !inspectorModal.classList.contains('active') &&
         !hiddenModal.classList.contains('active') &&
+        !ignoredKeywordsModal.classList.contains('active') &&
         !confirmModal.classList.contains('active') &&
         !promptModal.classList.contains('active');
 
@@ -340,6 +342,7 @@ export default class ComfyOutputBrowser {
           else if (configModal.classList.contains('active')) configModal.classList.remove('active');
           else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
           else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
+          else if (ignoredKeywordsModal.classList.contains('active')) ignoredKeywordsModal.classList.remove('active');
           else if (isEditing) target.blur();
           else if (this.selectedImages.size > 0) this.clearSelection();
           else this.hideWithTransition();
@@ -737,6 +740,7 @@ export default class ComfyOutputBrowser {
     });
 
     const prefix = token.toLowerCase();
+    const ignoredKeywords = new Set(this.settings.ignoredAutocompleteKeywords.map(keyword => keyword.toLowerCase()));
     const matches = new Set(candidates.filter(candidate =>
       candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix
     ));
@@ -744,7 +748,7 @@ export default class ComfyOutputBrowser {
     const keywordQualifier = colonIndex >= 0 ? token.slice(0, colonIndex + 1) : "";
     if (keywordPrefix && key !== 'name' && key !== 'path') {
       const keywords = Array.from(this.keywordDictionary.entries())
-        .filter(([keyword]) => keyword.startsWith(keywordPrefix) && keyword !== keywordPrefix)
+        .filter(([keyword]) => !ignoredKeywords.has(keyword) && keyword.startsWith(keywordPrefix) && keyword !== keywordPrefix)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
       for (const [keyword] of keywords) {
         const suggestion = `${keywordQualifier}${keyword}`;
