@@ -18,7 +18,8 @@ export default class CFOB_Gallery {
     if (clearBtn) clearBtn.style.display = searchStr ? 'flex' : 'none';
 
     // 1. Pre-parse the query outside the image loop to prevent redundant regex and parsing overhead
-    const rawOrGroups = searchStr.split(',').map((/** @type {string} */ g) => g.trim()).filter(Boolean);
+    const searchQuery = searchStr.replace(/^\.\s+/, '');
+    const rawOrGroups = searchQuery.split(',').map((/** @type {string} */ g) => g.trim()).filter(Boolean);
 
     const parsedQuery = rawOrGroups.map(groupStr => {
       const andTerms = groupStr.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
@@ -27,13 +28,29 @@ export default class CFOB_Gallery {
         const actualTerm = isNot ? term.substring(1) : term;
         if (!actualTerm) return null;
 
-        let searchKey = null;
-        let searchValue = actualTerm;
+        let termValue = actualTerm;
+        /** @type {{ kind: 'index'; index: number } | { kind: 'slice'; start?: number; end?: number } | null} */
+        let range = null;
+        const rangeMatch = termValue.match(/\[(-?\d+)?(?::(-?\d+)?)?\]$/);
+        if (rangeMatch && (rangeMatch[1] !== undefined || rangeMatch[2] !== undefined || rangeMatch[0].includes(':'))) {
+          termValue = termValue.slice(0, rangeMatch.index);
+          range = rangeMatch[0].includes(':')
+            ? {
+                kind: 'slice',
+                start: rangeMatch[1] === undefined ? undefined : Number(rangeMatch[1]),
+                end: rangeMatch[2] === undefined ? undefined : Number(rangeMatch[2])
+              }
+            : { kind: 'index', index: Number(rangeMatch[1]) };
+        }
+        if (!termValue) return null;
 
-        const colonIdx = actualTerm.indexOf(':');
-        if (colonIdx > 0 && !actualTerm.startsWith('"')) {
-          searchKey = actualTerm.substring(0, colonIdx).toLowerCase();
-          searchValue = actualTerm.substring(colonIdx + 1);
+        let searchKey = null;
+        let searchValue = termValue;
+
+        const colonIdx = termValue.indexOf(':');
+        if (colonIdx > 0 && !termValue.startsWith('"')) {
+          searchKey = termValue.substring(0, colonIdx).toLowerCase();
+          searchValue = termValue.substring(colonIdx + 1);
         }
 
         if (searchValue.startsWith('"') && searchValue.endsWith('"') && searchValue.length >= 2) {
@@ -52,65 +69,71 @@ export default class CFOB_Gallery {
           }
         }
 
-        return { isNot, searchKey, searchValue, fieldIdx, fieldMatch };
+        return { isNot, searchKey, searchValue, fieldIdx, fieldMatch, range };
       }).filter(Boolean);
     }).filter(g => g.length > 0);
 
-    this.app.filteredImages = this.app.loadedImages.filter(img => {
-      // Check hidden folder constraint first
-      if (!effectiveShowHidden && this.app.isImageInHiddenFolder(img.name)) return false;
+    const eligibleImages = this.app.loadedImages.filter(img =>
+      effectiveShowHidden || !this.app.isImageInHiddenFolder(img.name)
+    );
+    /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null }>} */
+    const imageTextCache = new WeakMap();
+    const matchesTerm = (/** @type {CFOB_Image} */ img, /** @type {NonNullable<(typeof parsedQuery)[number][number]>} */ term) => {
+      let text = imageTextCache.get(img);
+      if (!text) {
+        text = { name: (img.name || "").toLowerCase(), prompt: null, workflow: null };
+        imageTextCache.set(img, text);
+      }
+      let match = false;
+      if (term.searchKey) {
+        if (term.searchKey === 'name' || term.searchKey === 'path') {
+          match = text.name.includes(term.searchValue);
+        } else if (term.searchKey === 'prompt') {
+          if (text.prompt === null) text.prompt = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
+          match = text.prompt.includes(term.searchValue);
+        } else if (term.searchKey === 'workflow') {
+          if (text.workflow === null) text.workflow = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+          match = text.workflow.includes(term.searchValue);
+        } else if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= this.app.settings.fieldConfigs.length) {
+          const value = this.app.resolveFieldValue(img, this.app.settings.fieldConfigs[term.fieldIdx - 1].paths);
+          match = value !== null && String(value).toLowerCase().includes(term.searchValue);
+        } else if (term.fieldMatch) {
+          const value = this.app.resolveFieldValue(img, term.fieldMatch.paths);
+          match = value !== null && String(value).toLowerCase().includes(term.searchValue);
+        }
+      } else {
+        if (text.prompt === null) text.prompt = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
+        if (text.workflow === null) text.workflow = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+        match = text.name.includes(term.searchValue) || text.prompt.includes(term.searchValue) || text.workflow.includes(term.searchValue);
+      }
+      return term.isNot ? !match : match;
+    };
+    const applyRange = (
+      /** @type {CFOB_Image[]} */ images,
+      /** @type {NonNullable<(typeof parsedQuery)[number][number]['range']>} */ range
+    ) => {
+      if (range.kind === 'slice') return images.slice(range.start, range.end);
+      const index = range.index < 0 ? images.length + range.index : range.index;
+      return index >= 0 ? images.slice(index, index + 1) : [];
+    };
 
-      // If no valid search terms, return true
-      if (parsedQuery.length === 0) return true;
-
-      // 2. Lazy caching avoids calling JSON.stringify thousands of times during broad/multi-term searches
-      /** @type {string | null} */
-      let nameStr = null;
-      /** @type {string | null} */
-      let promptStr = null;
-      /** @type {string | null} */
-      let workflowStr = null;
-
-      // Evaluate OR groups
-      return parsedQuery.some(andGroup => {
-        // Evaluate AND terms
-        return andGroup.every(term => {
-          if (!term) return;
-          let match = false;
-
-          // Generate string cache precisely when requested
-          if (nameStr === null) nameStr = (img.name || "").toLowerCase();
-
-          if (term.searchKey) {
-            if (term.searchKey === 'name' || term.searchKey === 'path') {
-              match = nameStr.includes(term.searchValue);
-            } else if (term.searchKey === 'prompt') {
-              if (promptStr === null) promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
-              match = promptStr.includes(term.searchValue);
-            } else if (term.searchKey === 'workflow') {
-              if (workflowStr === null) workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
-              match = workflowStr.includes(term.searchValue);
-            } else {
-              // Custom field mapping via pre-parsed checks
-              if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= this.app.settings.fieldConfigs.length) {
-                const val = this.app.resolveFieldValue(img, this.app.settings.fieldConfigs[term.fieldIdx - 1].paths);
-                match = val !== null && String(val).toLowerCase().includes(term.searchValue);
-              } else if (term.fieldMatch) {
-                const val = this.app.resolveFieldValue(img, term.fieldMatch.paths);
-                match = val !== null && String(val).toLowerCase().includes(term.searchValue);
-              }
-            }
-          } else {
-            // Standard global search
-            if (promptStr === null) promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
-            if (workflowStr === null) workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
-            match = nameStr.includes(term.searchValue) || promptStr.includes(term.searchValue) || workflowStr.includes(term.searchValue);
+    const matchingGroups = parsedQuery.length
+      ? parsedQuery.map(andGroup => {
+          let groupMatches = null;
+          for (const term of andGroup) {
+            let termMatches = eligibleImages.filter(img => matchesTerm(img, term));
+            if (term.range) termMatches = applyRange(termMatches, term.range);
+            const termMatchSet = new Set(termMatches);
+            groupMatches = groupMatches === null
+              ? termMatchSet
+              : new Set([...groupMatches].filter(img => termMatchSet.has(img)));
+            if (groupMatches.size === 0) break;
           }
-
-          return term.isNot ? !match : match;
-        });
-      });
-    });
+          return groupMatches || new Set(eligibleImages);
+        })
+      : [new Set(eligibleImages)];
+    const matchingImageSet = new Set(matchingGroups.flatMap(group => [...group]));
+    this.app.filteredImages = eligibleImages.filter(img => matchingImageSet.has(img));
 
     this.renderGallery();
     this.app.selection.updateActionBar();

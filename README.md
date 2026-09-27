@@ -63,6 +63,7 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 | **`"exact phrase"`** | **Exact Match:** Retains spaces to search for an exact, unbroken string.                                            | `"blue sky"`                           |
 | **`key:value`**      | **Field Search:** Restricts the search to a specific field (`name`, `path`, `prompt`, `workflow`, or custom label). | `name:v1`, `prompt:"blue sky"`         |
 | **`index:value`**    | **Index Search:** Restricts the search to a custom configured field by its numeric order (1-based).                 | `1:sdxl`, `2:1024`                     |
+| **`[index]` / `[start:end]`** | **Result Range:** Applies to the matching results for its term; ranges on AND terms are intersected. Indexes are zero-based, can be negative (from the end), and slice bounds may be omitted. | `dog[-5:] cat[1]`, `tree[:8]`, `path:temp[-1]` |
 | **`.` (Prefix)**     | **Force Show Hidden:** Temporarily overrides the hidden folder filter if the entire query starts with a dot.        | `.drafts`, `. name:test`               |
 | **Combined**         | Syntaxes can be chained to create complex queries.                                                                  | `prompt:"blue sky" !name:test, 1:sdxl` |
 
