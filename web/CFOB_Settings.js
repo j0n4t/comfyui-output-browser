@@ -708,6 +708,10 @@ export default class COB_Settings {
           chip.tabIndex = 0; // Make focusable
 
           chip.onclick = () => {
+            if (selectedFolder !== null && selectedFolder === folder) {
+              onOk();
+              return;
+            }
             selectedFolder = folder;
             input.value = folder;
             folderList.querySelectorAll('.folder-chip').forEach(item => item.classList.remove('selected'));
@@ -807,7 +811,13 @@ export default class COB_Settings {
         resolve(folderPickerMode === 'move' ? selectedFolder : input.value);
       };
       const onCancel = () => { cleanup(); resolve(null); };
-      const onKey = (/** @type {KeyboardEvent} */ e) => { if (e.key === "Enter") onOk(); };
+      const onKey = (/** @type {KeyboardEvent} */ e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          onOk();
+        }
+      };
 
       this.app.$("cfobPromptOkBtn").addEventListener("click", onOk);
       this.app.$("cfobPromptCancelBtn").addEventListener("click", onCancel);

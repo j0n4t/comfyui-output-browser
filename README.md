@@ -51,6 +51,7 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 | **Full-Screen View** | **`Escape`**                                   | Exit full-screen mode and return to the grid.                         |
 |                      | **`ArrowLeft` / `ArrowRight`**                 | Navigate to the previous or next image in the batch.                  |
 |                      | **`M` / `R`**                                  | Move the image to a folder / rename the image.                        |
+|                      | **`G`**                                        | Go to an image by its position in the current results.                |
 |                      | **`Space`**                                    | Toggle overlay UI controls.                                           |
 |                      | **`T`**                                        | Collapse or expand the metadata sidebar.                              |
 |                      | **`+` / `-` / `0`**                            | Zoom In, Zoom Out, or Reset Zoom level.                               |
