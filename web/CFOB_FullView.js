@@ -119,7 +119,7 @@ export default class CFOB_FullView {
       const btn = /** @type {HTMLElement} */ (e.target).closest('.copy-val-btn');
       if (btn) {
         e.stopPropagation();
-        this.app.copyValue(btn, btn.dataset.val);
+        this.app.actions.copyValue(btn, btn.dataset.val);
       }
     });
     this.app.$("cfobCloseFullViewBtn").addEventListener('click', () => this.closeFullView());
@@ -204,7 +204,7 @@ export default class CFOB_FullView {
 
     this.app.$("cfobFVActionOpen").addEventListener('click', () => {
       const img = this.app.filteredImages[this.currentImageIndex];
-      if (img) this.app.loadWorkflowImage(img);
+      if (img) this.app.actions.loadWorkflowImage(img);
     });
     this.app.$("cfobFVActionInspect").addEventListener('click', () => {
       const img = this.app.filteredImages[this.currentImageIndex];
@@ -252,7 +252,7 @@ export default class CFOB_FullView {
           await this.app.api.cacheSet(data.new_name, meta);
           await this.app.api.cacheDelete(oldName);
         }
-        this.app.filterGallery();
+        this.app.gallery.filterGallery();
         this.app.showToast(`Moved to ${data.new_name}`);
 
         if (this.app.filteredImages.length > 0) {
@@ -294,9 +294,9 @@ export default class CFOB_FullView {
       if (removed.length > 0) {
         const imgName = img.name;
         this.app.loadedImages = this.app.loadedImages.filter((/** @type {CFOB_Image} */ i) => i.name !== imgName);
-        this.app.removeImageKeywords(imgName);
+        this.app.search.removeImageKeywords(imgName);
         await this.app.api.cacheDelete(imgName);
-        this.app.filterGallery();
+        this.app.gallery.filterGallery();
         this.app.showToast(data.deleted?.length ? "Permanently deleted image" : "Moved image to Trash");
 
         if (this.app.filteredImages.length > 0) {

@@ -330,7 +330,7 @@ export default class COB_Settings {
       });
       this.saveConfig(newCfgs);
       this.app.$("cfobConfigModal").classList.remove('active');
-      this.app.renderGallery();
+      this.app.gallery.renderGallery();
     });
 
     this.app.$("cfobCloseInspectorBtn").addEventListener('click', () => this.app.$("cfobInspectorModal").classList.remove('active'));
@@ -393,7 +393,7 @@ export default class COB_Settings {
       const list = val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean);
       this.saveHiddenFoldersConfig(list);
       this.app.$("cfobHiddenFoldersModal").classList.remove('active');
-      this.app.filterGallery();
+      this.app.gallery.filterGallery();
       this.app.showToast("Saved hidden folders configuration");
     });
 
@@ -407,7 +407,7 @@ export default class COB_Settings {
       const keywords = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim().toLowerCase()).filter(Boolean))];
       this.saveIgnoredAutocompleteKeywords(keywords);
       this.app.$("cfobIgnoredKeywordsModal").classList.remove('active');
-      this.app.updateSearchSuggestions(true);
+      this.app.search.updateSearchSuggestions(true);
       this.app.showToast("Saved ignored autocomplete keywords");
     });
   }
@@ -557,14 +557,14 @@ export default class COB_Settings {
       this.currentSort = /** @type {HTMLInputElement} */ (ev.target).value;
       localStorage.setItem('cfob_sort', this.currentSort);
       this.app.applySort();
-      this.app.filterGallery();
+      this.app.gallery.filterGallery();
     });
 
     const toggleHiddenBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobToggleHiddenBtn'));
     toggleHiddenBtn.addEventListener('click', () => {
       this.showHiddenFolders = !this.showHiddenFolders;
       localStorage.setItem('comfy_folder_browser_show_hidden', String(this.showHiddenFolders));
-      this.app.filterGallery();
+      this.app.gallery.filterGallery();
       popover.remove();
       this.activePopover = null;
     });

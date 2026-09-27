@@ -5,6 +5,10 @@ import ICONS from "./assets/icons.js";
 import CFOB_API from "./CFOB_API.js";
 import CFOB_FullView, { CFOB_FULL_VIEW_HTML, CFOB_FULL_VIEW_STYLES } from "./CFOB_FullView.js";
 import CFOB_Settings, { CFOB_SETTINGS_MODALS_HTML, CFOB_SETTINGS_MODALS_STYLES } from "./CFOB_Settings.js";
+import CFOB_Search from "./CFOB_Search.js";
+import CFOB_Gallery from "./CFOB_Gallery.js";
+import CFOB_ImageActions from "./CFOB_ImageActions.js";
+import CFOB_Selection from "./CFOB_Selection.js";
 
 const BROWSER_HTML = `
 <div id="cfob-resizer"></div>
@@ -85,6 +89,10 @@ export default class ComfyOutputBrowser {
     this.api = new CFOB_API(this);
     this.settings = new CFOB_Settings(this);
     this.fullView = new CFOB_FullView(this);
+    this.search = new CFOB_Search(this);
+    this.gallery = new CFOB_Gallery(this);
+    this.selection = new CFOB_Selection(this);
+    this.actions = new CFOB_ImageActions(this);
   }
 
   /** @param {string} id */
@@ -257,31 +265,31 @@ export default class ComfyOutputBrowser {
     this.$("cfobSearchInput").addEventListener('input', () => {
       this.searchHistoryIndex = this.searchHistory.length;
       this.activeSearchSuggestionIndex = -1;
-      this.filterGallery();
-      this.updateSearchSuggestions(true);
+      this.gallery.filterGallery();
+      this.search.updateSearchSuggestions(true);
     });
-    this.$("cfobSearchInput").addEventListener('focus', () => this.updateSearchSuggestions(true));
+    this.$("cfobSearchInput").addEventListener('focus', () => this.search.updateSearchSuggestions(true));
     this.$("cfobSearchInput").addEventListener('blur', () => {
-      this.addSearchHistory();
-      this.hideSearchSuggestions();
+      this.search.addSearchHistory();
+      this.search.hideSearchSuggestions();
     });
-    this.$("cfobSearchInput").addEventListener('keydown', (e) => this.handleSearchKeydown(e));
+    this.$("cfobSearchInput").addEventListener('keydown', (e) => this.search.handleSearchKeydown(e));
 
     this.$("cfobClearSearchBtn").addEventListener('click', () => {
       /** @type {HTMLInputElement} */ (this.$("cfobSearchInput")).value = "";
       this.searchHistoryIndex = this.searchHistory.length;
-      this.filterGallery();
-      this.updateSearchSuggestions(true);
+      this.gallery.filterGallery();
+      this.search.updateSearchSuggestions(true);
     });
 
     this.fullView.bindEvents();
 
-    this.$("cfobActionClear").addEventListener('click', () => this.clearSelection());
-    this.$("cfobActionDelete").addEventListener('click', () => this.deleteSelected());
-    this.$("cfobActionRename").addEventListener('click', () => this.renameSelected());
-    this.$("cfobActionDownload").addEventListener('click', () => this.downloadSelected());
-    this.$("cfobActionOpen").addEventListener('click', () => this.loadWorkflowSelected());
-    this.$("cfobActionInspect").addEventListener('click', () => this.inspectSelected());
+    this.$("cfobActionClear").addEventListener('click', () => this.selection.clearSelection());
+    this.$("cfobActionDelete").addEventListener('click', () => this.actions.deleteSelected());
+    this.$("cfobActionRename").addEventListener('click', () => this.actions.renameSelected());
+    this.$("cfobActionDownload").addEventListener('click', () => this.actions.downloadSelected());
+    this.$("cfobActionOpen").addEventListener('click', () => this.actions.loadWorkflowSelected());
+    this.$("cfobActionInspect").addEventListener('click', () => this.actions.inspectSelected());
 
     const mainCont = this.$("cfobMainContainer");
     let dragCounter = 0;
@@ -345,9 +353,9 @@ export default class ComfyOutputBrowser {
           else if (inspectorModal.classList.contains('active')) inspectorModal.classList.remove('active');
           else if (hiddenModal.classList.contains('active')) hiddenModal.classList.remove('active');
           else if (ignoredKeywordsModal.classList.contains('active')) ignoredKeywordsModal.classList.remove('active');
-          else if (target === searchInput && !this.$("cfobSearchSuggestions").hidden) this.hideSearchSuggestions();
+          else if (target === searchInput && !this.$("cfobSearchSuggestions").hidden) this.search.hideSearchSuggestions();
           else if (isEditing) target.blur();
-          else if (this.selectedImages.size > 0) this.clearSelection();
+          else if (this.selectedImages.size > 0) this.selection.clearSelection();
           else this.hideWithTransition();
         }
         return;
@@ -397,13 +405,13 @@ export default class ComfyOutputBrowser {
           e.preventDefault(); e.stopPropagation(); this.$("cfobSearchInput").focus();
         }
         else if ((e.ctrlKey || e.metaKey) && key === 'a') {
-          e.preventDefault(); e.stopPropagation(); this.selectAllFiltered();
+          e.preventDefault(); e.stopPropagation(); this.selection.selectAllFiltered();
         }
         else if (key === 'm' || key === 'r' && !e.ctrlKey) {
-          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.renameSelected(); }
+          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.actions.renameSelected(); }
         }
         else if (key === 'i' && !e.ctrlKey) {
-          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.inspectSelected(); }
+          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected(); }
         }
         else if (key === 'enter' && !e.ctrlKey) {
           if (this.selectedImages.size === 1) {
@@ -431,8 +439,8 @@ export default class ComfyOutputBrowser {
                 const cb = /** @type {HTMLInputElement} */ (targetCard.querySelector('.card-checkbox'));
                 if (cb) cb.checked = this.selectedImages.has(targetImg.name);
               }
-              this.updateCardStyles();
-              this.updateActionBar();
+              this.selection.updateCardStyles();
+              this.selection.updateActionBar();
             }
           }
           else if (this.selectedImages.size === 1) {
@@ -443,13 +451,13 @@ export default class ComfyOutputBrowser {
           }
         }
         else if (e.key === 'Delete') {
-          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.deleteSelected(); }
+          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.actions.deleteSelected(); }
         }
         else if (key === 'd') {
-          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.downloadSelected(); }
+          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.actions.downloadSelected(); }
         }
         else if (key === 'w') {
-          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.loadWorkflowSelected(); }
+          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.loadWorkflowSelected(); }
         }
         else if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
           if (e.key === 'ArrowUp' && this.lastSelectedIdx < 0) {
@@ -467,7 +475,7 @@ export default class ComfyOutputBrowser {
               return;
             }
           }
-          e.preventDefault(); e.stopPropagation(); this.handleGridNavigation(e);
+          e.preventDefault(); e.stopPropagation(); this.selection.handleGridNavigation(e);
         }
       }
     }, { capture: true });
@@ -579,286 +587,8 @@ export default class ComfyOutputBrowser {
     });
   }
 
-  /**
-   * @param {CFOB_Image} img
-   * @param {boolean} [refreshSuggestions]
-   */
-  indexImageKeywords(img, refreshSuggestions = true) {
-    this.removeImageKeywords(img.name, false);
-
-    /** @type {Set<string>} */
-    const keywords = new Set();
-    /** @type {any[]} */
-    const values = [img.name, img.prompt, img.workflow];
-    while (values.length) {
-      const value = values.pop();
-      if (typeof value === 'string') {
-        for (const match of value.matchAll(/[\p{L}\p{N}_-]{2,}/gu)) {
-          keywords.add(match[0].toLowerCase());
-        }
-      } else if (Array.isArray(value)) {
-        for (const item of value) values.push(item);
-      } else if (value && typeof value === 'object') {
-        for (const item of Object.values(value)) values.push(item);
-      }
-    }
-
-    this.imageKeywordIndex.set(img.name, keywords);
-    for (const keyword of keywords) {
-      this.keywordDictionary.set(keyword, (this.keywordDictionary.get(keyword) || 0) + 1);
-    }
-
-    if (refreshSuggestions && document.activeElement === this.$("cfobSearchInput")) {
-      this.updateSearchSuggestions();
-    }
-  }
-
-  /**
-   * @param {string} imageName
-   * @param {boolean} [refreshSuggestions]
-   */
-  removeImageKeywords(imageName, refreshSuggestions = true) {
-    const keywords = this.imageKeywordIndex.get(imageName);
-    if (!keywords) return;
-
-    for (const keyword of keywords) {
-      const count = this.keywordDictionary.get(keyword) || 0;
-      if (count <= 1) this.keywordDictionary.delete(keyword);
-      else this.keywordDictionary.set(keyword, count - 1);
-    }
-    this.imageKeywordIndex.delete(imageName);
-    if (refreshSuggestions && document.activeElement === this.$("cfobSearchInput")) {
-      this.updateSearchSuggestions();
-    }
-  }
-
-  rebuildKeywordDictionary() {
-    this.imageKeywordIndex.clear();
-    this.keywordDictionary.clear();
-    for (const img of this.loadedImages) {
-      if (img.isParsed) this.indexImageKeywords(img, false);
-    }
-    if (document.activeElement === this.$("cfobSearchInput")) this.updateSearchSuggestions();
-  }
-
-  /**
-   * @param {KeyboardEvent} e
-   */
-  handleSearchKeydown(e) {
-    const input = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
-    const suggestions = this.$("cfobSearchSuggestions");
-    const options = suggestions.querySelectorAll('[role="option"]');
-
-    if (e.key === 'Tab') {
-      const suggestion = options[this.activeSearchSuggestionIndex] || options[0];
-      if (suggestion) {
-        e.preventDefault();
-        this.completeSearchSuggestion(/** @type {HTMLElement} */(suggestion).dataset.value || "");
-      }
-    } else if (e.key === 'ArrowUp') {
-      if (!suggestions.hidden && options.length) {
-        e.preventDefault();
-        this.cycleSearchSuggestions(-1, options.length);
-        return;
-      }
-      if (!this.searchHistory.length) return;
-      e.preventDefault();
-      this.searchHistoryIndex = Math.max(0, this.searchHistoryIndex - 1);
-      input.value = this.searchHistory[this.searchHistoryIndex];
-      this.activeSearchSuggestionIndex = -1;
-      this.filterGallery();
-      this.updateSearchSuggestions(true);
-    } else if (e.key === 'ArrowDown') {
-      if (!suggestions.hidden && options.length) {
-        e.preventDefault();
-        this.cycleSearchSuggestions(1, options.length);
-        return;
-      }
-      e.preventDefault();
-      this.addSearchHistory();
-      this.hideSearchSuggestions();
-      this.focusFirstGridItem();
-      if (this.filteredImages.length) input.blur();
-    } else if (e.key === 'Enter') {
-      const suggestion = options[this.activeSearchSuggestionIndex] || options[0];
-      if (!suggestions.hidden && suggestion) {
-        e.preventDefault();
-        this.completeSearchSuggestion(/** @type {HTMLElement} */(suggestion).dataset.value || "");
-      } else {
-        this.addSearchHistory();
-        this.hideSearchSuggestions();
-      }
-    }
-  }
-
-  /**
-   * @param {number} direction
-   * @param {number} optionCount
-   */
-  cycleSearchSuggestions(direction, optionCount) {
-    if (this.activeSearchSuggestionIndex < 0) {
-      this.activeSearchSuggestionIndex = direction > 0 ? 0 : optionCount - 1;
-    } else {
-      this.activeSearchSuggestionIndex = (this.activeSearchSuggestionIndex + direction + optionCount) % optionCount;
-    }
-    const options = this.$("cfobSearchSuggestions").querySelectorAll('[role="option"]');
-    options.forEach((option, index) => {
-      const isActive = index === this.activeSearchSuggestionIndex;
-      option.setAttribute('aria-selected', String(isActive));
-      if (isActive) option.scrollIntoView({ block: 'nearest' });
-    });
-  }
-
-  addSearchHistory() {
-    const query = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput")).value.trim();
-    if (!query || this.searchHistory[this.searchHistory.length - 1] === query) {
-      this.searchHistoryIndex = this.searchHistory.length;
-      return;
-    }
-
-    this.searchHistory = [...this.searchHistory.filter(item => item !== query), query].slice(-50);
-    this.searchHistoryIndex = this.searchHistory.length;
-    localStorage.setItem('cfob_search_history', JSON.stringify(this.searchHistory));
-  }
-
-  hideSearchSuggestions() {
-    const suggestions = this.$("cfobSearchSuggestions");
-    suggestions.hidden = true;
-    suggestions.replaceChildren();
-    this.$("cfobSearchInput").setAttribute('aria-expanded', 'false');
-  }
-
-  updateSearchSuggestions(force = false) {
-    if (!force && (this.serverImageFetchCount > 0 || this.isIdleParsing)) return;
-
-    const input = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
-    const suggestions = this.$("cfobSearchSuggestions");
-    const value = input.value;
-    let inQuotes = false;
-    let tokenStart = 0;
-    for (let i = 0; i < value.length; i++) {
-      if (value[i] === '"') inQuotes = !inQuotes;
-      else if (!inQuotes && (value[i] === ' ' || value[i] === ',')) tokenStart = i + 1;
-    }
-
-    const token = value.slice(tokenStart);
-    const colonIndex = token.indexOf(':');
-    const key = colonIndex >= 0 ? token.slice(0, colonIndex).toLowerCase() : "";
-    this.activeSearchSuggestionIndex = -1;
-    const candidates = ['name:', 'path:', 'prompt:', 'workflow:'];
-    this.settings.fieldConfigs.forEach((/** @type {{ label: string; }} */ field, /** @type {number} */ index) => {
-      candidates.push(`${index + 1}:`);
-      if (!/\s/.test(field.label)) candidates.push(`${field.label}:`);
-    });
-
-    const prefix = token.toLowerCase();
-    const ignoredKeywords = new Set(this.settings.ignoredAutocompleteKeywords.map(keyword => keyword.toLowerCase()));
-    const keywordPrefix = colonIndex >= 0 ? token.slice(colonIndex + 1).toLowerCase() : prefix;
-    const keywordQualifier = colonIndex >= 0 ? token.slice(0, colonIndex + 1) : "";
-    /** @type {string[]} */
-    const matches = [];
-    const addMatch = (/** @type {string} */ match) => {
-      if (!matches.includes(match) && matches.length < 8) matches.push(match);
-    };
-
-    if (!token.trim()) {
-      for (const candidate of candidates) addMatch(candidate);
-    } else if (key === 'name') {
-      const filenames = new Set(this.loadedImages.map(image => image.name.replace(/\\/g, '/').split('/').pop() || ""));
-      for (const filename of filenames) {
-        if (!filename.toLowerCase().startsWith(keywordPrefix) || filename.toLowerCase() === keywordPrefix) continue;
-        addMatch(`name:${filename.slice(0, keywordPrefix.length + 5)}`);
-      }
-    } else if (key === 'path') {
-      const directories = new Set();
-      for (const image of this.loadedImages) {
-        const parts = image.name.replace(/\\/g, '/').split('/');
-        parts.pop();
-        for (let i = 1; i <= parts.length; i++) directories.add(parts.slice(0, i).join('/') + '/');
-      }
-      const matchingDirectories = Array.from(directories)
-        .filter(directory => directory.toLowerCase().startsWith(keywordPrefix))
-        .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
-      for (const directory of matchingDirectories) addMatch(`path:${directory}`);
-    } else {
-      const keywords = Array.from(this.keywordDictionary.entries())
-        .filter(([keyword]) => !ignoredKeywords.has(keyword) && keyword.startsWith(keywordPrefix) && keyword !== keywordPrefix)
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-      for (const [keyword] of keywords) addMatch(`${keywordQualifier}${keyword}`);
-
-      for (const candidate of candidates) {
-        if (candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix) addMatch(candidate);
-      }
-
-      if (!key && !/\s/.test(token)) {
-        const filenames = new Set(this.loadedImages.map(image => image.name.replace(/\\/g, '/').split('/').pop() || ""));
-        for (const filename of filenames) {
-          if (filename.toLowerCase().startsWith(prefix) && filename.toLowerCase() !== prefix) {
-            addMatch(`${filename.slice(0, prefix.length + 5)}`);
-          }
-        }
-      }
-    }
-
-    suggestions.replaceChildren();
-
-    if (!matches.length || document.activeElement !== input) {
-      this.hideSearchSuggestions();
-      return;
-    }
-
-    for (const match of matches) {
-      const option = document.createElement('div');
-      option.className = 'search-suggestion';
-      option.setAttribute('role', 'option');
-      option.setAttribute('aria-selected', String(false));
-      option.dataset.value = match;
-      option.textContent = match;
-      option.addEventListener('mousedown', event => event.preventDefault());
-      option.addEventListener('click', () => this.completeSearchSuggestion(match));
-      suggestions.appendChild(option);
-    }
-
-    suggestions.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
-  }
-
-  /**
-   * @param {string} completion
-   */
-  completeSearchSuggestion(completion) {
-    const input = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
-    const value = input.value;
-    let inQuotes = false;
-    let tokenStart = 0;
-    for (let i = 0; i < value.length; i++) {
-      if (value[i] === '"') inQuotes = !inQuotes;
-      else if (!inQuotes && (value[i] === ' ' || value[i] === ',')) tokenStart = i + 1;
-    }
-
-    const suffix = completion.endsWith(':') ? '' : ' ';
-    input.value = `${value.slice(0, tokenStart)}${completion}${suffix}`;
-    input.setSelectionRange(input.value.length, input.value.length);
-    this.searchHistoryIndex = this.searchHistory.length;
-    this.activeSearchSuggestionIndex = -1;
-    this.filterGallery();
-    this.updateSearchSuggestions(true);
-  }
-
   focusFirstGridItem() {
-    if (!this.filteredImages.length) return;
-
-    this.clearSelection(false);
-    this.lastSelectedIdx = 0;
-    this.selectionAnchorIdx = 0;
-    this.selectedImages.add(this.filteredImages[0].name);
-    const cards = Array.from(this.$("cfobGalleryGrid").querySelectorAll('.image-card'));
-    cards.forEach((card, index) => /** @type {HTMLElement} */(card).classList.toggle('focused', index === 0));
-    const firstCard = cards[0];
-    firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-    /** @type {HTMLElement | undefined} */ (firstCard)?.focus();
-    this.updateCardStyles();
-    this.updateActionBar();
+    this.selection.focusFirstGridItem();
   }
 
   /** @param {string} msg  */
@@ -909,7 +639,7 @@ export default class ComfyOutputBrowser {
   setIdleParsingActive(isActive) {
     this.isIdleParsing = isActive;
     this.updateRefreshButtonAnimation();
-    if (!isActive && this.serverImageFetchCount === 0) this.updateSearchSuggestions();
+    if (!isActive && this.serverImageFetchCount === 0) this.search.updateSearchSuggestions();
   }
 
   async fetchServerImages() {
@@ -939,7 +669,7 @@ export default class ComfyOutputBrowser {
           const image = existingMap.get(fileObj.name);
           if (image) {
             if (fileObj.mtime && image.mtime && image.mtime !== fileObj.mtime) {
-              this.removeImageKeywords(image.name);
+              this.search.removeImageKeywords(image.name);
               image.mtime = fileObj.mtime;
               image.isParsed = false;
               image.prompt = null;
@@ -961,7 +691,7 @@ export default class ComfyOutputBrowser {
 
       if (newImages.length > 0 || validImages.length !== this.loadedImages.length) {
         this.loadedImages = [...newImages, ...validImages];
-        this.rebuildKeywordDictionary();
+        this.search.rebuildKeywordDictionary();
         this.applySort();
 
         const validNames = new Set(this.loadedImages.map(img => img.name));
@@ -969,11 +699,11 @@ export default class ComfyOutputBrowser {
           if (!validNames.has(sel)) this.selectedImages.delete(sel);
         }
 
-        this.updateActionBar();
-        this.filterGallery();
+        this.selection.updateActionBar();
+        this.gallery.filterGallery();
       } else if (isFirstLoad) {
         this.applySort();
-        this.filterGallery();
+        this.gallery.filterGallery();
       }
 
       this.api.startIdleParsing();
@@ -985,7 +715,7 @@ export default class ComfyOutputBrowser {
     } finally {
       this.serverImageFetchCount--;
       this.updateRefreshButtonAnimation();
-      if (this.serverImageFetchCount === 0 && !this.isIdleParsing) this.updateSearchSuggestions();
+      if (this.serverImageFetchCount === 0 && !this.isIdleParsing) this.search.updateSearchSuggestions();
     }
   }
 
@@ -1069,7 +799,7 @@ export default class ComfyOutputBrowser {
     if (!targetImg.isParsed) {
       this.showToast("Loading metadata...");
       await this.api.loadMetadata(targetImg);
-      this.renderGallery();
+      this.gallery.renderGallery();
       this.fullView.updateFullViewUI();
     }
 
@@ -1100,562 +830,6 @@ export default class ComfyOutputBrowser {
                       </div>`;
     });
     return fieldsHtml;
-  }
-
-  /**
-   * Navigates the grid focus spatially using arrow keys
-   * @param {KeyboardEvent} e 
-   */
-  handleGridNavigation(e) {
-    if (!this.filteredImages.length) return;
-
-    const grid = this.$("cfobGalleryGrid");
-    const cards = Array.from(grid.querySelectorAll('.image-card'));
-    if (!cards.length) return;
-
-    const direction = e.key;
-    const isShift = e.shiftKey;
-    const isCtrl = e.ctrlKey || e.metaKey;
-
-    let currentIdx = this.lastSelectedIdx;
-    if (currentIdx === -1) currentIdx = 0;
-
-    let cols = 1;
-    const firstOffset = /** @type {HTMLElement} */(cards[0]).offsetTop;
-    for (let i = 1; i < cards.length; i++) {
-      if (/** @type {HTMLElement} */(cards[i]).offsetTop > firstOffset) {
-        cols = i;
-        break;
-      }
-      if (i === cards.length - 1) cols = cards.length;
-    }
-
-    let nextIdx = currentIdx;
-    if (direction === 'ArrowLeft') nextIdx--;
-    else if (direction === 'ArrowRight') nextIdx++;
-    else if (direction === 'ArrowUp') nextIdx -= cols;
-    else if (direction === 'ArrowDown') nextIdx += cols;
-
-    nextIdx = Math.max(0, Math.min(nextIdx, this.filteredImages.length - 1));
-
-    if (this.selectionAnchorIdx === undefined) {
-      this.selectionAnchorIdx = currentIdx;
-    }
-
-    if (isShift) {
-      this.clearSelection(false);
-      const start = Math.min(this.selectionAnchorIdx, nextIdx);
-      const end = Math.max(this.selectionAnchorIdx, nextIdx);
-      for (let i = start; i <= end; i++) {
-        this.selectedImages.add(this.filteredImages[i].name);
-      }
-    } else if (isCtrl) {
-      // Move focus only, update anchor for future shift-selects
-      this.selectionAnchorIdx = nextIdx;
-    } else {
-      // Standard single select
-      this.clearSelection(false);
-      this.selectedImages.add(this.filteredImages[nextIdx].name);
-      this.selectionAnchorIdx = nextIdx;
-    }
-
-    this.lastSelectedIdx = nextIdx;
-
-    cards.forEach((c, i) => {
-      const cb = /** @type {HTMLInputElement} */ (c.querySelector('.card-checkbox'));
-      if (cb) cb.checked = this.selectedImages.has(this.filteredImages[i].name);
-
-      const el = /** @type {HTMLElement} */ (c);
-      if (i === nextIdx) {
-        el.classList.toggle('focused', i === nextIdx);
-        el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-      } else {
-        el.classList.toggle('focused', i === nextIdx);
-      }
-    });
-    /** @type {HTMLElement} */ (cards[nextIdx]).focus();
-
-    this.updateCardStyles();
-    this.updateActionBar();
-  }
-
-  updateActionBar() {
-    const bar = this.$("cfobActionBar");
-    const count = this.selectedImages.size;
-    if (count > 0) {
-      bar.classList.add('show');
-      this.$("cfobSelectionCount").innerText = `${count} selected`;
-
-      const isSingle = count === 1;
-      this.$("cfobActionInspect").style.display = isSingle ? 'inline-flex' : 'none';
-      this.$("cfobActionOpen").style.display = isSingle ? 'inline-flex' : 'none';
-      this.$("cfobActionRename").style.display = 'inline-flex';
-      /** @type {HTMLElement} */ (this.$("cfobActionRename").querySelector('span')).innerText = isSingle ? 'Move/Rename' : 'Move to Folder';
-    } else {
-      bar.classList.remove('show');
-      this.lastSelectedIdx = -1;
-    }
-  }
-
-  updateCardStyles() {
-    this.root?.querySelectorAll('.image-card').forEach(card => {
-      const name = /** @type {HTMLElement} */ (card).dataset.name;
-      if (this.selectedImages.has(name)) card.classList.add('selected');
-      else card.classList.remove('selected');
-    });
-  }
-
-  /**
-   * @param {PointerEvent} e
-   * @param {string} filename
-   */
-  handleCheckboxClick(e, filename) {
-    e.stopPropagation();
-    const target = /** @type {HTMLInputElement} */ (e.target);
-    const fIdx = this.filteredImages.findIndex(img => img.name === filename);
-    if (fIdx === -1) return;
-
-    if (e.shiftKey && this.selectionAnchorIdx !== undefined && this.selectionAnchorIdx !== -1) {
-      const start = Math.min(this.selectionAnchorIdx, fIdx);
-      const end = Math.max(this.selectionAnchorIdx, fIdx);
-      const isChecked = target.checked;
-
-      for (let i = start; i <= end; i++) {
-        const targetImg = this.filteredImages[i];
-        if (isChecked) this.selectedImages.add(targetImg.name);
-        else this.selectedImages.delete(targetImg.name);
-      }
-
-      this.root?.querySelectorAll('.card-checkbox').forEach(cb => {
-        /** @type {HTMLInputElement} */ (cb).checked = this.selectedImages.has(/** @type {HTMLInputElement} */(cb).value);
-      });
-    } else {
-      if (target.checked) this.selectedImages.add(filename);
-      else this.selectedImages.delete(filename);
-      this.selectionAnchorIdx = fIdx; // Sync anchor for keyboard usage
-    }
-
-    this.lastSelectedIdx = fIdx;
-
-    this.root?.querySelectorAll('.image-card').forEach((c, i) => {
-        /** @type {HTMLElement} */ (c).classList.toggle('focused', i === fIdx);
-    });
-
-    this.updateActionBar();
-    this.updateCardStyles();
-  }
-
-  /** @param {boolean} resetAnchor */
-  clearSelection(resetAnchor = true) {
-    this.selectedImages.clear();
-    this.root?.querySelectorAll('.card-checkbox').forEach(cb => /** @type {HTMLInputElement} */(cb).checked = false);
-
-    if (resetAnchor) {
-      this.lastSelectedIdx = -1;
-      this.selectionAnchorIdx = -1;
-      this.root?.querySelectorAll('.image-card').forEach(c => /** @type {HTMLElement} */(c).style.boxShadow = '');
-    }
-
-    this.updateCardStyles();
-    this.updateActionBar();
-  }
-
-  selectAllFiltered() {
-    if (!this.filteredImages.length) return;
-    this.filteredImages.forEach(img => this.selectedImages.add(img.name));
-    this.root?.querySelectorAll('.card-checkbox').forEach(cb => {
-      /** @type {HTMLInputElement} */ (cb).checked = this.selectedImages.has(/** @type {HTMLInputElement} */(cb).value);
-    });
-    this.updateCardStyles();
-    this.updateActionBar();
-  }
-
-  async downloadSelected() {
-    this.showToast(`Downloading ${this.selectedImages.size} image(s)...`);
-    for (const filename of this.selectedImages) {
-      const img = this.loadedImages.find(i => i.name === filename);
-      if (img) {
-        const a = document.createElement('a');
-        a.href = img.url;
-        a.download = img.name.split('/').pop() || "";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        await new Promise(r => setTimeout(r, 250));
-      }
-    }
-    this.clearSelection();
-  }
-
-  async deleteSelected() {
-    const files = Array.from(this.selectedImages);
-    if (!files.length) return;
-
-    const hasTrashedItems = files.some(f => f.replace(/\\/g, '/').startsWith('.trash/'));
-    const isTrash = hasTrashedItems;
-    const confirmMsg = isTrash
-      ? `Permanently delete at least one of ${files.length} selected image(s)? This cannot be undone.`
-      : `Move ${files.length} selected image(s) to Trash?`;
-
-    const confirmed = await this.settings.customConfirm(confirmMsg, isTrash ? "Delete Permanently" : "Move to Trash", isTrash);
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch("/comfyui-output-browser/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files })
-      });
-      const data = await res.json();
-
-      const removed = [...(data.deleted || []), ...(data.trashed || [])];
-
-      if (removed.length > 0) {
-        this.loadedImages = this.loadedImages.filter(img => !removed.includes(img.name));
-
-        for (const file of removed) {
-          this.removeImageKeywords(file);
-          await this.api.cacheDelete(file);
-        }
-
-        this.clearSelection();
-        this.filterGallery();
-
-        if (data.deleted && data.deleted.length > 0) {
-          this.showToast(`Permanently deleted ${data.deleted.length} image(s)`);
-        } else if (data.trashed && data.trashed.length > 0) {
-          this.showToast(`Moved ${data.trashed.length} image(s) to Trash`);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-      this.showToast("Failed to delete/trash images.");
-    }
-  }
-
-  async renameSelected() {
-    const count = this.selectedImages.size;
-    if (count === 0) return;
-
-    if (count === 1) {
-      const oldName = Array.from(this.selectedImages)[0];
-      let newName = await this.settings.customPrompt("Enter new path or filename:", oldName, 'rename');
-
-      if (!newName || newName === oldName) return;
-
-      try {
-        const res = await fetch("/comfyui-output-browser/rename", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ old_name: oldName, new_name: newName })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          const img = this.loadedImages.find(i => i.name === oldName);
-          if (img) {
-            this.removeImageKeywords(oldName);
-            img.name = data.new_name;
-            img.mtime = data.mtime || img.mtime;
-            img.url = this.api.getImageUrl(data.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
-            this.indexImageKeywords(img);
-            const meta = await this.api.cacheGet(oldName);
-            if (meta) {
-              await this.api.cacheSet(data.new_name, meta, img.mtime);
-              await this.api.cacheDelete(oldName);
-            }
-          }
-          this.clearSelection();
-          this.filterGallery();
-          this.showToast(`Moved to ${data.new_name}`);
-        } else {
-          this.showToast(data.error || "Rename failed.");
-        }
-      } catch (e) {
-        console.error(e);
-        this.showToast("Rename request failed.");
-      }
-    } else {
-      let destFolder = await this.settings.customPrompt(`Move ${count} items to folder:`, "", 'move');
-      if (destFolder === null || destFolder.trim() === "") return;
-
-      try {
-        const res = await fetch("/comfyui-output-browser/move", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ files: Array.from(this.selectedImages), dest_folder: destFolder })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          for (const m of data.moved) {
-            const img = this.loadedImages.find(i => i.name === m.old_name);
-            if (img) {
-              this.removeImageKeywords(m.old_name);
-              img.name = m.new_name;
-              img.mtime = m.mtime || img.mtime;
-              img.url = this.api.getImageUrl(m.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
-              this.indexImageKeywords(img);
-              const meta = await this.api.cacheGet(m.old_name);
-              if (meta) {
-                await this.api.cacheSet(m.new_name, meta, img.mtime);
-                await this.api.cacheDelete(m.old_name);
-              }
-            }
-          }
-          this.clearSelection();
-          this.filterGallery();
-          if (data.errors && data.errors.length > 0) {
-            this.showToast(`Moved ${data.moved.length}, but ${data.errors.length} failed.`);
-            console.warn("Move errors:", data.errors);
-          } else {
-            this.showToast(`Moved ${data.moved.length} item(s) to ${destFolder}`);
-          }
-        } else {
-          this.showToast(data.error || "Move failed.");
-        }
-      } catch (e) {
-        console.error(e);
-        this.showToast("Move request failed.");
-      }
-    }
-  }
-
-  inspectSelected() {
-    if (this.selectedImages.size !== 1) return;
-    const filename = Array.from(this.selectedImages)[0];
-    const idx = this.loadedImages.findIndex(i => i.name === filename);
-    if (idx !== -1) {
-      this.settings.openInspector(idx);
-    }
-  }
-
-  /**
-   * @param {CFOB_Image} img
-   */
-  async loadWorkflowImage(img) {
-    if (!img || !this.root) return;
-    if (!img.isParsed) {
-      this.showToast("Loading metadata...");
-      await this.api.loadMetadata(img);
-    }
-    if (img.workflow) {
-      app.loadGraphData(img.workflow);
-      this.hideWithTransition();
-      this.clearSelection();
-      this.showToast("Workflow loaded successfully!");
-    } else {
-      this.showToast("No workflow metadata found in this image.");
-    }
-  }
-
-  async loadWorkflowSelected() {
-    if (this.selectedImages.size !== 1) return;
-    const filename = Array.from(this.selectedImages)[0];
-    const img = this.loadedImages.find(i => i.name === filename);
-    if (img) await this.loadWorkflowImage(img);
-  }
-
-  /**
-   * @param {{ innerHTML: string; }} btn
-   * @param {any} encodedVal
-   */
-  copyValue(btn, encodedVal) {
-    const val = decodeURIComponent(encodedVal || "");
-    navigator.clipboard.writeText(val).then(() => {
-      const origHtml = btn.innerHTML;
-      btn.innerHTML = ICONS.check;
-      setTimeout(() => { btn.innerHTML = origHtml; }, 1200);
-    });
-  }
-
-  filterGallery() {
-    const searchInput = /** @type {HTMLInputElement} */ (this.$("cfobSearchInput"));
-    const searchStr = searchInput ? searchInput.value.trim() : "";
-
-    // Force show hidden if query starts with a dot
-    const forceShowHidden = searchStr.startsWith('.');
-    const effectiveShowHidden = this.settings.showHiddenFolders || forceShowHidden;
-
-    const clearBtn = this.$("cfobClearSearchBtn");
-    if (clearBtn) clearBtn.style.display = searchStr ? 'flex' : 'none';
-
-    // 1. Pre-parse the query outside the image loop to prevent redundant regex and parsing overhead
-    const rawOrGroups = searchStr.split(',').map((/** @type {string} */ g) => g.trim()).filter(Boolean);
-
-    const parsedQuery = rawOrGroups.map(groupStr => {
-      const andTerms = groupStr.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-      return andTerms.map((/** @type {string} */ term) => {
-        const isNot = term.startsWith('!');
-        const actualTerm = isNot ? term.substring(1) : term;
-        if (!actualTerm) return null;
-
-        let searchKey = null;
-        let searchValue = actualTerm;
-
-        const colonIdx = actualTerm.indexOf(':');
-        if (colonIdx > 0 && !actualTerm.startsWith('"')) {
-          searchKey = actualTerm.substring(0, colonIdx).toLowerCase();
-          searchValue = actualTerm.substring(colonIdx + 1);
-        }
-
-        if (searchValue.startsWith('"') && searchValue.endsWith('"') && searchValue.length >= 2) {
-          searchValue = searchValue.substring(1, searchValue.length - 1);
-        }
-
-        searchValue = searchValue.toLowerCase();
-
-        let fieldIdx = NaN;
-        let fieldMatch = null;
-
-        if (searchKey && !['name', 'path', 'prompt', 'workflow'].includes(searchKey)) {
-          fieldIdx = parseInt(searchKey, 10);
-          if (isNaN(fieldIdx) || fieldIdx <= 0 || fieldIdx > this.settings.fieldConfigs.length) {
-            fieldMatch = this.settings.fieldConfigs.find((/** @type {{ label: string; }} */ c) => c.label.toLowerCase() === searchKey);
-          }
-        }
-
-        return { isNot, searchKey, searchValue, fieldIdx, fieldMatch };
-      }).filter(Boolean);
-    }).filter(g => g.length > 0);
-
-    this.filteredImages = this.loadedImages.filter(img => {
-      // Check hidden folder constraint first
-      if (!effectiveShowHidden && this.isImageInHiddenFolder(img.name)) return false;
-
-      // If no valid search terms, return true
-      if (parsedQuery.length === 0) return true;
-
-      // 2. Lazy caching avoids calling JSON.stringify thousands of times during broad/multi-term searches
-      /** @type {string | null} */
-      let nameStr = null;
-      /** @type {string | null} */
-      let promptStr = null;
-      /** @type {string | null} */
-      let workflowStr = null;
-
-      // Evaluate OR groups
-      return parsedQuery.some(andGroup => {
-        // Evaluate AND terms
-        return andGroup.every(term => {
-          if (!term) return;
-          let match = false;
-
-          // Generate string cache precisely when requested
-          if (nameStr === null) nameStr = (img.name || "").toLowerCase();
-
-          if (term.searchKey) {
-            if (term.searchKey === 'name' || term.searchKey === 'path') {
-              match = nameStr.includes(term.searchValue);
-            } else if (term.searchKey === 'prompt') {
-              if (promptStr === null) promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
-              match = promptStr.includes(term.searchValue);
-            } else if (term.searchKey === 'workflow') {
-              if (workflowStr === null) workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
-              match = workflowStr.includes(term.searchValue);
-            } else {
-              // Custom field mapping via pre-parsed checks
-              if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= this.settings.fieldConfigs.length) {
-                const val = this.resolveFieldValue(img, this.settings.fieldConfigs[term.fieldIdx - 1].paths);
-                match = val !== null && String(val).toLowerCase().includes(term.searchValue);
-              } else if (term.fieldMatch) {
-                const val = this.resolveFieldValue(img, term.fieldMatch.paths);
-                match = val !== null && String(val).toLowerCase().includes(term.searchValue);
-              }
-            }
-          } else {
-            // Standard global search
-            if (promptStr === null) promptStr = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
-            if (workflowStr === null) workflowStr = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
-            match = nameStr.includes(term.searchValue) || promptStr.includes(term.searchValue) || workflowStr.includes(term.searchValue);
-          }
-
-          return term.isNot ? !match : match;
-        });
-      });
-    });
-
-    if (typeof this.renderGallery === 'function') this.renderGallery();
-    if (typeof this.updateActionBar === 'function') this.updateActionBar();
-  }
-
-  renderGallery() {
-    const grid = this.$("cfobGalleryGrid");
-    if (!grid) return;
-
-    grid.innerHTML = "";
-
-    const countSpan = this.$("cfobImageCount");
-    if (countSpan) {
-      countSpan.innerText = `(${this.filteredImages.length})`;
-    }
-
-    const emptyState = this.$("cfobEmptyState");
-    if (this.filteredImages.length === 0) {
-      if (emptyState) {
-        emptyState.style.display = "block";
-        this.$("cfobEmptyStateTitle").innerText = "No Images Found";
-        this.$("cfobEmptyStateDesc").innerText = this.loadedImages.length === 0
-          ? "Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect."
-          : "No images match the current filter or hidden folder settings.";
-      }
-      return;
-    } else {
-      if (emptyState) emptyState.style.display = "none";
-    }
-
-    const fragment = document.createDocumentFragment();
-
-    this.filteredImages.forEach((img, idx) => {
-      const isSelected = this.selectedImages.has(img.name);
-      const card = document.createElement("div");
-      card.className = `image-card ${isSelected ? 'selected' : ''}`;
-      card.tabIndex = -1;
-      card.dataset.name = img.name;
-      card.dataset.index = String(this.loadedImages.indexOf(img));
-
-      card.innerHTML = `
-        <div class="checkbox-wrapper">
-          <input type="checkbox" class="card-checkbox" value="${this.escapeHtml(img.name)}" ${isSelected ? 'checked' : ''}>
-        </div>
-        <img class="card-preview" src="${this.escapeHtml(img.url)}" alt="${this.escapeHtml(img.name)}" loading="lazy">
-        <div class="card-content-wrapper">
-          <div class="card-header" title="${this.escapeHtml(img.name)}">
-            <span class="card-filename">${this.escapeHtml(img.name)}</span>
-            ${ICONS.toggle}
-          </div>
-          <div class="card-body">
-            ${img.isParsed ? this.getCardFieldsHtml(img) : '<i style="color: var(--color-text-disabled);">Loading...</i>'}
-          </div>
-        </div>
-      `;
-
-      const cb = /** @type {HTMLInputElement} */ (card.querySelector('.card-checkbox'));
-      cb.addEventListener('click', (e) => this.handleCheckboxClick(e, img.name));
-
-      const previewImg = /** @type {HTMLImageElement} */ (card.querySelector('.card-preview'));
-      previewImg.addEventListener('click', () => this.fullView.openFullView(img));
-
-      const header = /** @type {HTMLElement} */ (card.querySelector('.card-header'));
-      header.addEventListener('click', () => {
-        card.classList.toggle('expanded');
-      });
-
-      card.addEventListener('click', (e) => {
-        /** @type {HTMLElement | null} */
-        const copyBtn = /** @type {HTMLElement} */ (e.target).closest('.copy-val-btn');
-        if (copyBtn) {
-          e.stopPropagation();
-          this.copyValue(copyBtn, copyBtn.dataset.val);
-        }
-      });
-
-      if (this.observer) this.observer.observe(card);
-
-      fragment.appendChild(card);
-    });
-
-    grid.appendChild(fragment);
   }
 }
 

@@ -145,11 +145,11 @@ export default class COB_API {
       img.prompt = meta.prompt;
       img.workflow = meta.workflow;
       img.isParsed = true;
-      this.app.indexImageKeywords(img);
+      this.app.search.indexImageKeywords(img);
     } catch (e) {
       console.warn(`Failed to parse file: ${img.name}`, e);
       img.isParsed = true;
-      this.app.indexImageKeywords(img);
+      this.app.search.indexImageKeywords(img);
     } finally {
       img.isParsing = false;
     }
@@ -199,10 +199,10 @@ export default class COB_API {
       if (res) {
         this.app.loadedImages = this.app.loadedImages.filter((/** @type {CFOB_Image} */ img) => img.name !== res.name);
         this.app.loadedImages.unshift(res);
-        this.app.indexImageKeywords(res);
+        this.app.search.indexImageKeywords(res);
       }
     }
-    this.app.filterGallery();
+    this.app.gallery.filterGallery();
   }
 
   /** @param {string} str */
