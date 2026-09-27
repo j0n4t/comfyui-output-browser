@@ -39,6 +39,15 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .config-input:focus { outline: none; border-color: var(--color-accent); }
   #cfob-root .config-paths-textarea { font-family: var(--font-mono); resize: vertical; height: 3.75em; font-size: 0.75em; }
 
+  #cfob-root .inspector-json-view { width: 100%; height: 30em; box-sizing: border-box; overflow: auto; background: var(--color-bg-input); color: var(--color-syntax-string); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md); }
+  #cfob-root .inspector-json-view pre { margin: 0; font-family: var(--font-mono); font-size: 0.8125em; white-space: pre; }
+  #cfob-root .inspector-json-key { color: var(--color-syntax-key); background: transparent; border: 0; padding: 0; font: inherit; cursor: pointer; }
+  #cfob-root .inspector-json-key:hover, #cfob-root .inspector-json-key.selected { text-decoration: underline; color: var(--color-accent); }
+  #cfob-root .inspector-json-key:focus-visible { outline: 1px solid var(--color-accent); }
+  #cfob-root .inspector-json-actions { display: none; position: sticky; top: -0.75em; z-index: 1; align-items: center; gap: 0.5em; background: var(--color-bg-input); border-bottom: 1px solid var(--color-border); margin: -0.75em -0.75em 0.5em; padding: 0.5em 0.75em; }
+  #cfob-root .inspector-json-actions.active { display: flex; }
+  #cfob-root .inspector-json-selected-path { color: var(--color-text-muted); font-family: var(--font-mono); font-size: 0.75em; overflow-wrap: anywhere; }
+
   #cfob-root .popover-menu { position: fixed; background: var(--color-bg-popover); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: 0 0.625em 1.5625em rgba(0,0,0,0.6); padding: 0.5em; z-index: var(--z-popover); display: flex; flex-direction: column; gap: 0.5em; min-width: 15em; max-width: 20em; }
   #cfob-root .popover-section { display: flex; flex-direction: column; gap: 0.25em; border-bottom: 1px solid var(--color-border-light); padding-bottom: 0.375em; }
   #cfob-root .popover-section:last-child { border-bottom: none; padding-bottom: 0; }
@@ -136,8 +145,8 @@ export const CFOB_SETTINGS_MODALS_HTML = `
           <div class="tab" data-target="cfobInsWorkflow" tabindex="0">UI Workflow (JSON)</div>
         </div>
         <div class="tab-content active" id="cfobInsNodes"><div class="nodes-grid" id="cfobInsNodesGrid"></div></div>
-        <div class="tab-content" id="cfobInsPrompt"><textarea id="cfobInsPromptText" style="width: 100%; height: 30em; background: var(--color-bg-input); color: var(--color-syntax-string); font-family: var(--font-mono); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md);" readonly></textarea></div>
-        <div class="tab-content" id="cfobInsWorkflow"><textarea id="cfobInsWorkflowText" style="width: 100%; height: 30em; background: var(--color-bg-input); color: var(--color-syntax-key); font-family: var(--font-mono); border: 1px solid var(--color-border); padding: 0.75em; border-radius: var(--radius-md);" readonly></textarea></div>
+        <div class="tab-content" id="cfobInsPrompt"><div class="inspector-json-view" id="cfobInsPromptView"></div></div>
+        <div class="tab-content" id="cfobInsWorkflow"><div class="inspector-json-view" id="cfobInsWorkflowView"></div></div>
       </div>
     </div>
   </div>
@@ -940,9 +949,10 @@ export default class COB_Settings {
     menu.style.top = `${rect.bottom + 4}px`;
     menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
 
+    const encodedPath = encodeURIComponent(String(safePath || ''));
     let html = `<div class="popover-header">Add Path To Field:</div>`;
-    this.fieldConfigs.forEach((/** @type {{ label: any; }} */ cfg, /** @type {any} */ i) => html += `<button class="popover-item append-path" data-idx="${i}" data-path="${safePath}"><span>${this.app.escapeHtml(cfg.label)}</span></button>`);
-    html += `<div style="border-top: 1px solid var(--border); margin: 4px 0;"></div><button class="popover-item new-path" data-path="${safePath}"><span style="color: var(--link);">+ Create New Field</span></button>`;
+    this.fieldConfigs.forEach((/** @type {{ label: any; }} */ cfg, /** @type {any} */ i) => html += `<button class="popover-item append-path" data-idx="${i}" data-path="${encodedPath}"><span>${this.app.escapeHtml(cfg.label)}</span></button>`);
+    html += `<div style="border-top: 1px solid var(--border); margin: 4px 0;"></div><button class="popover-item new-path" data-path="${encodedPath}"><span style="color: var(--link);">+ Create New Field</span></button>`;
 
     menu.innerHTML = html;
     this.app.root?.appendChild(menu);
@@ -951,7 +961,7 @@ export default class COB_Settings {
     menu.querySelectorAll('.append-path').forEach(b => {
       b.addEventListener('click', () => {
         const field = this.fieldConfigs[/** @type {HTMLElement} */ (b).dataset.idx || 0];
-        const p = /** @type {HTMLElement} */ (b).dataset.path;
+        const p = decodeURIComponent(/** @type {HTMLElement} */ (b).dataset.path || '');
         if (!field.paths?.includes(p)) {
           field.paths = field.paths ? `${field.paths}, ${p}` : p;
           this.saveConfig(this.fieldConfigs);
@@ -965,13 +975,105 @@ export default class COB_Settings {
     menu.querySelector('.new-path')?.addEventListener('click', async () => {
       const lbl = await this.customPrompt("Enter a label for the new card field:", "Custom Field");
       if (lbl) {
-        this.fieldConfigs.push({ label: lbl, paths: /** @type {HTMLElement} */ (menu.querySelector('.new-path'))?.dataset.path });
+        this.fieldConfigs.push({ label: lbl, paths: decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.new-path'))?.dataset.path || '') });
         this.saveConfig(this.fieldConfigs);
         this.app.gallery.renderGallery();
         this.app.showToast(`Created field '${lbl}'`);
       }
       this.activePopover?.remove(); this.activePopover = null;
     });
+  }
+
+  /**
+   * @param {HTMLElement} panel
+   * @param {any} value
+   * @param {'prompt' | 'workflow'} source
+   * @param {any} img
+   */
+  renderInspectorJson(panel, value, source, img) {
+    const getPath = (/** @type {string[]} */ parentPath, /** @type {string} */ key, /** @type {any} */ propertyValue) => {
+      if (source === 'prompt' && parentPath.length > 0 && img.prompt?.[parentPath[0]]) {
+        const node = img.prompt[parentPath[0]];
+        const nodeName = node?._meta?.title || node?.class_type || parentPath[0];
+        const propertyPath = [...parentPath.slice(1), key]
+          .map((part, index) => /^\d+$/.test(part) ? `[${part}]` : `${index && !/^\d+$/.test(part) ? '.' : ''}${part}`)
+          .join('');
+        const nodePropertyPath = propertyPath.startsWith('inputs.') || propertyPath === 'inputs'
+          ? propertyPath
+          : `node.${propertyPath || '__self__'}`;
+        return `${nodeName}.${nodePropertyPath}`;
+      }
+
+      if (source === 'workflow') {
+        const nodesIndex = parentPath.indexOf('nodes');
+        if (nodesIndex >= 0 && parentPath.length > nodesIndex + 1) {
+          const nodeIndex = Number(parentPath[nodesIndex + 1]);
+          const node = img.workflow?.nodes?.[nodeIndex];
+          if (!node) return `@workflow.${[...parentPath, key].join('.')}`;
+          const nodeName = node?.title || node?.type || node?.id;
+          const nodePath = [...parentPath.slice(nodesIndex + 2), key];
+          if (nodePath[0] === 'widgets_values_named' && nodePath.length === 2) return `${nodeName}.${nodePath[1]}`;
+          if (nodePath[0] === 'widgets_values' && nodePath.length === 2 && /^\d+$/.test(nodePath[1])) return `${nodeName}.widget[${nodePath[1]}]`;
+          const propertyPath = nodePath
+            .map((part, index) => /^\d+$/.test(part) ? `[${part}]` : `${index && !/^\d+$/.test(part) ? '.' : ''}${part}`)
+            .join('');
+          return `${nodeName}.${propertyPath || '__self__'}`;
+        }
+        return `@workflow.${[...parentPath, key].join('.')}`;
+      }
+
+      return `@prompt.${[...parentPath, key].join('.')}`;
+    };
+
+    const renderValue = (/** @type {any} */ current, /** @type {number} */ depth, /** @type {string[]} */ path) => {
+      if (Array.isArray(current)) {
+        if (!current.length) return '[]';
+        const entries = current.map((item, index) => `${'  '.repeat(depth + 1)}${renderValue(item, depth + 1, [...path, String(index)])}`);
+        return `[\n${entries.join(',\n')}\n${'  '.repeat(depth)}]`;
+      }
+      if (current && typeof current === 'object') {
+        const entries = Object.entries(current).map(([key, child]) => {
+          const nodePath = getPath(path, key, child);
+          const escapedKey = this.app.escapeHtml(JSON.stringify(key));
+          const renderedKey = nodePath
+            ? `<button class="inspector-json-key" type="button" data-path="${encodeURIComponent(nodePath)}" aria-label="Select property">${escapedKey}</button>`
+            : escapedKey;
+          return `${'  '.repeat(depth + 1)}${renderedKey}: ${renderValue(child, depth + 1, [...path, key])}`;
+        });
+        if (!entries.length) return '{}';
+        return `{\n${entries.join(',\n')}\n${'  '.repeat(depth)}}`;
+      }
+      return this.app.escapeHtml(JSON.stringify(current) ?? 'null');
+    };
+
+    panel.innerHTML = `
+      <div class="inspector-json-actions">
+        <span class="inspector-json-selected-path"></span>
+        <button class="btn btn-primary btn-xs inspector-json-add" type="button">Add node path to fields</button>
+      </div>
+      <pre>${renderValue(value, 0, [])}</pre>`;
+
+    const actions = /** @type {HTMLElement} */ (panel.querySelector('.inspector-json-actions'));
+    const selectedPath = /** @type {HTMLElement} */ (panel.querySelector('.inspector-json-selected-path'));
+    const addButton = /** @type {HTMLElement} */ (panel.querySelector('.inspector-json-add'));
+    panel.querySelectorAll('.inspector-json-key').forEach(key => {
+      const selectProperty = () => {
+        panel.querySelectorAll('.inspector-json-key.selected').forEach(selected => selected.classList.remove('selected'));
+        key.classList.add('selected');
+        const path = decodeURIComponent(/** @type {HTMLElement} */ (key).dataset.path || '');
+        selectedPath.textContent = path;
+        addButton.dataset.path = path;
+        actions.classList.add('active');
+      };
+      key.addEventListener('click', selectProperty);
+      key.addEventListener('keydown', (/** @type {KeyboardEvent} */ event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectProperty();
+        }
+      });
+    });
+    addButton.addEventListener('click', event => this.openAddPathMenu(event, addButton.dataset.path || ''));
   }
 
   /** @param {number} idx */
@@ -986,8 +1088,8 @@ export default class COB_Settings {
     }
 
     this.app.$("cfobInspectorTitle").innerText = `Metadata: ${img.name}`;
-    /** @type {HTMLInputElement} */ (this.app.$("cfobInsPromptText")).value = img.prompt ? JSON.stringify(img.prompt, null, 2) : 'No API Prompt Metadata';
-    /** @type {HTMLInputElement} */ (this.app.$("cfobInsWorkflowText")).value = img.workflow ? JSON.stringify(img.workflow, null, 2) : 'No UI Workflow Metadata';
+    this.renderInspectorJson(this.app.$("cfobInsPromptView"), img.prompt || 'No API Prompt Metadata', 'prompt', img);
+    this.renderInspectorJson(this.app.$("cfobInsWorkflowView"), img.workflow || 'No UI Workflow Metadata', 'workflow', img);
 
     const grid = this.app.$("cfobInsNodesGrid");
     grid.innerHTML = '';
@@ -1006,7 +1108,7 @@ export default class COB_Settings {
 
         if (w.length > 0) {
           w.forEach(({ key, val }) => {
-            const pPath = this.app.escapeHtml(`${titleText}.${key}`);
+            const pPath = encodeURIComponent(`${titleText}.${key}`);
             const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
             html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
           });
@@ -1022,7 +1124,7 @@ export default class COB_Settings {
 
         if (node.inputs && Object.keys(node.inputs).length > 0) {
           for (const [key, val] of Object.entries(node.inputs)) {
-            const pPath = this.app.escapeHtml(`${titleText}.${key}`);
+            const pPath = encodeURIComponent(`${titleText}.${key}`);
             if (Array.isArray(val) && val.length >= 2 && typeof val[0] === 'string' && !isNaN(val[1])) {
               html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span></div><span style="color: var(--link); font-style: italic; font-size: 11px;">➔ Connected to #${val[0]}</span></div>`;
             } else {
@@ -1038,7 +1140,7 @@ export default class COB_Settings {
     }
 
     grid.querySelectorAll('.cp-val').forEach(b => b.addEventListener('click', (e) => this.app.actions.copyValue(/** @type {HTMLElement} */(e.currentTarget), /** @type {HTMLElement} */(e.currentTarget).dataset.val)));
-    grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, /** @type {HTMLElement} */(e.currentTarget)?.dataset.path)));
+    grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, decodeURIComponent(/** @type {HTMLElement} */(e.currentTarget)?.dataset.path || ''))));
 
     inspectorModal.classList.add('active');
     this.app.$("cfobCloseInspectorBtn").focus();

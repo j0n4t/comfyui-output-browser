@@ -783,6 +783,16 @@ export default class ComfyOutputBrowser {
     if (!pathString) return null;
     const candidates = pathString.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean);
     const { prompt, workflow } = imgData;
+    const getNestedValue = (/** @type {any} */ object, /** @type {string} */ propertyPath) => {
+      if (propertyPath === '__self__') return object;
+      const parts = propertyPath.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+      let value = object;
+      for (const part of parts) {
+        if (value === null || value === undefined) return undefined;
+        value = value[part];
+      }
+      return value;
+    };
 
     for (const path of candidates) {
       const parts = path.split('.');
@@ -794,14 +804,23 @@ export default class ComfyOutputBrowser {
       const targetName = match ? match[1] : target;
       const targetIdx = match ? parseInt(match[2], 10) : 0;
 
+      if (targetName === '@prompt' || targetName === '@workflow') {
+        const value = getNestedValue(targetName === '@prompt' ? prompt : workflow, prop);
+        if (value !== undefined && value !== null && value !== '') return value;
+        continue;
+      }
+
       let matchCount = 0;
       if (prompt) {
         for (const [id, node] of Object.entries(prompt)) {
           const classType = node.class_type || '', title = node._meta?.title || '';
           if (id === targetName || classType.toLowerCase() === targetName.toLowerCase() || title.toLowerCase() === targetName.toLowerCase()) {
             if (matchCount === targetIdx) {
-              let val = prop.startsWith('inputs.') ? (node.inputs ? node.inputs[prop.replace('inputs.', '')] : undefined) : node.inputs?.[prop];
-              if (val !== undefined && !Array.isArray(val) && val !== null && val !== '') return val;
+              const val = prop.startsWith('node.')
+                ? getNestedValue(node, prop.slice('node.'.length))
+                : getNestedValue(node, prop.startsWith('inputs.') ? prop : `inputs.${prop}`);
+              const isConnection = Array.isArray(val) && val.length >= 2 && typeof val[0] === 'string' && !isNaN(val[1]);
+              if (val !== undefined && val !== null && val !== '' && !isConnection) return val;
             }
             matchCount++;
           }
@@ -817,6 +836,8 @@ export default class ComfyOutputBrowser {
               if (node.widgets_values_named?.[prop] !== undefined) return node.widgets_values_named[prop];
               const wMatch = prop.match(/^widget\[(\d+)\]$/);
               if (wMatch && node.widgets_values) return node.widgets_values[parseInt(wMatch[1], 10)];
+              const val = getNestedValue(node, prop);
+              if (val !== undefined && val !== null && val !== '') return val;
             }
             matchCount++;
           }
