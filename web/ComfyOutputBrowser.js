@@ -338,7 +338,9 @@ export default class ComfyOutputBrowser {
     this.settings.bindEvents();
 
     document.addEventListener('keydown', (e) => {
-      if (!this.root?.contains(document.activeElement)) return;
+      const focusIsInside = this.root?.contains(document.activeElement) || false;
+      const browserIsVisible = this.isUiVisible && !this.root?.classList.contains('cfob-hidden');
+      if (!focusIsInside && !(e.key === 'Escape' && browserIsVisible)) return;
 
       const fvModal = this.$("cfobFullViewModal");
       const configModal = this.$("cfobConfigModal");
@@ -368,6 +370,7 @@ export default class ComfyOutputBrowser {
       const searchInput = this.$("cfobSearchInput");
 
       if (e.key === 'Escape') {
+        e.preventDefault();
         if (isFullView && noModalOpen) {
           e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
         } else if (this.isUiVisible) {
