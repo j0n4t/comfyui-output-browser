@@ -342,13 +342,8 @@ export default class ComfyOutputBrowser {
       const browserIsVisible = this.isUiVisible && !this.root?.classList.contains('cfob-hidden');
       if (!focusIsInside && !(e.key === 'Escape' && browserIsVisible)) return;
 
-      const fvModal = this.$("cfobFullViewModal");
-      const configModal = this.$("cfobConfigModal");
-      const inspectorModal = this.$("cfobInspectorModal");
-      const hiddenModal = this.$("cfobHiddenFoldersModal");
-      const ignoredKeywordsModal = this.$("cfobIgnoredKeywordsModal");
-      const confirmModal = this.$("cfobConfirmModal");
-      const promptModal = this.$("cfobPromptModal");
+      const activeDialog = this.settings.modals.getActive();
+      const isFullView = this.$("cfobFullViewModal").classList.contains('active');
 
       const target = /** @type {HTMLElement} */ (e.target);
       const isEditing = target && (
@@ -358,38 +353,18 @@ export default class ComfyOutputBrowser {
         target.isContentEditable
       );
 
-      const noModalOpen = !configModal.classList.contains('active') &&
-        !inspectorModal.classList.contains('active') &&
-        !hiddenModal.classList.contains('active') &&
-        !ignoredKeywordsModal.classList.contains('active') &&
-        !confirmModal.classList.contains('active') &&
-        !promptModal.classList.contains('active');
-
-      const isFullView = fvModal.classList.contains('active');
+      const noModalOpen = !activeDialog;
       const key = e.key.toLowerCase();
       const searchInput = this.$("cfobSearchInput");
 
       if (e.key === 'Escape') {
+        if (activeDialog) return;
         e.preventDefault();
         if (isFullView && noModalOpen) {
           e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
         } else if (this.isUiVisible) {
           e.stopPropagation();
-          if (confirmModal.classList.contains('active')) this.$("cfobConfirmCancelBtn").click();
-          else if (promptModal.classList.contains('active')) this.$("cfobPromptCancelBtn").click();
-          else if (configModal.classList.contains('active')) {
-            this.settings.closeModal(configModal);
-          }
-          else if (inspectorModal.classList.contains('active')) {
-            this.settings.closeModal(inspectorModal);
-          }
-          else if (hiddenModal.classList.contains('active')) {
-            this.settings.closeModal(hiddenModal);
-          }
-          else if (ignoredKeywordsModal.classList.contains('active')) {
-            this.settings.closeModal(ignoredKeywordsModal);
-          }
-          else if (target === searchInput && !this.$("cfobSearchSuggestions").hidden) this.search.hideSearchSuggestions();
+          if (target === searchInput && !this.$("cfobSearchSuggestions").hidden) this.search.hideSearchSuggestions();
           else if (isEditing) target.blur();
           else if (this.selectedImages.size > 0) this.selection.clearSelection();
           else this.hideWithTransition();

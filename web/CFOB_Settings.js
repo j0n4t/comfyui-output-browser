@@ -1,4 +1,5 @@
 import ICONS from "./assets/icons.js";
+import CFOB_Modal from "./CFOB_Modal.js";
 export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .field-row { display: flex; flex-direction: column; gap: 0.25em; background: var(--color-bg-surface); border: 1px solid var(--color-border-dark); padding: 0.5em 0.625em; border-radius: var(--radius-md); }
   #cfob-root .field-label { font-size: 0.6875em; font-weight: 700; color: var(--color-syntax-key); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
@@ -85,9 +86,9 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
 `;
 
 export const CFOB_SETTINGS_MODALS_HTML = `
-  <div class="modal-overlay" id="cfobConfigModal">
+  <div class="modal-overlay" id="cfobConfigModal" data-dialog-modal>
     <div class="modal-content">
-      <div class="modal-header">${ICONS.pane}<h3>Customize Image Details Card Fields</h3><button class="icon-btn" id="cfobCloseConfigBtn">${ICONS.close}</button></div>
+      <div class="modal-header">${ICONS.pane}<h3>Customize Image Details Card Fields</h3><button class="icon-btn" id="cfobCloseConfigBtn" data-modal-dismiss>${ICONS.close}</button></div>
       <div class="modal-body"><p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define custom card fields. Enter fallback paths separated by commas or newlines. <br><em>Syntax examples: <code>Positive Prompt.text</code>, <code>KSampler.seed</code>, <code>6.inputs.text</code></em></p>
         <div id="cfobConfigFieldsList" style="display: flex; flex-direction: column; gap: 0.75em;"></div>
         <button class="btn" id="cfobAddFieldBtn" style="align-self: flex-start;">+ Add Custom Field</button>
@@ -96,12 +97,12 @@ export const CFOB_SETTINGS_MODALS_HTML = `
     </div>
   </div>
 
-  <div class="modal-overlay" id="cfobHiddenFoldersModal">
+  <div class="modal-overlay" id="cfobHiddenFoldersModal" data-dialog-modal>
     <div class="modal-content">
       <div class="modal-header">
         ${ICONS.hidden}
         <h3>Configure Hidden Folders</h3>
-        <button class="icon-btn" id="cfobCloseHiddenFoldersBtn">${ICONS.close}</button>
+        <button class="icon-btn" id="cfobCloseHiddenFoldersBtn" data-modal-dismiss>${ICONS.close}</button>
       </div>
       <div class="modal-body">
         <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">
@@ -116,11 +117,11 @@ export const CFOB_SETTINGS_MODALS_HTML = `
     </div>
   </div>
 
-  <div class="modal-overlay" id="cfobIgnoredKeywordsModal">
+  <div class="modal-overlay" id="cfobIgnoredKeywordsModal" data-dialog-modal>
     <div class="modal-content">
       <div class="modal-header">
         <h3>Ignore Autocomplete Keywords</h3>
-        <button class="icon-btn" id="cfobCloseIgnoredKeywordsBtn">${ICONS.close}</button>
+        <button class="icon-btn" id="cfobCloseIgnoredKeywordsBtn" data-modal-dismiss>${ICONS.close}</button>
       </div>
       <div class="modal-body">
         <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">
@@ -135,9 +136,9 @@ export const CFOB_SETTINGS_MODALS_HTML = `
     </div>
   </div>
 
-  <div class="modal-overlay" id="cfobInspectorModal">
+  <div class="modal-overlay" id="cfobInspectorModal" data-dialog-modal>
     <div class="modal-content">
-      <div class="modal-header">${ICONS.inspect}<h3 id="cfobInspectorTitle">Image Metadata Inspector</h3><button class="icon-btn" id="cfobCloseInspectorBtn">${ICONS.close}</button></div>
+      <div class="modal-header">${ICONS.inspect}<h3 id="cfobInspectorTitle">Image Metadata Inspector</h3><button class="icon-btn" id="cfobCloseInspectorBtn" data-modal-dismiss>${ICONS.close}</button></div>
       <div class="modal-body">
         <div class="tabs" id="cfobInspectorTabs">
           <div class="tab active" data-target="cfobInsNodes" tabindex="0">Visual Nodes View</div>
@@ -152,24 +153,24 @@ export const CFOB_SETTINGS_MODALS_HTML = `
   </div>
 
   <!-- Custom Confirm Modal -->
-  <div class="modal-overlay" id="cfobConfirmModal">
+  <div class="modal-overlay" id="cfobConfirmModal" data-dialog-modal>
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="cfobConfirmTitle">Confirm</h3>
-        <button class="icon-btn" id="cfobConfirmCloseBtn">${ICONS.close}</button>
+        <button class="icon-btn" id="cfobConfirmCloseBtn" data-modal-cancel>${ICONS.close}</button>
       </div>
       <div class="modal-body"><p id="cfobConfirmMsg"></p></div>
       <div class="modal-footer">
-        <button class="btn" id="cfobConfirmCancelBtn">Cancel</button>
+        <button class="btn" id="cfobConfirmCancelBtn" data-modal-cancel>Cancel</button>
         <button class="btn" id="cfobConfirmOkBtn">Confirm</button>
       </div>
     </div>
   </div>
 
   <!-- Custom Prompt Modal with Folder List -->
-  <div class="modal-overlay" id="cfobPromptModal">
+  <div class="modal-overlay" id="cfobPromptModal" data-dialog-modal>
     <div class="modal-content">
-      <div class="modal-header"><h3 id="cfobPromptTitle">Input Required</h3><button class="icon-btn" id="cfobPromptCloseBtn">${ICONS.close}</button></div>
+      <div class="modal-header"><h3 id="cfobPromptTitle">Input Required</h3><button class="icon-btn" id="cfobPromptCloseBtn" data-modal-cancel>${ICONS.close}</button></div>
       <div class="modal-body">
         <div id="cfobPromptThumbWrapper">
           <img id="cfobPromptThumbImg" src="" alt="Image">
@@ -182,7 +183,7 @@ export const CFOB_SETTINGS_MODALS_HTML = `
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn" id="cfobPromptCancelBtn">Cancel</button>
+        <button class="btn" id="cfobPromptCancelBtn" data-modal-cancel>Cancel</button>
         <button class="btn btn-primary" id="cfobPromptOkBtn">Save</button>
       </div>
     </div>
@@ -202,8 +203,7 @@ export default class COB_Settings {
   /** @param {import("./ComfyOutputBrowser.js").default} app  */
   constructor(app) {
     this.app = app;
-    /** @type {WeakMap<HTMLElement, HTMLElement | null>} */
-    this.modalReturnFocus = new WeakMap();
+    this.modals = new CFOB_Modal(app);
     this.currentSort = localStorage.getItem('cfob_sort') || 'default';
     this.fieldConfigs = this.loadConfig();
     this.hiddenFolders = this.loadHiddenFoldersConfig();
@@ -322,6 +322,7 @@ export default class COB_Settings {
   }
 
   bindEvents() {
+    this.modals.bindEvents();
     document.addEventListener('click', (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
       if (this.activePopover && !this.activePopover.contains(target) && !target.closest('#cfobMenuBtn')) {
@@ -330,7 +331,6 @@ export default class COB_Settings {
       }
     });
 
-    this.app.$("cfobCloseConfigBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobConfigModal")));
     this.app.$("cfobAddFieldBtn").addEventListener('click', () => { this.fieldConfigs.push({ label: "Custom Field", paths: "" }); this.openConfigModal(); });
     this.app.$("cfobResetConfigBtn").addEventListener('click', () => { this.resetConfig(); this.openConfigModal(); });
     this.app.$("cfobSaveConfigBtn").addEventListener('click', () => {
@@ -343,10 +343,9 @@ export default class COB_Settings {
       });
       this.saveConfig(newCfgs);
       this.app.gallery.renderGallery();
-      this.closeModal(this.app.$("cfobConfigModal"));
+      this.modals.close(this.app.$("cfobConfigModal"));
     });
 
-    this.app.$("cfobCloseInspectorBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobInspectorModal")));
     // Enhanced Inspector Tabs with Keyboard Navigation
     this.app.root?.querySelectorAll('#cfobInspectorTabs .tab').forEach(tab => {
       const activateTab = () => {
@@ -375,32 +374,6 @@ export default class COB_Settings {
       });
     });
 
-    // Global Modal Focus Trap (Keeps Tab navigation locked inside active modals)
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Tab') return;
-      const activeModal = this.app.root?.querySelector('.modal-overlay.active');
-      if (!activeModal) return;
-
-      const focusable = Array.from(activeModal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'))
-        .filter(element => element.getClientRects().length > 0);
-      if (!focusable.length) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (!activeModal.contains(document.activeElement)) {
-        e.preventDefault();
-        /** @type {HTMLElement} */ (e.shiftKey ? last : first).focus();
-      } else if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        /** @type {HTMLElement} */(last).focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        /** @type {HTMLElement} */(first).focus();
-      }
-    });
-
-    this.app.$("cfobCloseHiddenFoldersBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobHiddenFoldersModal")));
     this.app.$("cfobResetHiddenFoldersBtn").addEventListener('click', () => {
       this.saveHiddenFoldersConfig(["temp", "trash"]);
       this.openHiddenFoldersModal();
@@ -410,11 +383,10 @@ export default class COB_Settings {
       const list = val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean);
       this.saveHiddenFoldersConfig(list);
       this.app.gallery.filterGallery();
-      this.closeModal(this.app.$("cfobHiddenFoldersModal"));
+      this.modals.close(this.app.$("cfobHiddenFoldersModal"));
       this.app.showToast("Saved hidden folders configuration");
     });
 
-    this.app.$("cfobCloseIgnoredKeywordsBtn").addEventListener('click', () => this.closeModal(this.app.$("cfobIgnoredKeywordsModal")));
     this.app.$("cfobResetIgnoredKeywordsBtn").addEventListener('click', () => {
       this.saveIgnoredAutocompleteKeywords([]);
       this.openIgnoredAutocompleteKeywordsModal();
@@ -424,7 +396,7 @@ export default class COB_Settings {
       const keywords = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim().toLowerCase()).filter(Boolean))];
       this.saveIgnoredAutocompleteKeywords(keywords);
       this.app.search.updateSearchSuggestions(true);
-      this.closeModal(this.app.$("cfobIgnoredKeywordsModal"));
+      this.modals.close(this.app.$("cfobIgnoredKeywordsModal"));
       this.app.showToast("Saved ignored autocomplete keywords");
     });
   }
@@ -632,39 +604,6 @@ export default class COB_Settings {
     popover.style.left = `${left}px`;
   }
 
-  /** @param {HTMLElement} modal */
-  rememberModalFocus(modal) {
-    if (modal.classList.contains('active')) return;
-    const activeElement = document.activeElement;
-    const activeModal = activeElement instanceof HTMLElement ? activeElement.closest('.modal-overlay') : null;
-    this.modalReturnFocus.set(
-      modal,
-      activeElement instanceof HTMLElement &&
-        this.app.root?.contains(activeElement) &&
-        !modal.contains(activeElement) &&
-        (!activeModal || activeModal.classList.contains('active'))
-        ? activeElement
-        : null
-    );
-  }
-
-  /** @param {HTMLElement} modal */
-  closeModal(modal) {
-    modal.classList.remove('active');
-    this.restoreModalFocus(modal);
-  }
-
-  /** @param {HTMLElement} modal */
-  restoreModalFocus(modal) {
-    const returnFocus = this.modalReturnFocus.get(modal);
-    this.modalReturnFocus.delete(modal);
-    if (returnFocus?.isConnected && this.app.root?.contains(returnFocus) && !modal.contains(returnFocus)) {
-      returnFocus.focus();
-    } else if (this.app.root?.isConnected && !this.app.root.classList.contains('cfob-hidden')) {
-      this.app.$("cfobSearchInput").focus();
-    }
-  }
-
   /**
   * @param {string} message 
   * @param {string} confirmText 
@@ -674,7 +613,6 @@ export default class COB_Settings {
   async customConfirm(message, confirmText = "Confirm", isDanger = false) {
     return new Promise(resolve => {
       const modal = this.app.$("cfobConfirmModal");
-      this.rememberModalFocus(modal);
       this.app.$("cfobConfirmMsg").innerText = message;
 
       const okBtn = this.app.$("cfobConfirmOkBtn");
@@ -682,8 +620,7 @@ export default class COB_Settings {
       okBtn.className = isDanger ? "btn btn-danger" : "btn btn-primary";
 
       const cleanup = () => {
-        modal.classList.remove("active");
-        this.restoreModalFocus(modal);
+        this.modals.close(modal);
         okBtn.removeEventListener("click", onOk);
         this.app.$("cfobConfirmCancelBtn").removeEventListener("click", onCancel);
         this.app.$("cfobConfirmCloseBtn").removeEventListener("click", onCancel);
@@ -696,8 +633,7 @@ export default class COB_Settings {
       this.app.$("cfobConfirmCancelBtn").addEventListener("click", onCancel);
       this.app.$("cfobConfirmCloseBtn").addEventListener("click", onCancel);
 
-      modal.classList.add("active");
-      okBtn.focus();
+      this.modals.open(modal, okBtn);
     });
   }
 
@@ -711,7 +647,6 @@ export default class COB_Settings {
   async customPrompt(message, defaultValue = "", folderPickerMode = 'none', imageUrl = "") {
     return new Promise(resolve => {
       const modal = this.app.$("cfobPromptModal");
-      this.rememberModalFocus(modal);
       this.app.$("cfobPromptMsg").innerText = message;
       const input = /** @type {HTMLInputElement} */ (this.app.$("cfobPromptInput"));
       input.value = defaultValue;
@@ -848,8 +783,7 @@ export default class COB_Settings {
       }
 
       const cleanup = () => {
-        modal.classList.remove("active");
-        this.restoreModalFocus(modal);
+        this.modals.close(modal);
         thumbWrapper.classList.remove('active');
         this.app.$("cfobPromptOkBtn").removeEventListener("click", onOk);
         this.app.$("cfobPromptCancelBtn").removeEventListener("click", onCancel);
@@ -876,21 +810,16 @@ export default class COB_Settings {
       this.app.$("cfobPromptCloseBtn").addEventListener("click", onCancel);
       input.addEventListener("keydown", onKey);
 
-      modal.classList.add("active");
-      setTimeout(() => {
-        if (folderPickerMode === 'move') {
-          /** @type {HTMLElement | null} */ (folderList.querySelector('.folder-chip'))?.focus();
-        } else {
-          input.focus();
-          input.select();
-        }
-      }, 10);
+      const initialFocus = folderPickerMode === 'move'
+        ? /** @type {HTMLElement | null} */ (folderList.querySelector('.folder-chip'))
+        : input;
+      this.modals.open(modal, initialFocus);
+      if (folderPickerMode !== 'move') input.select();
     });
   }
 
   openConfigModal() {
     const modal = this.app.$("cfobConfigModal");
-    this.rememberModalFocus(modal);
     const list = this.app.$("cfobConfigFieldsList");
     list.innerHTML = "";
 
@@ -913,26 +842,21 @@ export default class COB_Settings {
       list.appendChild(item);
     });
 
-    modal.classList.add('active');
-    setTimeout(() => this.app.$("cfobAddFieldBtn")?.focus(), 10);
+    this.modals.open(modal, this.app.$("cfobAddFieldBtn"));
   }
 
   openHiddenFoldersModal() {
     const modal = this.app.$("cfobHiddenFoldersModal");
-    this.rememberModalFocus(modal);
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobHiddenFoldersInput"));
     input.value = this.hiddenFolders.join("\n");
-    modal.classList.add('active');
-    setTimeout(() => input.focus(), 10);
+    this.modals.open(modal, input);
   }
 
   openIgnoredAutocompleteKeywordsModal() {
     const modal = this.app.$("cfobIgnoredKeywordsModal");
-    this.rememberModalFocus(modal);
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobIgnoredKeywordsInput"));
     input.value = this.ignoredAutocompleteKeywords.join("\n");
-    modal.classList.add('active');
-    setTimeout(() => input.focus(), 10);
+    this.modals.open(modal, input);
   }
 
   /**
@@ -1082,7 +1006,7 @@ export default class COB_Settings {
   async openInspector(idx) {
     const img = this.app.loadedImages[idx];
     const inspectorModal = this.app.$("cfobInspectorModal");
-    this.rememberModalFocus(inspectorModal);
+    this.modals.captureFocus(inspectorModal);
 
     if (!img.isParsed) {
       this.app.$("cfobInspectorTitle").innerText = `Loading Metadata...`;
@@ -1144,7 +1068,6 @@ export default class COB_Settings {
     grid.querySelectorAll('.cp-val').forEach(b => b.addEventListener('click', (e) => this.app.actions.copyValue(/** @type {HTMLElement} */(e.currentTarget), /** @type {HTMLElement} */(e.currentTarget).dataset.val)));
     grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, decodeURIComponent(/** @type {HTMLElement} */(e.currentTarget)?.dataset.path || ''))));
 
-    inspectorModal.classList.add('active');
-    this.app.$("cfobCloseInspectorBtn").focus();
+    this.modals.open(inspectorModal, this.app.$("cfobCloseInspectorBtn"));
   }
 }
