@@ -58,8 +58,8 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-count:hover { text-decoration: underline; }
   #cfob-root .full-view-count:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
 
-  #cfob-root .full-view-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5em; width: 100%; }
-  #cfob-root .full-view-actions .btn { justify-content: center; font-size: 0.6875em; padding: 0.375em 0.5em; }
+  #cfob-root .full-view-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5em; width: 100%; }
+  #cfob-root .full-view-actions .btn { font-size: 0.6875em; padding: 0.375em 0.5em; min-width: 10em; justify-content: center; }
 
   #cfob-root .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: white; border: none; padding: 1.25em 0.9375em; cursor: pointer; font-size: 1.5em; transition: 0.2s; z-index: 10; }
   #cfob-root .nav-btn:hover { background: rgba(0,0,0,0.9); }
@@ -74,43 +74,31 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-sidebar { width: var(--full-view-sidebar-width, 360px); min-width: 0; flex: 0 0 auto; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; }
   #cfob-root .full-view-sidebar-resizer.hidden { display: none; }
   #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar { transition: none; }
+
   #cfob-root .full-view-layout.sidebar-below { flex-direction: column; }
   #cfob-root .full-view-layout.sidebar-below .full-view-main { min-height: 0; }
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar { width: 100%; height: var(--full-view-sidebar-height, 50vh); border-left: none; border-top: 1px solid var(--color-border); }
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar-resizer { flex-basis: 7px; width: 100%; cursor: row-resize; }
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar-resizer::after { inset: 2px 0; }
-  #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar,
-  #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar-resizer { display: none; }
+
+  #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar, #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar-resizer { display: none; }
 
   #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 0.9375em 1.25em; background: var(--color-bg-header); }
   #cfob-root .sidebar-header { border-bottom: 1px solid var(--color-border); }
   #cfob-root .sidebar-footer { border-top: 1px solid var(--color-border); }
   #cfob-root .sidebar-body { padding: 1.25em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
 
-  /* Floating Launcher Button */
   #cfob-launcher-btn.floating { position: fixed; top: 0.2em; right: 3em; z-index: 9998; background: var(--color-bg-panel); color: var(--color-text-inverse); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 2em; height: 2em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); }
   #cfob-launcher-btn.floating:hover { background: var(--color-border); }
 
-  /* UI Hidden State */
-  #cfob-root .full-view-layout.ui-hidden .full-view-top-bar,
-  #cfob-root .full-view-layout.ui-hidden .nav-btn {
-    opacity: 0; pointer-events: none;
-  }
+  #cfob-root .full-view-layout.ui-hidden .full-view-top-bar,  #cfob-root .full-view-layout.ui-hidden .nav-btn { opacity: 0; pointer-events: none; }
+  #cfob-root .full-view-layout .full-view-top-bar, #cfob-root .full-view-layout .nav-btn, #cfob-root .full-view-layout .full-view-sidebar { transition: opacity 0.2s ease, width 0.3s; }
 
-  #cfob-root .full-view-layout .full-view-top-bar,
-  #cfob-root .full-view-layout .nav-btn,
-  #cfob-root .full-view-layout .full-view-sidebar {
-    transition: opacity 0.2s ease, width 0.3s;
-  }
+  #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.1s ease-out; transform-origin: center; cursor: grab; }
+  #cfob-root .full-view-main img.dragging { transition: none; cursor: grabbing; }
 
-  /* Image Pan/Zoom States */
-  #cfob-root .full-view-main img {
-    max-width: 100%; max-height: 100%; object-fit: contain;
-    transition: transform 0.1s ease-out; transform-origin: center; cursor: grab;
-  }
-
-  #cfob-root .full-view-main img.dragging {
-    transition: none; cursor: grabbing;
+  @media (max-width: 768px) {
+    #cfob-root .full-view-actions .btn { min-width: auto; }
   }
 `;
 
