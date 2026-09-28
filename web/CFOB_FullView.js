@@ -19,6 +19,11 @@ export const CFOB_FULL_VIEW_HTML = `
         <button class="nav-btn prev-btn" id="cfobPrevImgBtn" title="Previous (Left Arrow)">❮</button>
         <img id="cfobFullViewImg" src="" alt="Full View" tabindex="0">
         <button class="nav-btn next-btn" id="cfobNextImgBtn" title="Next (Right Arrow)">❯</button>
+        <div class="full-view-empty-state" id="cfobFullViewEmptyState" hidden>
+          ${ICONS.picture}
+          <h3>No Images Found</h3>
+          <p>No images match the current filter or hidden folder settings.</p>
+        </div>
       </div>
       <div class="full-view-sidebar-resizer" id="cfobFullViewSidebarResizer" role="separator" aria-label="Resize details pane" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="1200" tabindex="0"></div>
       <div class="full-view-sidebar" id="cfobFullViewSidebar">
@@ -52,6 +57,11 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
   #cfob-root .full-view-main:focus { outline: none; }
   #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #cfob-root .full-view-main.has-no-images > img, #cfob-root .full-view-main.has-no-images > .nav-btn { display: none; }
+  #cfob-root .full-view-empty-state { max-width: 32em; padding: 2em; color: var(--color-text-muted); text-align: center; }
+  #cfob-root .full-view-empty-state[hidden] { display: none; }
+  #cfob-root .full-view-empty-state svg { width: 4em; height: 4em; margin-bottom: 1em; stroke: var(--color-bg-panel-active); }
+  #cfob-root .full-view-empty-state h3 { color: var(--color-text-inverse); }
 
   #cfob-root .full-view-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 0.4em; background: rgba(39, 39, 42, 0.94); display: flex; justify-content: space-between; align-items: center; gap: 0.75em; color: var(--color-text-primary); z-index: 10; }
   #cfob-root .full-view-browser-controls { display: flex; align-items: center; gap: 0.5em; flex: 1; min-width: 0; }
@@ -596,7 +606,17 @@ export default class CFOB_FullView {
 
   updateFullViewUI() {
     const img = this.app.filteredImages[this.currentImageIndex];
-    if (!img) return;
+    const main = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'));
+    const emptyState = this.app.$("cfobFullViewEmptyState");
+    main?.classList.toggle('has-no-images', !img);
+    emptyState.hidden = Boolean(img);
+    if (!img) {
+      /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).removeAttribute('src');
+      this.app.$("cfobFullViewTitle").innerText = "No matching images";
+      this.app.$("cfobFullViewCount").innerText = "0 / 0";
+      this.app.$("cfobFullViewFields").replaceChildren();
+      return;
+    }
     /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = img.url;
     this.app.$("cfobFullViewTitle").innerText = img.name;
     this.app.$("cfobFullViewCount").innerText = `${this.currentImageIndex + 1} / ${this.app.filteredImages.length}`;

@@ -162,13 +162,10 @@ export default class CFOB_Gallery {
           ? this.app.filteredImages.findIndex(img => img.name === currentFullViewImage.name)
           : -1;
         this.app.fullView.currentImageIndex = currentIndex >= 0 ? currentIndex : 0;
-        this.app.fullView.updateFullViewUI();
       } else {
-        /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = "";
-        this.app.$("cfobFullViewTitle").innerText = "No matching images";
-        this.app.$("cfobFullViewCount").innerText = "0 / 0";
-        this.app.$("cfobFullViewFields").replaceChildren();
+        this.app.fullView.currentImageIndex = 0;
       }
+      this.app.fullView.updateFullViewUI();
     }
   }
 
