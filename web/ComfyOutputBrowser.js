@@ -152,6 +152,7 @@ export default class ComfyOutputBrowser {
     this.settings.setViewMode(savedView);
     this.settings.setGridSize(this.settings.gridSize);
     this.settings.setBrowserMode(this.settings.browserMode);
+    this.settings.setConstrainFullView(this.settings.constrainFullView);
     this.root.style.setProperty('--grid-size', `${this.settings.gridSize}px`);
     this.root.style.setProperty('--compact-size', `${Math.max(120, this.settings.gridSize - 180)}px`);
     if (this.settings.scrollDir === 'horizontal') {

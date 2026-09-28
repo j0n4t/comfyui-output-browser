@@ -105,6 +105,7 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root.mode-left #cfob-resizer { display: block; top: 0; right: 0; bottom: 0; width: 0.375em; cursor: ew-resize; }
   #cfob-root.mode-down #cfob-resizer { display: block; top: 0; left: 0; right: 0; height: 0.375em; cursor: ns-resize; }
   #cfob-root.mode-up #cfob-resizer { display: block; bottom: 0; left: 0; right: 0; height: 0.375em; cursor: ns-resize; }
+  #cfob-root.full-view-active #cfob-resizer { z-index: var(--z-popover); }
 
   #cfob-root .top-bar { background: var(--color-bg-panel); border-bottom: 1px solid var(--color-border); padding: 0.3125em; display: flex; justify-content: space-between; align-items: center; gap: 0.9375em; flex-wrap: wrap; }
   #cfob-root .logo-group { display: flex; align-items: center; gap: 0.625em; }

@@ -16,6 +16,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 - **Immersive Inspection:** Press **`Enter`** or **`Space`** on any highlighted card to enter full-screen mode, allowing you to cycle through batches using the left and right arrow keys.
 - **Precision Zooming:** Zoom in or out smoothly using **`+`** / **`-`** keys, or snap right back to default dimensions with **`0`**.
+- **Panel-Sized Full View:** Enable **Options → Constrain Full View to Browser** to keep the image viewer inside the browser panel instead of covering the whole screen.
 - **Interface Controls:** Toggle the overlay HUD controls using **`Space`** or collapse/expand the metadata sidebar using **`T`**.
 
 ### 3. Metadata Extraction

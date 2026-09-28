@@ -44,6 +44,8 @@ export const CFOB_FULL_VIEW_HTML = `
 export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root #cfobFullViewModal.modal-overlay { padding: 0; z-index: var(--z-full-view); }
   #cfob-root .full-view-layout { display: flex; width: 100vw; height: 100vh; background: var(--color-bg-full); }
+  #cfob-root.constrain-full-view #cfobFullViewModal.modal-overlay { position: absolute; }
+  #cfob-root.constrain-full-view .full-view-layout { width: 100%; height: 100%; }
   #cfob-root .full-view-layout .field-value { max-height: 100%; resize: vertical; }
 
   #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
@@ -158,9 +160,9 @@ export default class CFOB_FullView {
       if (!sidebarResizer.hasPointerCapture(e.pointerId)) return;
       const position = resizeIsVertical ? e.clientY : e.clientX;
       if (resizeIsVertical) {
-        this.sidebarHeight = this.clampSidebarSize(resizeSize - (position - resizeStart), 140, window.innerHeight - 260);
+        this.sidebarHeight = this.clampSidebarSize(resizeSize - (position - resizeStart), 140, this.getFullViewDimensions().height - 260);
       } else {
-        this.sidebarWidth = this.clampSidebarSize(resizeSize - (position - resizeStart), 240, window.innerWidth - 300);
+        this.sidebarWidth = this.clampSidebarSize(resizeSize - (position - resizeStart), 240, this.getFullViewDimensions().width - 300);
       }
       this.applySidebarSize();
     });
@@ -184,9 +186,9 @@ export default class CFOB_FullView {
       if (!change) return;
       e.preventDefault();
       if (vertical) {
-        this.sidebarHeight = this.clampSidebarSize(this.sidebarHeight + change, 140, window.innerHeight - 260);
+        this.sidebarHeight = this.clampSidebarSize(this.sidebarHeight + change, 140, this.getFullViewDimensions().height - 260);
       } else {
-        this.sidebarWidth = this.clampSidebarSize(this.sidebarWidth + change, 240, window.innerWidth - 300);
+        this.sidebarWidth = this.clampSidebarSize(this.sidebarWidth + change, 240, this.getFullViewDimensions().width - 300);
       }
       this.applySidebarSize();
       localStorage.setItem('cfob_full_view_sidebar_width', String(this.sidebarWidth));
@@ -304,13 +306,23 @@ export default class CFOB_FullView {
     return Math.max(min, Math.min(value, Math.max(min, max)));
   }
 
+  getFullViewDimensions() {
+    const layout = /** @type {HTMLElement | null} */ (this.app.root?.querySelector('.full-view-layout'));
+    const bounds = layout?.getBoundingClientRect();
+    return {
+      width: bounds?.width || window.innerWidth,
+      height: bounds?.height || window.innerHeight
+    };
+  }
+
   applySidebarSize() {
     const sidebar = this.app.$("cfobFullViewSidebar");
     const isVertical = this.sidebarMode === 'below';
+    const dimensions = this.getFullViewDimensions();
     if (isVertical) {
-      this.sidebarHeight = this.clampSidebarSize(this.sidebarHeight, 140, window.innerHeight - 260);
+      this.sidebarHeight = this.clampSidebarSize(this.sidebarHeight, 140, dimensions.height - 260);
     } else {
-      this.sidebarWidth = this.clampSidebarSize(this.sidebarWidth, 240, window.innerWidth - 300);
+      this.sidebarWidth = this.clampSidebarSize(this.sidebarWidth, 240, dimensions.width - 300);
     }
     sidebar.style.setProperty('--full-view-sidebar-width', `${this.sidebarWidth}px`);
     sidebar.style.setProperty('--full-view-sidebar-height', `${this.sidebarHeight}px`);
@@ -319,7 +331,7 @@ export default class CFOB_FullView {
     resizer.setAttribute('aria-valuemin', String(isVertical ? 140 : 240));
     resizer.setAttribute('aria-valuemax', String(Math.max(
       isVertical ? 140 : 240,
-      isVertical ? window.innerHeight - 260 : window.innerWidth - 300
+      isVertical ? dimensions.height - 260 : dimensions.width - 300
     )));
     resizer.setAttribute('aria-valuenow', String(Math.round(isVertical ? this.sidebarHeight : this.sidebarWidth)));
   }
@@ -495,11 +507,14 @@ export default class CFOB_FullView {
     this.currentImageIndex = this.app.filteredImages.indexOf(img);
     this.updateFullViewUI();
     modal.classList.add('active');
-    this.app.$("cfobCloseFullViewBtn").focus();
+    this.app.root?.classList.add('full-view-active');
+    this.applySidebarSize();
+    this.app.$("cfobFullViewImg").focus();
   }
 
   closeFullView() {
     this.app.$("cfobFullViewModal").classList.remove('active');
+    this.app.root?.classList.remove('full-view-active');
     /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = "";
     const returnFocus = this.returnFocusElement;
     this.returnFocusElement = null;

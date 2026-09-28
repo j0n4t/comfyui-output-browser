@@ -53,8 +53,8 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .popover-section { display: flex; flex-direction: column; gap: 0.25em; border-bottom: 1px solid var(--color-border-light); padding-bottom: 0.375em; }
   #cfob-root .popover-section:last-child { border-bottom: none; padding-bottom: 0; }
   #cfob-root .popover-header { font-size: 0.625em; font-weight: 700; color: var(--color-text-muted); padding: 0.125em 0.25em; text-transform: uppercase; letter-spacing: 0.5px; }
-  #cfob-root .popover-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5em; padding: 0.25em 0.375em; font-size: 0.75em; color: var(--color-text-primary); }
-  #cfob-root .popover-item { padding: 0.375em 0.625em; font-size: 0.75em; color: var(--color-text-inverse); background: transparent; border: none; text-align: left; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; transition: background 0.15s; }
+  #cfob-root .popover-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5em; padding: 0.3em; font-size: 0.75em; color: var(--color-text-primary); }
+  #cfob-root .popover-item { padding: 0.3em; font-size: 0.75em; color: var(--color-text-inverse); background: transparent; border: none; text-align: left; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; transition: background 0.15s; }
   #cfob-root .popover-item:hover { background: var(--color-bg-panel-hover); color: var(--color-accent); }
 
   #cfob-root .popover-view-toggles { display: flex; background: var(--color-bg-base); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; width: 100%; }
@@ -211,6 +211,7 @@ export default class COB_Settings {
     this.ignoredAutocompleteKeywords = this.loadIgnoredAutocompleteKeywords();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.browserMode = localStorage.getItem('comfy_folder_browser_mode') || 'full';
+    this.constrainFullView = localStorage.getItem('cfob_constrain_full_view') === 'true';
     this.sidebarWidth = Number(localStorage.getItem('comfy_folder_browser_width') || 450);
     this.sidebarHeight = Number(localStorage.getItem('comfy_folder_browser_height') || 350);
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
@@ -319,6 +320,13 @@ export default class COB_Settings {
     } else if (mode === 'up' || mode === 'down') {
       this.app.root.style.height = `${this.sidebarHeight}px`;
     }
+  }
+
+  /** @param {boolean} constrain */
+  setConstrainFullView(constrain) {
+    this.constrainFullView = Boolean(constrain);
+    localStorage.setItem('cfob_constrain_full_view', String(this.constrainFullView));
+    this.app.root?.classList.toggle('constrain-full-view', this.constrainFullView);
   }
 
   bindEvents() {
@@ -475,6 +483,14 @@ export default class COB_Settings {
             <option value="mtime_desc" ${this.currentSort === 'mtime_desc' ? 'selected' : ''}>Newer First</option>
           </select>
         </div>
+        <button class="popover-item" id="cfobToggleAutoHideBtn">
+          <span>Auto-Hide Panel</span>
+          <span style="font-weight: 600; color: ${this.autoHide ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.autoHide ? 'On' : 'Off'}</span>
+        </button>
+        <button class="popover-item" id="cfobToggleConstrainFullViewBtn">
+          <span>Constrain Full View to Browser</span>
+          <span style="font-weight: 600; color: ${this.constrainFullView ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.constrainFullView ? 'On' : 'Off'}</span>
+        </button>
       </div>
 
       <div class="popover-section">
@@ -491,10 +507,6 @@ export default class COB_Settings {
         </button>
         <button class="popover-item" id="cfobConfigFieldsBtn">
           <span>Customize Card Fields...</span>
-        </button>
-        <button class="popover-item" id="cfobToggleAutoHideBtn">
-          <span>Auto-Hide Panel</span>
-          <span style="font-weight: 600; color: ${this.autoHide ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.autoHide ? 'On' : 'Off'}</span>
         </button>
       </div>
     `;
@@ -584,6 +596,13 @@ export default class COB_Settings {
       this.autoHide = !this.autoHide;
       localStorage.setItem('comfy_folder_browser_auto_hide', String(this.autoHide));
       this.app.showToast(`Auto-hide ${this.autoHide ? 'enabled' : 'disabled'}`);
+      popover.remove();
+      this.activePopover = null;
+    });
+
+    const constrainFullViewBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobToggleConstrainFullViewBtn'));
+    constrainFullViewBtn.addEventListener('click', () => {
+      this.app.settings.setConstrainFullView(!this.constrainFullView);
       popover.remove();
       this.activePopover = null;
     });
