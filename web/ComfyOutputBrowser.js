@@ -377,6 +377,14 @@ export default class ComfyOutputBrowser {
         e.preventDefault(); e.stopPropagation(); this.fetchServerImages();
       }
 
+      if (!activeDialog && (e.ctrlKey || e.metaKey) && !e.altKey && /^[1-4]$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const viewModes = { '1': 'compact', '2': 'grid', '3': 'list', '4': 'full' };
+        this.settings.setViewMode(viewModes[e.key]);
+        return;
+      }
+
       if (isEditing) return;
 
       if (noModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey && key >= '1' && key <= '9') {

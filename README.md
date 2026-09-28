@@ -32,6 +32,7 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 | Operational Mode     | Key Combination                                | Action / Description                                                  |
 | -------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
 | **Global**           | **`Ctrl + Shift + ?`**                         | Open the browser interface and focus the search bar.                  |
+|                      | **`Ctrl + 1` – `Ctrl + 4`**                    | Switch to Compact, Grid, List, or Full View, respectively.            |
 | **Search**           | **`Enter` / `Tab`**                            | Complete the selected suggestion (or the first if none is selected).  |
 |                      | **`ArrowUp` / `ArrowDown`** (suggestions open) | Cycle through autocomplete suggestions.                               |
 |                      | **`ArrowDown`** (suggestions closed)           | Focus the first matching grid item, or the image in Full View mode.   |
