@@ -173,7 +173,7 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .gallery-container.view-list .card-preview { width: 10em; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-right: 1px solid var(--color-border); }
   #cfob-root .gallery-container.view-list .card-body { display: flex; }
 
-  #cfob-root .action-bar { position: fixed; bottom: 1.25em; left: 50%; transform: translateX(-50%) translateY(6.25em); background: var(--color-bg-panel); border: 1px solid var(--color-accent); border-radius: var(--radius-lg); padding: 0.625em 1.25em; display: flex; align-items: center; gap: 0.9375em; box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.8); z-index: var(--z-action-bar); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  #cfob-root .action-bar { position: absolute; bottom: 1.25em; left: 50%; transform: translateX(-50%) translateY(6.25em); background: var(--color-bg-panel); border: 1px solid var(--color-accent); border-radius: var(--radius-lg); padding: 0.625em 1.25em; display: flex; align-items: center; gap: 0.9375em; box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.8); z-index: var(--z-action-bar); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
   #cfob-root .action-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
 
   #cfob-root .tabs { display: flex; border-bottom: 1px solid var(--color-border); gap: 0.125em; }
