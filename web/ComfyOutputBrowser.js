@@ -345,8 +345,7 @@ export default class ComfyOutputBrowser {
 
     document.addEventListener('keydown', (e) => {
       const focusIsInside = this.root?.contains(document.activeElement) || false;
-      const browserIsVisible = this.isUiVisible && !this.root?.classList.contains('cfob-hidden');
-      if (!focusIsInside && !(e.key === 'Escape' && browserIsVisible)) return;
+      if (!focusIsInside) return;
 
       const activeDialog = this.settings.modals.getActive();
       const isFullView = this.$("cfobFullViewModal").classList.contains('active');
