@@ -25,7 +25,7 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .input-value-text { color: var(--color-syntax-string); font-family: var(--font-mono); font-size: 0.6875em; word-break: break-word; white-space: pre-wrap; max-height: 7.5em; overflow-y: auto; flex: 1; }
   #cfob-root .input-actions { display: flex; gap: 0.25em; align-items: center; }
 
-  #cfob-root .modal-overlay { position: fixed; inset: 0; background: var(--color-bg-overlay); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: var(--z-action-bar); padding: 1.25em; }
+  #cfob-root .modal-overlay { position: fixed; inset: 0; background: var(--color-bg-overlay); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: var(--z-modal); padding: 1.25em; }
   #cfob-root .modal-overlay.active { display: flex; }
   #cfob-root .modal-content { background: var(--color-bg-panel); border: 1px solid var(--color-border); border-radius: var(--radius-2xl); width: 100%; max-width: 56.25em; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.5); overflow: hidden; }
   #cfob-root .modal-header { padding: 1em 1.25em; border-bottom: 1px solid var(--color-border); display: flex; gap: 0.625em; justify-content: space-between; align-items: center; }
@@ -961,7 +961,7 @@ export default class COB_Settings {
     menu.querySelectorAll('.append-path').forEach(b => {
       b.addEventListener('click', () => {
         const field = this.fieldConfigs[/** @type {HTMLElement} */ (b).dataset.idx || 0];
-        const p = decodeURIComponent(/** @type {HTMLElement} */ (b).dataset.path || '');
+        const p = decodeURIComponent(/** @type {HTMLElement} */(b).dataset.path || '');
         if (!field.paths?.includes(p)) {
           field.paths = field.paths ? `${field.paths}, ${p}` : p;
           this.saveConfig(this.fieldConfigs);
@@ -975,7 +975,7 @@ export default class COB_Settings {
     menu.querySelector('.new-path')?.addEventListener('click', async () => {
       const lbl = await this.customPrompt("Enter a label for the new card field:", "Custom Field");
       if (lbl) {
-        this.fieldConfigs.push({ label: lbl, paths: decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.new-path'))?.dataset.path || '') });
+        this.fieldConfigs.push({ label: lbl, paths: decodeURIComponent(/** @type {HTMLElement} */(menu.querySelector('.new-path'))?.dataset.path || '') });
         this.saveConfig(this.fieldConfigs);
         this.app.gallery.renderGallery();
         this.app.showToast(`Created field '${lbl}'`);
@@ -1025,6 +1025,7 @@ export default class COB_Settings {
       return `@prompt.${[...parentPath, key].join('.')}`;
     };
 
+    /** @type {(current: any, depth: number, path: string[]) => string} */
     const renderValue = (/** @type {any} */ current, /** @type {number} */ depth, /** @type {string[]} */ path) => {
       if (Array.isArray(current)) {
         if (!current.length) return '[]';
@@ -1060,12 +1061,13 @@ export default class COB_Settings {
       const selectProperty = () => {
         panel.querySelectorAll('.inspector-json-key.selected').forEach(selected => selected.classList.remove('selected'));
         key.classList.add('selected');
-        const path = decodeURIComponent(/** @type {HTMLElement} */ (key).dataset.path || '');
+        const path = decodeURIComponent(/** @type {HTMLElement} */(key).dataset.path || '');
         selectedPath.textContent = path;
         addButton.dataset.path = path;
         actions.classList.add('active');
       };
       key.addEventListener('click', selectProperty);
+      // @ts-ignore
       key.addEventListener('keydown', (/** @type {KeyboardEvent} */ event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
