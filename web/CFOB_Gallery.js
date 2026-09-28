@@ -1,5 +1,10 @@
 import ICONS from "./assets/icons.js";
 
+/**
+ * @typedef {{ kind: 'index'; index: number } | { kind: 'slice'; start?: number; end?: number }} CFOB_SearchRange
+ * @typedef {{ isNot: boolean; searchKey: string | null; searchValue: string; fieldIdx: number; fieldMatch: CFOB_CardFieldSettings | null; range: CFOB_SearchRange | null }} CFOB_SearchTerm
+ */
+
 export default class CFOB_Gallery {
   /** @param {import("./ComfyOutputBrowser.js").default} app */
   constructor(app) {
@@ -24,29 +29,31 @@ export default class CFOB_Gallery {
     const searchQuery = searchStr.replace(/^\.\s+/, '');
     const rawOrGroups = searchQuery.split(',').map((/** @type {string} */ g) => g.trim()).filter(Boolean);
 
+    /** @type {CFOB_SearchTerm[][]} */
     const parsedQuery = rawOrGroups.map(groupStr => {
       const andTerms = groupStr.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-      return andTerms.map((/** @type {string} */ term) => {
+      return andTerms.flatMap((/** @type {string} */ term) => {
         const isNot = term.startsWith('!');
         const actualTerm = isNot ? term.substring(1) : term;
-        if (!actualTerm) return null;
+        if (!actualTerm) return [];
 
         let termValue = actualTerm;
-        /** @type {{ kind: 'index'; index: number } | { kind: 'slice'; start?: number; end?: number } | null} */
+        /** @type {CFOB_SearchRange | null} */
         let range = null;
         const rangeMatch = termValue.match(/\[(-?\d+)?(?::(-?\d+)?)?\]$/);
         if (rangeMatch && (rangeMatch[1] !== undefined || rangeMatch[2] !== undefined || rangeMatch[0].includes(':'))) {
           termValue = termValue.slice(0, rangeMatch.index);
           range = rangeMatch[0].includes(':')
             ? {
-                kind: 'slice',
-                start: rangeMatch[1] === undefined ? undefined : Number(rangeMatch[1]),
-                end: rangeMatch[2] === undefined ? undefined : Number(rangeMatch[2])
-              }
+              kind: 'slice',
+              start: rangeMatch[1] === undefined ? undefined : Number(rangeMatch[1]),
+              end: rangeMatch[2] === undefined ? undefined : Number(rangeMatch[2])
+            }
             : { kind: 'index', index: Number(rangeMatch[1]) };
         }
-        if (!termValue) return null;
+        if (!termValue) return [];
 
+        /** @type {string | null} */
         let searchKey = null;
         let searchValue = termValue;
 
@@ -63,25 +70,26 @@ export default class CFOB_Gallery {
         searchValue = searchValue.toLowerCase();
 
         let fieldIdx = NaN;
+        /** @type {CFOB_CardFieldSettings | null} */
         let fieldMatch = null;
 
         if (searchKey && !['name', 'path', 'prompt', 'workflow'].includes(searchKey)) {
           fieldIdx = parseInt(searchKey, 10);
           if (isNaN(fieldIdx) || fieldIdx <= 0 || fieldIdx > this.app.settings.fieldConfigs.length) {
-            fieldMatch = this.app.settings.fieldConfigs.find((/** @type {{ label: string; }} */ c) => c.label.toLowerCase() === searchKey);
+            fieldMatch = this.app.settings.fieldConfigs.find((/** @type {CFOB_CardFieldSettings} */ c) => c.label.toLowerCase() === searchKey) || null;
           }
         }
 
-        return { isNot, searchKey, searchValue, fieldIdx, fieldMatch, range };
-      }).filter(Boolean);
-    }).filter(g => g.length > 0);
+        return [{ isNot, searchKey, searchValue, fieldIdx, fieldMatch, range }];
+      });
+    }).filter(group => group.length > 0);
 
     const eligibleImages = this.app.loadedImages.filter(img =>
       effectiveShowHidden || !this.app.isImageInHiddenFolder(img.name)
     );
     /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null }>} */
     const imageTextCache = new WeakMap();
-    const matchesTerm = (/** @type {CFOB_Image} */ img, /** @type {NonNullable<(typeof parsedQuery)[number][number]>} */ term) => {
+    const matchesTerm = (/** @type {CFOB_Image} */ img, /** @type {CFOB_SearchTerm} */ term) => {
       let text = imageTextCache.get(img);
       if (!text) {
         text = { name: (img.name || "").toLowerCase(), prompt: null, workflow: null };
@@ -92,10 +100,10 @@ export default class CFOB_Gallery {
         if (term.searchKey === 'name' || term.searchKey === 'path') {
           match = text.name.includes(term.searchValue);
         } else if (term.searchKey === 'prompt') {
-          if (text.prompt === null) text.prompt = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
+          if (text.prompt === null) text.prompt = img.prompt ? (JSON.stringify(img.prompt) || "").toLowerCase() : "";
           match = text.prompt.includes(term.searchValue);
         } else if (term.searchKey === 'workflow') {
-          if (text.workflow === null) text.workflow = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+          if (text.workflow === null) text.workflow = img.workflow ? (JSON.stringify(img.workflow) || "").toLowerCase() : "";
           match = text.workflow.includes(term.searchValue);
         } else if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= this.app.settings.fieldConfigs.length) {
           const value = this.app.resolveFieldValue(img, this.app.settings.fieldConfigs[term.fieldIdx - 1].paths);
@@ -105,15 +113,15 @@ export default class CFOB_Gallery {
           match = value !== null && String(value).toLowerCase().includes(term.searchValue);
         }
       } else {
-        if (text.prompt === null) text.prompt = img.prompt ? JSON.stringify(img.prompt).toLowerCase() : "";
-        if (text.workflow === null) text.workflow = img.workflow ? JSON.stringify(img.workflow).toLowerCase() : "";
+        if (text.prompt === null) text.prompt = img.prompt ? (JSON.stringify(img.prompt) || "").toLowerCase() : "";
+        if (text.workflow === null) text.workflow = img.workflow ? (JSON.stringify(img.workflow) || "").toLowerCase() : "";
         match = text.name.includes(term.searchValue) || text.prompt.includes(term.searchValue) || text.workflow.includes(term.searchValue);
       }
       return term.isNot ? !match : match;
     };
     const applyRange = (
       /** @type {CFOB_Image[]} */ images,
-      /** @type {NonNullable<(typeof parsedQuery)[number][number]['range']>} */ range
+      /** @type {CFOB_SearchRange} */ range
     ) => {
       if (range.kind === 'slice') return images.slice(range.start, range.end);
       const index = range.index < 0 ? images.length + range.index : range.index;
@@ -122,14 +130,22 @@ export default class CFOB_Gallery {
 
     const matchingGroups = parsedQuery.length
       ? parsedQuery.map(andGroup => {
+          /** @type {Set<CFOB_Image> | null} */
           let groupMatches = null;
           for (const term of andGroup) {
             let termMatches = eligibleImages.filter(img => matchesTerm(img, term));
             if (term.range) termMatches = applyRange(termMatches, term.range);
             const termMatchSet = new Set(termMatches);
-            groupMatches = groupMatches === null
-              ? termMatchSet
-              : new Set([...groupMatches].filter(img => termMatchSet.has(img)));
+            if (groupMatches === null) {
+              groupMatches = termMatchSet;
+            } else {
+              /** @type {Set<CFOB_Image>} */
+              const intersection = new Set();
+              for (const img of groupMatches) {
+                if (termMatchSet.has(img)) intersection.add(img);
+              }
+              groupMatches = intersection;
+            }
             if (groupMatches.size === 0) break;
           }
           return groupMatches || new Set(eligibleImages);
@@ -148,7 +164,7 @@ export default class CFOB_Gallery {
         this.app.fullView.currentImageIndex = currentIndex >= 0 ? currentIndex : 0;
         this.app.fullView.updateFullViewUI();
       } else {
-        this.app.$("cfobFullViewImg").src = "";
+        /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = "";
         this.app.$("cfobFullViewTitle").innerText = "No matching images";
         this.app.$("cfobFullViewCount").innerText = "0 / 0";
         this.app.$("cfobFullViewFields").replaceChildren();

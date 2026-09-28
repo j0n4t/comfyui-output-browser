@@ -172,7 +172,7 @@ export default class ComfyOutputBrowser {
                 cardBody.innerHTML = this.getCardFieldsHtml(img);
               }
             });
-            this.observer.unobserve(card);
+            this.observer?.unobserve(card);
           }
         }
       });
@@ -380,6 +380,7 @@ export default class ComfyOutputBrowser {
       if (!activeDialog && (e.ctrlKey || e.metaKey) && !e.altKey && /^[1-4]$/.test(e.key)) {
         e.preventDefault();
         e.stopPropagation();
+        /** @type {Record<string, string>} */
         const viewModes = { '1': 'compact', '2': 'grid', '3': 'list', '4': 'full' };
         this.settings.setViewMode(viewModes[e.key]);
         return;
