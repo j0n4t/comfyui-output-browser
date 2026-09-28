@@ -22,7 +22,7 @@ export const CFOB_FULL_VIEW_HTML = `
       <div class="full-view-sidebar-resizer" id="cfobFullViewSidebarResizer" role="separator" aria-label="Resize details pane" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="1200" tabindex="0"></div>
       <div class="full-view-sidebar" id="cfobFullViewSidebar">
         <div class="sidebar-header">
-          <h4 id="cfobFullViewTitle" style="margin: 0; font-size: 0.875em; color: var(--color-text-inverse); word-break: break-all;">Filename.png</h4>
+          <h4 id="cfobFullViewTitle">Filename.png</h4>
           <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn2" title="Toggle sidebar" aria-label="Toggle sidebar">${ICONS.pane}</button>
         </div>
         <div class="sidebar-body" id="cfobFullViewFields"></div>
@@ -82,6 +82,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 0.4em; background: var(--color-bg-header); }
   #cfob-root .sidebar-header { display: flex;
     justify-content: space-between; border-bottom: 1px solid var(--color-border); }
+  #cfob-root .sidebar-header #cfobFullViewTitle { margin: 0; font-size: 0.875em; color: var(--color-text-inverse); text-overflow: ellipsis; overflow: hidden; }
   #cfob-root .sidebar-footer { border-top: 1px solid var(--color-border); }
   #cfob-root .sidebar-body { padding: 0.4em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
 
