@@ -11,7 +11,7 @@ export const CFOB_FULL_VIEW_HTML = `
             <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out">${ICONS.zoomOut}</button>
             <button class="icon-btn" id="cfobZoomResetBtn" title="Reset Zoom">${ICONS.zoomReset}</button>
             <div style="width: 1px; height: 1.25em; background: var(--color-border); margin: 0 0.25em;"></div>
-            <button class="icon-btn" id="cfobToggleSidebarBtn" title="Cycle details pane position (T)" aria-label="Cycle details pane position (T)">${ICONS.pane}</button>
+            <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn" title="Cycle details pane position (T)" aria-label="Cycle details pane position (T)">${ICONS.pane}</button>
             <button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button>
           </div>
         </div>
@@ -21,7 +21,10 @@ export const CFOB_FULL_VIEW_HTML = `
       </div>
       <div class="full-view-sidebar-resizer" id="cfobFullViewSidebarResizer" role="separator" aria-label="Resize details pane" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="1200" tabindex="0"></div>
       <div class="full-view-sidebar" id="cfobFullViewSidebar">
-        <div class="sidebar-header"><h4 id="cfobFullViewTitle" style="margin: 0; font-size: 0.875em; color: var(--color-text-inverse); word-break: break-all;">Filename.png</h4></div>
+        <div class="sidebar-header">
+          <h4 id="cfobFullViewTitle" style="margin: 0; font-size: 0.875em; color: var(--color-text-inverse); word-break: break-all;">Filename.png</h4>
+          <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn2" title="Toggle sidebar" aria-label="Toggle sidebar">${ICONS.pane}</button>
+        </div>
         <div class="sidebar-body" id="cfobFullViewFields"></div>
         <div class="sidebar-footer">
           <div class="full-view-actions" id="cfobFullViewActions">
@@ -39,7 +42,7 @@ export const CFOB_FULL_VIEW_HTML = `
 `;
 
 export const CFOB_FULL_VIEW_STYLES = /*css*/ `
-  #cfob-root #fullViewModal { padding: 0; z-index: var(--z-full-view); }
+  #cfob-root #cfobFullViewModal.modal-overlay { padding: 0; z-index: var(--z-full-view); }
   #cfob-root .full-view-layout { display: flex; width: 100vw; height: 100vh; background: var(--color-bg-full); }
   #cfob-root .full-view-layout .field-value { max-height: 100%; resize: vertical; }
 
@@ -47,13 +50,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-main:focus { outline: none; }
   #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-  #cfob-root .full-view-top-bar {
-    position: absolute; top: 0; left: 0; right: 0;
-    padding: 0.9375em 1.5625em;
-    background: linear-gradient(rgba(0,0,0,0.8), transparent);
-    display: flex; justify-content: space-between; align-items: center;
-    color: var(--color-text-inverse); z-index: 10;
-  }
+  #cfob-root .full-view-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 0.9375em 1.5625em; background: linear-gradient(rgba(0,0,0,0.8), transparent); display: flex; justify-content: space-between; align-items: center; color: var(--color-text-inverse); z-index: 10; }
   #cfob-root .full-view-count { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; font-size: 0.875em; cursor: pointer; }
   #cfob-root .full-view-count:hover { text-decoration: underline; }
   #cfob-root .full-view-count:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
@@ -68,9 +65,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
 
   #cfob-root .full-view-sidebar-resizer { flex: 0 0 7px; position: relative; cursor: col-resize; touch-action: none; z-index: 1; }
   #cfob-root .full-view-sidebar-resizer::after { content: ""; position: absolute; inset: 0 2px; background: var(--color-border); opacity: 0; transition: opacity 0.15s; }
-  #cfob-root .full-view-sidebar-resizer:hover::after,
-  #cfob-root .full-view-sidebar-resizer:focus-visible::after,
-  #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar-resizer::after { opacity: 1; }
+  #cfob-root .full-view-sidebar-resizer:hover::after, #cfob-root .full-view-sidebar-resizer:focus-visible::after, #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar-resizer::after { opacity: 1; }
   #cfob-root .full-view-sidebar { width: var(--full-view-sidebar-width, 360px); min-width: 0; flex: 0 0 auto; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; }
   #cfob-root .full-view-sidebar-resizer.hidden { display: none; }
   #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar { transition: none; }
@@ -80,13 +75,15 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar { width: 100%; height: var(--full-view-sidebar-height, 50vh); border-left: none; border-top: 1px solid var(--color-border); }
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar-resizer { flex-basis: 7px; width: 100%; cursor: row-resize; }
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar-resizer::after { inset: 2px 0; }
+  #cfob-root .full-view-layout.sidebar-below .toggle-sidebar-btn svg { transform: rotate(90deg); }
 
   #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar, #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar-resizer { display: none; }
 
-  #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 0.9375em 1.25em; background: var(--color-bg-header); }
-  #cfob-root .sidebar-header { border-bottom: 1px solid var(--color-border); }
+  #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 0.4em; background: var(--color-bg-header); }
+  #cfob-root .sidebar-header { display: flex;
+    justify-content: space-between; border-bottom: 1px solid var(--color-border); }
   #cfob-root .sidebar-footer { border-top: 1px solid var(--color-border); }
-  #cfob-root .sidebar-body { padding: 1.25em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
+  #cfob-root .sidebar-body { padding: 0.4em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
 
   #cfob-launcher-btn.floating { position: fixed; top: 0.2em; right: 3em; z-index: 9998; background: var(--color-bg-panel); color: var(--color-text-inverse); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 2em; height: 2em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); }
   #cfob-launcher-btn.floating:hover { background: var(--color-border); }
@@ -143,6 +140,7 @@ export default class CFOB_FullView {
     this.applySidebarSize();
     this.applySidebarMode();
     this.app.$("cfobToggleSidebarBtn").addEventListener('click', () => this.cycleSidebarMode());
+    this.app.$("cfobToggleSidebarBtn2").addEventListener('click', () => this.cycleSidebarMode());
     let resizeStart = 0;
     let resizeSize = 0;
     let resizeIsVertical = false;

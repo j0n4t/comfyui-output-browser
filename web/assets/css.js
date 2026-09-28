@@ -132,7 +132,7 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .search-clear-btn { position: absolute; right: 0.375em; background: transparent; border: none; color: var(--color-text-muted); cursor: pointer; padding: 0.25em; display: none; align-items: center; justify-content: center; transition: color 0.15s; }
   #cfob-root .search-clear-btn:hover { color: var(--color-text-inverse); }
 
-  #cfob-root .main-container { flex: 1; overflow-y: auto; padding: 1.25em; position: relative; }
+  #cfob-root .main-container { flex: 1; overflow-y: auto; padding: 0.4em; position: relative; }
   #cfob-root .drop-overlay { position: absolute; inset: 0.625em; border: 0.125em dashed var(--color-accent); border-radius: var(--radius-xl); background: var(--color-accent-alpha); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
   #cfob-root .main-container.dragover .drop-overlay { opacity: 1; pointer-events: all; }
 
@@ -145,20 +145,20 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .checkbox-wrapper { position: absolute; top: 0.5em; left: 0.5em; z-index: 5; background: rgba(0,0,0,0.6); border-radius: var(--radius-sm); padding: 0.25em; display: flex; }
   #cfob-root .card-checkbox { width: 1em; height: 1em; cursor: pointer; accent-color: var(--color-accent); margin: 0; }
   #cfob-root .card-content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  #cfob-root .card-header { padding: 0.625em 0.875em; background: var(--color-bg-header); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s, color 0.15s; }
+  #cfob-root .card-header { padding: 0.2em; background: var(--color-bg-header); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s, color 0.15s; }
   #cfob-root .card-header:hover { background: var(--color-bg-panel-hover); color: var(--color-text-inverse); }
   #cfob-root .card-header .toggle-icon { transition: transform 0.2s ease; }
-  #cfob-root .card-filename { font-size: 0.8125em; font-weight: 600; color: var(--color-text-inverse); white-space: nowrap; overflow: hidden; }
+  #cfob-root .card-filename { font-size: 0.6em; font-weight: 600; color: var(--color-text-inverse); white-space: nowrap; overflow: hidden; }
   #cfob-root .card-body { padding: 0.75em 0.875em; display: flex; flex-direction: column; gap: 0.625em; font-size: 0.75em; }
   #cfob-root .image-card.expanded .card-header .toggle-icon { transform: rotate(180deg); }
 
-  #cfob-root .gallery-container { display: grid; gap: 1.25em; align-items: start; padding-bottom: 5em; }
+  #cfob-root .gallery-container { display: grid; gap: 0.4em; align-items: start; padding-bottom: 5em; }
   #cfob-root .gallery-container .image-card .card-body { display: none; }
   #cfob-root .gallery-container .image-card.expanded .card-body { display: flex; }
   #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); }
   #cfob-root .gallery-container.view-grid .image-card { flex-direction: column; }
   #cfob-root .gallery-container.view-grid .card-preview { width: 100%; height: calc(var(--grid-size) * 0.63); background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
-  #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(var(--compact-size), 1fr)); gap: 0.75em; }
+  #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(var(--compact-size), 1fr)); }
   #cfob-root .gallery-container.view-compact .image-card { flex-direction: column; border-radius: var(--radius-md); }
   #cfob-root .gallery-container.view-compact .card-preview { width: 100%; height: calc(var(--compact-size) * 0.75); background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
 
@@ -168,9 +168,9 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .main-container.scroll-horizontal .gallery-container.view-list { grid-template-rows: 1fr; }
 
   #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
-  #cfob-root .gallery-container.view-list .image-card { flex-direction: row; }
-  #cfob-root .gallery-container.view-list .card-preview { width: 17.5em; height: 100%; min-height: 11.25em; max-height: 17.5em; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-right: 1px solid var(--color-border); }
-  #cfob-root .gallery-container.view-list .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.625em, 1fr)); gap: 0.75em; }
+  #cfob-root .gallery-container.view-list .image-card { flex-direction: row; max-height: 200px; }
+  #cfob-root .gallery-container.view-list .card-preview { width: 10em; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-right: 1px solid var(--color-border); }
+  #cfob-root .gallery-container.view-list .card-body { display: flex; }
 
   #cfob-root .action-bar { position: fixed; bottom: 1.25em; left: 50%; transform: translateX(-50%) translateY(6.25em); background: var(--color-bg-panel); border: 1px solid var(--color-accent); border-radius: var(--radius-lg); padding: 0.625em 1.25em; display: flex; align-items: center; gap: 0.9375em; box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.8); z-index: var(--z-action-bar); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
   #cfob-root .action-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
@@ -196,22 +196,20 @@ export const CFOB_QUERY_STYLES = /*css*/ `
 
   @container cfob-app (max-width: 768px) {
     #cfob-root .top-bar { gap: 0.625em; }
-    #cfob-root .actions-group { width: 100%; gap: 0.5em; }
+    #cfob-root .actions-group { width: 100%; gap: 0.4em; }
     #cfob-root .search-wrapper { max-width: none; width: 100%; order: -1; }
     #cfob-root .gallery-container { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
-    #cfob-root .gallery-container .image-card { flex-direction: column !important; }
-    #cfob-root .gallery-container .image-card .card-preview { width: 100% !important; }
-    #cfob-root .main-container .action-bar { padding: 0.3125em 0.625em; flex-wrap: wrap; justify-content: center; gap: 0.5em; }
+    #cfob-root .main-container .action-bar { padding: 0.  4em; justify-content: center; gap: 0.2em; }
     #cfob-root .nodes-grid { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
   }
 
   @media (max-width: 768px) {
+    #cfob-root .full-view-layout .btn { padding: 0.4em; }
     #cfob-root .full-view-layout .btn span { display: none; }
     #cfob-root .full-view-actions { display: flex; justify-content: space-around; }
     #cfob-root .full-view-layout.sidebar-below .full-view-main { min-height: 15.625em; }
     #cfob-root .full-view-layout.sidebar-below .full-view-sidebar { min-width: 0; min-height: 0; }
     #cfob-root .full-view-layout.sidebar-side .full-view-sidebar { min-width: 0; min-height: 0; }
-    #cfob-root #cfobToggleSidebarBtn svg { transform: rotate(90deg); }
   }
 
   @container cfob-app (max-width: 600px) {
