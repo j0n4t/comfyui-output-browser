@@ -87,7 +87,11 @@ export default class CFOB_Search {
         e.preventDefault();
         this.addSearchHistory();
         this.hideSearchSuggestions();
-        this.app.focusFirstGridItem();
+        if (this.app.settings.fullViewMode) {
+          this.app.$("cfobFullViewImg").focus();
+        } else {
+          this.app.focusFirstGridItem();
+        }
         if (this.app.filteredImages.length) input.blur();
       }
     } else if (e.key === 'Enter') {

@@ -7,6 +7,9 @@ export default class CFOB_Gallery {
   }
 
   filterGallery() {
+    const currentFullViewImage = this.app.settings.fullViewMode
+      ? this.app.filteredImages[this.app.fullView.currentImageIndex]
+      : null;
     const searchInput = /** @type {HTMLInputElement} */ (this.app.$("cfobSearchInput"));
     const searchStr = searchInput ? searchInput.value.trim() : "";
 
@@ -137,6 +140,20 @@ export default class CFOB_Gallery {
 
     this.renderGallery();
     this.app.selection.updateActionBar();
+    if (this.app.settings.fullViewMode && this.app.$("cfobFullViewModal").classList.contains('active')) {
+      if (this.app.filteredImages.length) {
+        const currentIndex = currentFullViewImage
+          ? this.app.filteredImages.findIndex(img => img.name === currentFullViewImage.name)
+          : -1;
+        this.app.fullView.currentImageIndex = currentIndex >= 0 ? currentIndex : 0;
+        this.app.fullView.updateFullViewUI();
+      } else {
+        this.app.$("cfobFullViewImg").src = "";
+        this.app.$("cfobFullViewTitle").innerText = "No matching images";
+        this.app.$("cfobFullViewCount").innerText = "0 / 0";
+        this.app.$("cfobFullViewFields").replaceChildren();
+      }
+    }
   }
 
   renderGallery() {

@@ -6,6 +6,7 @@ export const CFOB_FULL_VIEW_HTML = `
       <div class="full-view-main" tabindex="-1">
         <div class="full-view-top-bar">
           <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
+          <div class="full-view-browser-controls" id="cfobFullViewBrowserControls"></div>
           <div style="display: flex; gap: 0.5em; align-items: center;">
             <button class="icon-btn" id="cfobZoomInBtn" title="Zoom In">${ICONS.zoomIn}</button>
             <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out">${ICONS.zoomOut}</button>
@@ -16,7 +17,7 @@ export const CFOB_FULL_VIEW_HTML = `
           </div>
         </div>
         <button class="nav-btn prev-btn" id="cfobPrevImgBtn" title="Previous (Left Arrow)">❮</button>
-        <img id="cfobFullViewImg" src="" alt="Full View">
+        <img id="cfobFullViewImg" src="" alt="Full View" tabindex="0">
         <button class="nav-btn next-btn" id="cfobNextImgBtn" title="Next (Right Arrow)">❯</button>
       </div>
       <div class="full-view-sidebar-resizer" id="cfobFullViewSidebarResizer" role="separator" aria-label="Resize details pane" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="1200" tabindex="0"></div>
@@ -52,7 +53,14 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-main:focus { outline: none; }
   #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-  #cfob-root .full-view-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 0.9375em 1.5625em; background: linear-gradient(rgba(0,0,0,0.8), transparent); display: flex; justify-content: space-between; align-items: center; color: var(--color-text-inverse); z-index: 10; }
+  #cfob-root .full-view-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 0.4em; background: rgba(39, 39, 42, 0.94); display: flex; justify-content: space-between; align-items: center; gap: 0.75em; color: var(--color-text-primary); z-index: 10; }
+  #cfob-root .full-view-browser-controls { display: flex; align-items: center; gap: 0.5em; flex: 1; min-width: 0; }
+  #cfob-root .full-view-browser-controls .search-wrapper { max-width: 24em; min-width: 8em; }
+  #cfob-root .full-view-browser-controls .btn { font-size: 0.75em; }
+  #cfob-root .full-view-top-bar .icon-btn { color: var(--color-text-muted); }
+  #cfob-root .full-view-top-bar .icon-btn:hover { color: var(--color-text-inverse); background: var(--color-bg-panel-hover); }
+  #cfob-root .full-view-top-bar .full-view-count { color: var(--color-text-muted); font-size: 0.8125em; white-space: nowrap; }
+  #cfob-root .full-view-browser-controls .search-input { background: #00000040 }
   #cfob-root .full-view-count { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; font-size: 0.875em; cursor: pointer; }
   #cfob-root .full-view-count:hover { text-decoration: underline; }
   #cfob-root .full-view-count:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
@@ -98,6 +106,9 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-main img.dragging { transition: none; cursor: grabbing; }
 
   @media (max-width: 768px) {
+    #cfob-root .full-view-top-bar { top: 0.5em; left: 0.5em; right: 0.5em; padding: 0.375em; gap: 0.375em; }
+    #cfob-root .full-view-browser-controls { gap: 0.25em; margin-right: 0.25em; }
+    #cfob-root .full-view-browser-controls .search-wrapper { min-width: 5em; }
     #cfob-root .full-view-actions .btn { min-width: auto; }
   }
 `;
@@ -125,6 +136,8 @@ export default class CFOB_FullView {
     this.sidebarHeight = Number.isFinite(savedSidebarHeight) && savedSidebarHeight > 0 ? savedSidebarHeight : window.innerHeight / 2;
     /** @type {HTMLElement | null} */
     this.returnFocusElement = null;
+    /** @type {{element: HTMLElement, placeholder: Comment}[] | null} */
+    this.browserControlPlaceholders = null;
   }
 
   bindEvents() {
@@ -503,9 +516,11 @@ export default class CFOB_FullView {
         ? activeElement
         : null;
     }
+    this.app.settings.activateFullViewMode();
     this.setFullViewUIHidden(false);
     this.currentImageIndex = this.app.filteredImages.indexOf(img);
     this.updateFullViewUI();
+    this.mountBrowserControls();
     modal.classList.add('active');
     this.app.root?.classList.add('full-view-active');
     this.applySidebarSize();
@@ -515,11 +530,42 @@ export default class CFOB_FullView {
   closeFullView() {
     this.app.$("cfobFullViewModal").classList.remove('active');
     this.app.root?.classList.remove('full-view-active');
+    this.restoreBrowserControls();
+    if (this.app.settings.fullViewMode) {
+      this.app.settings.fullViewMode = false;
+      this.app.settings.setViewMode(this.app.settings.getGalleryViewMode());
+    }
     /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = "";
     const returnFocus = this.returnFocusElement;
     this.returnFocusElement = null;
     if (returnFocus?.isConnected && this.app.root?.contains(returnFocus)) returnFocus.focus();
     else this.app.$("cfobSearchInput").focus();
+  }
+
+  mountBrowserControls() {
+    if (this.browserControlPlaceholders) return;
+    const container = this.app.$("cfobFullViewBrowserControls");
+    const controls = [
+      { id: "cfobSearchWrapper", element: /** @type {HTMLElement | null} */ (this.app.root?.querySelector(".search-wrapper")) },
+      { id: "cfobRefreshBtn", element: this.app.$("cfobRefreshBtn") },
+      { id: "cfobMenuBtn", element: this.app.$("cfobMenuBtn") }
+    ];
+    this.browserControlPlaceholders = controls.flatMap(({ id, element }) => {
+      if (!element?.parentNode) return [];
+      const placeholder = document.createComment(` ${id} `);
+      element.parentNode.insertBefore(placeholder, element);
+      container.appendChild(element);
+      return [{ element, placeholder }];
+    });
+  }
+
+  restoreBrowserControls() {
+    if (!this.browserControlPlaceholders) return;
+    for (const { element, placeholder } of this.browserControlPlaceholders) {
+      placeholder.parentNode?.insertBefore(element, placeholder);
+      placeholder.remove();
+    }
+    this.browserControlPlaceholders = null;
   }
 
   /** @param {number} dir */

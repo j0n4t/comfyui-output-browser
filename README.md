@@ -15,6 +15,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 ### 2. Full-Screen View & Zoom
 
 - **Immersive Inspection:** Press **`Enter`** or **`Space`** on any highlighted card to enter full-screen mode, allowing you to cycle through batches using the left and right arrow keys.
+- **Full View Layout:** Choose **Options → View Mode → Full View** to browse one image at a time with search, sync, and options controls available in the viewer.
 - **Precision Zooming:** Zoom in or out smoothly using **`+`** / **`-`** keys, or snap right back to default dimensions with **`0`**.
 - **Panel-Sized Full View:** Enable **Options → Constrain Full View to Browser** to keep the image viewer inside the browser panel instead of covering the whole screen.
 - **Interface Controls:** Toggle the overlay HUD controls using **`Space`** or collapse/expand the metadata sidebar using **`T`**.
@@ -33,13 +34,13 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 | **Global**           | **`Ctrl + Shift + ?`**                         | Open the browser interface and focus the search bar.                  |
 | **Search**           | **`Enter` / `Tab`**                            | Complete the selected suggestion (or the first if none is selected).  |
 |                      | **`ArrowUp` / `ArrowDown`** (suggestions open) | Cycle through autocomplete suggestions.                               |
-|                      | **`ArrowDown`** (suggestions closed)           | Focus the first matching grid item.                                   |
+|                      | **`ArrowDown`** (suggestions closed)           | Focus the first matching grid item, or the image in Full View mode.   |
 |                      | **`ArrowUp`** (suggestions closed)             | Recall the previous search query.                                     |
 |                      | **`ArrowUp`** (first grid row)                 | Return focus to the search bar.                                       |
 | **Grid / Gallery**   | **`Escape`**                                   | Close modals, blur inputs, clear selections, or hide the browser.     |
 |                      | **`1` – `9`**                                  | Copy the 1st through 9th metadata field value to the clipboard.       |
 |                      | **`Ctrl + A` / `Meta + A`**                    | Select all filtered image cards.                                      |
-|                      | **`Ctrl + Shift + S` / `Meta + Shift + S`**    | Sync outputs from server.                                             |
+| **Global**           | **`Ctrl + Shift + S` / `Meta + Shift + S`**    | Sync outputs from server, including in Full View mode.                 |
 |                      | **`M`**                                        | Move selected item(s) to an existing or new folder.                    |
 |                      | **`R`**                                        | Rename the selected image; enter a `/`-separated path to move it too. |
 |                      | **`I`**                                        | Open the metadata inspector popup.                                    |
@@ -53,6 +54,7 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 |                      | **`Home` / `End`**                             | Focus the first or last image in the grid.                            |
 | **Full-Screen View** | **`Escape`**                                   | Exit full-screen mode and return to the grid.                         |
 |                      | **`ArrowLeft` / `ArrowRight`**                 | Navigate to the previous or next image in the batch.                  |
+|                      | **`ArrowUp`**                                  | Focus the search bar from the image.                                  |
 |                      | **`M` / `R`**                                  | Move the image to a folder / rename the image.                        |
 |                      | **`G`**                                        | Go to an image by its position in the current results.                |
 |                      | **`Space`**                                    | Toggle overlay UI controls.                                           |

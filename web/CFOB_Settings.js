@@ -57,9 +57,10 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .popover-item { padding: 0.3em; font-size: 0.75em; color: var(--color-text-inverse); background: transparent; border: none; text-align: left; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; transition: background 0.15s; }
   #cfob-root .popover-item:hover { background: var(--color-bg-panel-hover); color: var(--color-accent); }
 
-  #cfob-root .popover-view-toggles { display: flex; background: var(--color-bg-base); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; width: 100%; }
+  #cfob-root .popover-view-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--color-bg-base); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; width: 100%; }
   #cfob-root .popover-view-toggles .view-btn { flex: 1; background: transparent; color: var(--color-text-muted); border: none; padding: 0.375em 0.5em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.375em; font-size: 0.75em; transition: all 0.15s; border-right: 1px solid var(--color-border); }
-  #cfob-root .popover-view-toggles .view-btn:last-child { border-right: none; }
+  #cfob-root .popover-view-toggles .view-btn:nth-child(2n) { border-right: none; }
+  #cfob-root .popover-view-toggles .view-btn:nth-child(n+3) { border-top: 1px solid var(--color-border); }
   #cfob-root .popover-view-toggles .view-btn:hover, #cfob-root .popover-view-toggles .view-btn.active { background: var(--color-bg-panel-hover); color: var(--color-accent); }
 
   #cfob-root .popover-slider-container { display: flex; align-items: center; gap: 0.5em; width: 100%; }
@@ -211,6 +212,7 @@ export default class COB_Settings {
     this.ignoredAutocompleteKeywords = this.loadIgnoredAutocompleteKeywords();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.browserMode = localStorage.getItem('comfy_folder_browser_mode') || 'full';
+    this.fullViewMode = localStorage.getItem('comfy_folder_browser_view') === 'full';
     this.constrainFullView = localStorage.getItem('cfob_constrain_full_view') === 'true';
     this.sidebarWidth = Number(localStorage.getItem('comfy_folder_browser_width') || 450);
     this.sidebarHeight = Number(localStorage.getItem('comfy_folder_browser_height') || 350);
@@ -285,7 +287,7 @@ export default class COB_Settings {
     this.app.root?.style.setProperty('--compact-size', `${Math.max(20, this.gridSize - 180)}px`);
   }
 
-  getViewMode() {
+  getGalleryViewMode() {
     const grid = this.app.$("cfobGalleryGrid");
     if (!grid) return 'grid';
     if (grid.classList.contains('view-compact')) return 'compact';
@@ -293,13 +295,33 @@ export default class COB_Settings {
     return 'grid';
   }
 
+  getViewMode() {
+    return this.fullViewMode ? 'full' : this.getGalleryViewMode();
+  }
+
+  activateFullViewMode() {
+    this.fullViewMode = true;
+    localStorage.setItem('comfy_folder_browser_view', 'full');
+  }
+
   /** @param {string} mode */
   setViewMode(mode = "grid") {
     const grid = this.app.$("cfobGalleryGrid");
-    if (grid) {
+    if (mode === 'full') {
+      this.activateFullViewMode();
+    } else {
+      this.fullViewMode = false;
+    }
+    if (grid && mode !== 'full') {
       grid.className = `gallery-container view-${mode}`;
     }
     localStorage.setItem('comfy_folder_browser_view', mode);
+    if (mode === 'full') {
+      const img = this.app.filteredImages[this.app.lastSelectedIdx] || this.app.filteredImages[0];
+      if (img) this.app.fullView.openFullView(img);
+    } else if (this.app.$("cfobFullViewModal")?.classList.contains('active')) {
+      this.app.fullView.closeFullView();
+    }
   }
 
   /**
@@ -431,6 +453,7 @@ export default class COB_Settings {
           <button class="view-btn ${currentView === 'compact' ? 'active' : ''}" data-view="compact" title="Compact Grid">${ICONS.gridSmall} Compact</button>
           <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Standard Grid">${ICONS.gridBig} Grid</button>
           <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">${ICONS.gridList} List</button>
+          <button class="view-btn ${currentView === 'full' ? 'active' : ''}" data-view="full" title="Full View">${ICONS.zoomReset}Full View</button>
         </div>
       </div>
 
@@ -518,6 +541,10 @@ export default class COB_Settings {
         this.app.settings.setViewMode(mode);
         popover.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
         target.classList.add('active');
+        if (mode === 'full') {
+          popover.remove();
+          this.activePopover = null;
+        }
       });
     });
 

@@ -192,7 +192,7 @@ export const CFOB_STYLES = /*css*/ `
 export const CFOB_QUERY_STYLES = /*css*/ `
 
   @container cfob-app (max-width: 1024px) {
-    #cfob-root .top-bar .btn span, #cfob-root .action-bar .btn span { display: none; }
+    #cfob-root .btn span { display: none; }
   }
 
   @container cfob-app (max-width: 768px) {

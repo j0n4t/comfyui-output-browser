@@ -389,7 +389,10 @@ export default class ComfyOutputBrowser {
       }
 
       if (isFullView && noModalOpen && !e.ctrlKey) {
-        if (e.key === 'ArrowUp' && target.id === 'cfobFullViewImg') {
+        if (key === '/' && !e.altKey && !e.metaKey) {
+          e.preventDefault(); e.stopPropagation(); searchInput.focus();
+        }
+        else if (e.key === 'ArrowUp' && target.id === 'cfobFullViewImg') {
           e.preventDefault(); e.stopPropagation(); searchInput.focus();
         }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
