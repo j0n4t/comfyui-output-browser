@@ -205,6 +205,9 @@ export default class ComfyOutputBrowser {
     void this.root.offsetWidth;
     this.root.classList.remove('cfob-hidden');
     this.isUiVisible = true;
+    if (this.$("cfobFullViewModal").classList.contains('active')) {
+      this.fullView.setFullViewUIHidden(false);
+    }
     this.$("cfobSearchInput").focus();
   }
 
