@@ -187,10 +187,12 @@ export default class ComfyOutputBrowser {
     if (!this.root) return;
     if (width !== null) {
       this.sidebarWidth = Math.max(300, Math.min(width, window.innerWidth - 100));
+      this.settings.sidebarWidth = this.sidebarWidth;
       this.root.style.width = `${this.sidebarWidth}px`;
     }
     if (height !== null) {
       this.sidebarHeight = Math.max(200, Math.min(height, window.innerHeight - 100));
+      this.settings.sidebarHeight = this.sidebarHeight;
       this.root.style.height = `${this.sidebarHeight}px`;
     }
   }
@@ -387,7 +389,10 @@ export default class ComfyOutputBrowser {
       }
 
       if (isFullView && noModalOpen && !e.ctrlKey) {
-        if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
+        if (e.key === 'ArrowUp' && target.id === 'cfobFullViewImg') {
+          e.preventDefault(); e.stopPropagation(); searchInput.focus();
+        }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
         else if (!noModalOpen) return;
 
@@ -527,8 +532,9 @@ export default class ComfyOutputBrowser {
       isResizing = true;
       startX = e.clientX;
       startY = e.clientY;
-      startWidth = this.sidebarWidth || 250;
-      startHeight = this.sidebarHeight || 200;
+      const bounds = this.root?.getBoundingClientRect();
+      startWidth = bounds?.width || 250;
+      startHeight = bounds?.height || 250;
       resizer.classList.add('dragging');
       document.body.style.userSelect = 'none';
     });
@@ -736,6 +742,11 @@ export default class ComfyOutputBrowser {
       } else if (isFirstLoad) {
         this.applySort();
         this.gallery.filterGallery();
+      }
+
+      if (this.settings.fullViewMode && this.filteredImages.length && !this.$("cfobFullViewModal").classList.contains('active')) {
+        const img = this.filteredImages[this.lastSelectedIdx] || this.filteredImages[0];
+        this.fullView.openFullView(img);
       }
 
       this.api.startIdleParsing();
