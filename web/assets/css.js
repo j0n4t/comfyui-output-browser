@@ -70,6 +70,9 @@ export const CFOB_STYLES = /*css*/ `
     /* Structural Base */
     position: fixed;
     z-index: var(--z-base);
+    box-sizing: border-box;
+    max-width: 100vw;
+    max-height: 100vh;
     font-family: var(--font-sans);
     background: var(--color-bg-base);
     color: var(--color-text-primary);

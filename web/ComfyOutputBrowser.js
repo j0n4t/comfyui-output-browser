@@ -186,12 +186,14 @@ export default class ComfyOutputBrowser {
   updateSidebarSize(width, height) {
     if (!this.root) return;
     if (width !== null) {
-      this.sidebarWidth = Math.max(300, Math.min(width, window.innerWidth - 100));
+      const maxWidth = Math.max(0, window.innerWidth - 100);
+      this.sidebarWidth = Math.min(Math.max(300, width), maxWidth);
       this.settings.sidebarWidth = this.sidebarWidth;
       this.root.style.width = `${this.sidebarWidth}px`;
     }
     if (height !== null) {
-      this.sidebarHeight = Math.max(200, Math.min(height, window.innerHeight - 100));
+      const maxHeight = Math.max(0, window.innerHeight - 100);
+      this.sidebarHeight = Math.min(Math.max(200, height), maxHeight);
       this.settings.sidebarHeight = this.sidebarHeight;
       this.root.style.height = `${this.sidebarHeight}px`;
     }
