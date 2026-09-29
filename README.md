@@ -47,8 +47,8 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 |                      | **`M`**                                        | Move selected item(s) to an existing or new folder.                   |
 |                      | **`R`**                                        | Rename the selected image; enter a `/`-separated path to move it too. |
 |                      | **`I`**                                        | Open the metadata inspector popup.                                    |
-|                      | **`F` / `Enter`**                              | Open full-screen view for the focused or selected image.              |
-|                      | **`Space`**                                    | Toggle selection state for the focused item.                          |
+|                      | **`Space`**                                    | Open full-screen view for the focused or selected image.              |
+|                      | **`Enter`**                                    | Toggle selection state for the focused item.                          |
 |                      | **`Delete`**                                   | Move selected item(s) to the trash.                                   |
 |                      | **`D`**                                        | Download selected file(s).                                            |
 |                      | **`W`**                                        | Load the embedded workflow into ComfyUI.                              |

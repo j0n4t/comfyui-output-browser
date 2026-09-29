@@ -464,20 +464,7 @@ export default class ComfyOutputBrowser {
         else if (key === 'i' && !e.ctrlKey) {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected(); }
         }
-        else if (key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          if (!target.closest('button, a, [role="button"]')) {
-            const focusedImage = this.filteredImages[this.lastSelectedIdx];
-            const selectedImage = this.selectedImages.size === 1
-              ? this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0])
-              : null;
-            const img = focusedImage || selectedImage;
-            if (img) {
-              e.preventDefault(); e.stopPropagation();
-              this.fullView.openFullView(img);
-            }
-          }
-        }
-        else if (key === 'enter' && !e.ctrlKey) {
+        else if (key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (!target.closest('button, a, [role="button"]')) {
             const focusedImage = this.filteredImages[this.lastSelectedIdx];
             if (focusedImage || this.selectedImages.size === 1) {
@@ -487,7 +474,7 @@ export default class ComfyOutputBrowser {
             }
           }
         }
-        else if (key === ' ') {
+        else if (key === 'enter' && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (!e.altKey && !target.closest('button, a, [role="button"]')) {
             const checkboxName = target.matches('.card-checkbox')
               ? /** @type {HTMLInputElement} */ (target).value
