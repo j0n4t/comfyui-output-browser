@@ -165,10 +165,23 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(var(--compact-size), 1fr)); }
   #cfob-root .gallery-container.view-compact .image-card { flex-direction: column; border-radius: var(--radius-md); }
   #cfob-root .gallery-container.view-compact .card-preview { width: 100%; height: calc(var(--compact-size) * 0.75); background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
+  #cfob-root .gallery-container.masonry.view-grid,
+  #cfob-root .gallery-container.masonry.view-compact { display: block; column-width: var(--grid-size); column-gap: 0.4em; }
+  #cfob-root .gallery-container.masonry.view-grid .image-card,
+  #cfob-root .gallery-container.masonry.view-compact .image-card { display: inline-flex; flex-direction: column; width: 100%; margin-bottom: 0.4em; break-inside: avoid; }
+  #cfob-root .gallery-container.masonry.view-grid .card-preview,
+  #cfob-root .gallery-container.masonry.view-compact .card-preview { display: block; width: 100%; height: auto; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
+  #cfob-root .gallery-container.masonry.view-compact { column-width: var(--compact-size); }
 
   #cfob-root .main-container.scroll-horizontal { overflow-x: auto; overflow-y: hidden; }
   #cfob-root .main-container.scroll-horizontal .gallery-container { grid-auto-flow: column; grid-template-rows: repeat(auto-fill, minmax(var(--grid-size), 1fr)); grid-auto-columns: minmax(var(--grid-size), 1fr); height: 100%; padding-bottom: 1.25em; padding-right: 5em; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-grid { display: grid; column-width: auto; column-gap: normal; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-grid .image-card,
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-compact .image-card { display: flex; width: auto; margin-bottom: 0; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-grid .card-preview { height: calc(var(--grid-size) * 0.63); }
   #cfob-root .main-container.scroll-horizontal .gallery-container.view-compact { grid-template-rows: repeat(auto-fill, minmax(var(--compact-size), 1fr)); grid-auto-columns: minmax(var(--compact-size), 1fr); }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-compact { display: grid; column-width: auto; column-gap: normal; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-compact .card-preview { height: calc(var(--compact-size) * 0.75); }
   #cfob-root .main-container.scroll-horizontal .gallery-container.view-list { grid-template-rows: 1fr; }
 
   #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
@@ -202,7 +215,10 @@ export const CFOB_QUERY_STYLES = /*css*/ `
     #cfob-root .top-bar { gap: 0.625em; }
     #cfob-root .actions-group { width: 100%; gap: 0.4em; }
     #cfob-root .search-wrapper { max-width: none; width: 100%; order: -1; }
-    #cfob-root .gallery-container { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
+    #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
+    #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
+    #cfob-root .gallery-container.masonry.view-grid,
+    #cfob-root .gallery-container.masonry.view-compact { column-width: 12.5em; }
     #cfob-root .main-container .action-bar { padding: 0.  4em; justify-content: center; gap: 0.2em; }
     #cfob-root .nodes-grid { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
   }

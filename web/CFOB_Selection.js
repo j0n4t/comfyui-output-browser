@@ -37,25 +37,73 @@ export default class CFOB_Selection {
     const isShift = e.shiftKey;
     const isCtrl = e.ctrlKey || e.metaKey;
 
-    let currentIdx = app.lastSelectedIdx;
-    if (currentIdx === -1) currentIdx = 0;
+    let currentIdx = Math.max(0, Math.min(app.lastSelectedIdx, cards.length - 1));
 
-    let cols = 1;
-    const firstOffset = /** @type {HTMLElement} */(cards[0]).offsetTop;
-    for (let i = 1; i < cards.length; i++) {
-      if (/** @type {HTMLElement} */(cards[i]).offsetTop > firstOffset) {
-        cols = i;
-        break;
+    const isMasonry = grid.classList.contains('masonry')
+      && !app.$("cfobMainContainer").classList.contains('scroll-horizontal')
+      && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
+    let masonryNextIdx = currentIdx;
+    if (isMasonry && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(direction)) {
+      const currentRect = /** @type {HTMLElement} */ (cards[currentIdx]).getBoundingClientRect();
+      const currentX = currentRect.left + currentRect.width / 2;
+      const currentY = currentRect.top + currentRect.height / 2;
+      const isVertical = direction === 'ArrowUp' || direction === 'ArrowDown' || direction === 'PageUp' || direction === 'PageDown';
+      const isBackward = direction === 'ArrowLeft' || direction === 'ArrowUp' || direction === 'PageUp';
+      let nextScore = Infinity;
+
+      if (direction === 'PageUp' || direction === 'PageDown') {
+        const targetY = currentY + (direction === 'PageUp' ? -1 : 1) * app.$("cfobMainContainer").clientHeight;
+        for (let i = 0; i < cards.length; i++) {
+          if (i === currentIdx) continue;
+          const rect = /** @type {HTMLElement} */ (cards[i]).getBoundingClientRect();
+          const score = Math.abs(rect.top + rect.height / 2 - targetY)
+            + Math.abs(rect.left + rect.width / 2 - currentX) * 0.25;
+          if (score < nextScore) {
+            nextScore = score;
+            masonryNextIdx = i;
+          }
+        }
+      } else {
+        let bestCrossDistance = Infinity;
+        for (let i = 0; i < cards.length; i++) {
+          if (i === currentIdx) continue;
+          const rect = /** @type {HTMLElement} */ (cards[i]).getBoundingClientRect();
+          const candidateX = rect.left + rect.width / 2;
+          const candidateY = rect.top + rect.height / 2;
+          const primaryDistance = isVertical ? candidateY - currentY : candidateX - currentX;
+          if ((isBackward && primaryDistance >= 0) || (!isBackward && primaryDistance <= 0)) continue;
+          const crossDistance = isVertical
+            ? Math.max(0, Math.max(currentRect.left - rect.right, rect.left - currentRect.right))
+            : Math.max(0, Math.max(currentRect.top - rect.bottom, rect.top - currentRect.bottom));
+          if (crossDistance < bestCrossDistance
+            || (crossDistance === bestCrossDistance && Math.abs(primaryDistance) < nextScore)) {
+            bestCrossDistance = crossDistance;
+            nextScore = Math.abs(primaryDistance);
+            masonryNextIdx = i;
+          }
+        }
       }
-      if (i === cards.length - 1) cols = cards.length;
     }
 
-    let nextIdx = currentIdx;
-    if (direction === 'ArrowLeft') nextIdx--;
-    else if (direction === 'ArrowRight') nextIdx++;
-    else if (direction === 'ArrowUp') nextIdx -= cols;
-    else if (direction === 'ArrowDown') nextIdx += cols;
-    else if (direction === 'PageUp' || direction === 'PageDown') {
+    let cols = 1;
+    if (!isMasonry) {
+      const firstOffset = /** @type {HTMLElement} */(cards[0]).offsetTop;
+      for (let i = 1; i < cards.length; i++) {
+        if (/** @type {HTMLElement} */(cards[i]).offsetTop > firstOffset) {
+          cols = i;
+          break;
+        }
+        if (i === cards.length - 1) cols = cards.length;
+      }
+    }
+
+    let nextIdx = isMasonry ? masonryNextIdx : app.lastSelectedIdx;
+    if (nextIdx === -1) nextIdx = 0;
+    if (!isMasonry && direction === 'ArrowLeft') nextIdx--;
+    else if (!isMasonry && direction === 'ArrowRight') nextIdx++;
+    else if (!isMasonry && direction === 'ArrowUp') nextIdx -= cols;
+    else if (!isMasonry && direction === 'ArrowDown') nextIdx += cols;
+    else if (!isMasonry && (direction === 'PageUp' || direction === 'PageDown')) {
       const container = app.$("cfobMainContainer");
       const pageRows = Math.max(1, Math.floor(container.clientHeight / Math.max(1, cards[0].clientHeight)));
       const pageItems = cols * pageRows;

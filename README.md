@@ -6,6 +6,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 ### 1. Grid / Gallery Mode
 
+- **Masonry Layout:** Toggle masonry on or off under **Options → Image Size → Masonry Grid**. When enabled, grid and compact views arrange previews in responsive columns while preserving each image's aspect ratio.
 - **Spatial Navigation:** Browse through generated image cards seamlessly using your keyboard arrow keys (`↑`, `↓`, `←`, `→`). Combine with **`Shift`** to select ranges or **`Ctrl`** to shift focus without altering selections.
 - **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image. In the grid, **`↑`** from its first row returns to search.
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Ctrl + Space`** to toggle individual item selections.

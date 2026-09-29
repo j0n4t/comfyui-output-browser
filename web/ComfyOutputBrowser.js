@@ -520,9 +520,20 @@ export default class ComfyOutputBrowser {
           }
           if (e.key === 'ArrowUp' && this.lastSelectedIdx >= 0) {
             const grid = this.$("cfobGalleryGrid");
-            const firstCard = grid.querySelector('.image-card');
-            const currentCard = grid.querySelectorAll('.image-card')[this.lastSelectedIdx];
-            if (firstCard && currentCard && /** @type {HTMLElement} */ (currentCard).offsetTop <= /** @type {HTMLElement} */ (firstCard).offsetTop) {
+            const cards = Array.from(grid.querySelectorAll('.image-card'));
+            const currentCard = /** @type {HTMLElement | undefined} */ (cards[this.lastSelectedIdx]);
+            const isMasonry = grid.classList.contains('masonry')
+              && !this.$("cfobMainContainer").classList.contains('scroll-horizontal')
+              && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
+            const isFirstRow = isMasonry && currentCard
+              ? !cards.some((card) => {
+                  const candidate = /** @type {HTMLElement} */ (card);
+                  return candidate !== currentCard
+                    && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2
+                      < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;
+                })
+              : Boolean(cards[0] && currentCard && currentCard.offsetTop <= /** @type {HTMLElement} */ (cards[0]).offsetTop);
+            if (isFirstRow) {
               e.preventDefault(); e.stopPropagation();
               searchInput.focus();
               return;

@@ -218,6 +218,7 @@ export default class COB_Settings {
     this.sidebarHeight = Number(localStorage.getItem('comfy_folder_browser_height') || 350);
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
     this.gridSize = Number(localStorage.getItem('cfob_grid_size') || 380);
+    this.masonryEnabled = localStorage.getItem('cfob_masonry_enabled') !== 'false';
     this.scrollDir = localStorage.getItem('cfob_scroll_dir') || 'vertical';
     this.uiScale = Number(localStorage.getItem('cfob_ui_scale') || 1.0);
 
@@ -287,6 +288,12 @@ export default class COB_Settings {
     this.app.root?.style.setProperty('--compact-size', `${Math.max(20, this.gridSize - 180)}px`);
   }
 
+  setMasonryEnabled(enabled) {
+    this.masonryEnabled = enabled;
+    localStorage.setItem('cfob_masonry_enabled', String(enabled));
+    this.app.$("cfobGalleryGrid")?.classList.toggle('masonry', enabled);
+  }
+
   getGalleryViewMode() {
     const grid = this.app.$("cfobGalleryGrid");
     if (!grid) return 'grid';
@@ -313,7 +320,7 @@ export default class COB_Settings {
       this.fullViewMode = false;
     }
     if (grid && mode !== 'full') {
-      grid.className = `gallery-container view-${mode}`;
+      grid.className = `gallery-container view-${mode}${this.masonryEnabled ? ' masonry' : ''}`;
     }
     localStorage.setItem('comfy_folder_browser_view', mode);
     if (mode === 'full') {
@@ -475,6 +482,10 @@ export default class COB_Settings {
             <span id="cfobGridSizeVal" style="font-size: 0.75em; font-weight: 600; min-width: 3em; text-align: right;">${this.app.settings.gridSize}px</span>
           </div>
         </div>
+        <button class="popover-item" id="cfobToggleMasonryBtn">
+          <span>Masonry Grid</span>
+          <span style="font-weight: 600; color: ${this.app.settings.masonryEnabled ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.app.settings.masonryEnabled ? 'On' : 'Off'}</span>
+        </button>
       </div>
 
       <div class="popover-section">
@@ -561,6 +572,16 @@ export default class COB_Settings {
       const val = Number(/** @type {HTMLInputElement} */(ev.target).value);
       this.app.settings.setGridSize(val);
       gridSizeValDisplay.innerText = `${val}px`;
+    });
+
+    const toggleMasonryBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobToggleMasonryBtn'));
+    toggleMasonryBtn.addEventListener('click', () => {
+      this.app.settings.setMasonryEnabled(!this.app.settings.masonryEnabled);
+      const status = toggleMasonryBtn.lastElementChild;
+      if (status) {
+        status.textContent = this.app.settings.masonryEnabled ? 'On' : 'Off';
+        status.setAttribute('style', `font-weight: 600; color: var(${this.app.settings.masonryEnabled ? '--color-success' : '--color-text-muted'})`);
+      }
     });
 
     const modeSelect = /** @type {HTMLElement} */(popover.querySelector('#cfobModeSelect'));
