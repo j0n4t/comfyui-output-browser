@@ -26,7 +26,7 @@ export default class CFOB_Gallery {
     if (clearBtn) clearBtn.style.display = searchStr ? 'flex' : 'none';
 
     // 1. Pre-parse the query outside the image loop to prevent redundant regex and parsing overhead
-    const searchQuery = searchStr.replace(/^\.\s+/, '');
+    const searchQuery = this.expandFilterShortcuts(searchStr.replace(/^\.\s+/, ''));
     const rawOrGroups = searchQuery.split(',').map((/** @type {string} */ g) => g.trim()).filter(Boolean);
 
     /** @type {CFOB_SearchTerm[][]} */
@@ -167,6 +167,46 @@ export default class CFOB_Gallery {
       }
       this.app.fullView.updateFullViewUI();
     }
+  }
+
+  /** @param {string} query */
+  expandFilterShortcuts(query) {
+    const shortcuts = new Map(this.app.settings.filterShortcuts.map(
+      (/** @type {{keyword: string, filter: string}} */ shortcut) => [shortcut.keyword.toLowerCase(), shortcut.filter]
+    ));
+    if (!shortcuts.size) return query;
+
+    const splitOutsideQuotes = (/** @type {string} */ text, /** @type {(character: string) => boolean} */ isSeparator) => {
+      const parts = [];
+      let start = 0;
+      let inQuotes = false;
+      for (let index = 0; index < text.length; index++) {
+        if (text[index] === '"') inQuotes = !inQuotes;
+        else if (!inQuotes && isSeparator(text[index])) {
+          parts.push(text.slice(start, index));
+          start = index + 1;
+        }
+      }
+      parts.push(text.slice(start));
+      return parts;
+    };
+
+    return splitOutsideQuotes(query, character => character === ',')
+      .flatMap(group => {
+        const terms = group.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+        return terms.reduce((/** @type {string[]} */ expansions, /** @type {string} */ term) => {
+          const reference = term.match(/^@([\p{L}\p{N}_-]+)$/u);
+          const filter = reference ? shortcuts.get(reference[1].toLowerCase()) : undefined;
+          if (!filter) return expansions.map(expansion => `${expansion} ${term}`.trim());
+          const alternatives = splitOutsideQuotes(filter, character => character === ',')
+            .map(alternative => alternative.trim()).filter(Boolean);
+          if (!alternatives.length) return expansions.map(expansion => `${expansion} ${term}`.trim());
+          return expansions.flatMap(expansion => alternatives.map(alternative =>
+            `${expansion} ${alternative}`.trim()
+          ));
+        }, ['']);
+      })
+      .join(', ');
   }
 
   renderGallery() {

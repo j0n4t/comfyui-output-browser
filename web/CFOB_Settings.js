@@ -191,6 +191,14 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn" type="button">Save Keywords</button>
             </div>
           </div>
+          <div class="options-section">
+            <h4 class="options-section-title">Filter Shortcuts</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define one shortcut per line as <code>keyword | filter</code>, then use it in search with <code>@keyword</code>. Filters can use commas for alternatives. Example: <code>animals | dog, cat, wolf</code>.</p>
+            <textarea id="cfobFilterShortcutsInput" class="config-paths-textarea" style="height: 9em; width: 100%;" placeholder="animals | dog, cat, wolf"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+              <button class="btn btn-primary" id="cfobSaveFilterShortcutsBtn" type="button">Save Shortcuts</button>
+            </div>
+          </div>
         </section>
         <section class="options-tab-panel" id="cfobOptionsFields" role="tabpanel" aria-labelledby="cfobFieldsTab">
           <div class="options-section">
@@ -283,6 +291,8 @@ export default class COB_Settings {
     this.hiddenFolders = this.loadHiddenFoldersConfig();
     /** @type {string[]} */
     this.ignoredAutocompleteKeywords = this.loadIgnoredAutocompleteKeywords();
+    /** @type {{keyword: string, filter: string}[]} */
+    this.filterShortcuts = this.loadFilterShortcuts();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.browserMode = localStorage.getItem('comfy_folder_browser_mode') || 'full';
     this.fullViewMode = localStorage.getItem('comfy_folder_browser_view') === 'full';
@@ -340,6 +350,22 @@ export default class COB_Settings {
   saveIgnoredAutocompleteKeywords(keywords) {
     this.ignoredAutocompleteKeywords = keywords;
     localStorage.setItem('cfob_ignored_autocomplete_keywords', JSON.stringify(keywords));
+  }
+
+  /** @returns {{keyword: string, filter: string}[]} */
+  loadFilterShortcuts() {
+    const saved = localStorage.getItem('cfob_filter_shortcuts');
+    if (!saved) return [];
+    const shortcuts = JSON.parse(saved);
+    return Array.isArray(shortcuts) ? shortcuts.filter(shortcut =>
+      shortcut && typeof shortcut.keyword === 'string' && typeof shortcut.filter === 'string'
+    ) : [];
+  }
+
+  /** @param {{keyword: string, filter: string}[]} shortcuts */
+  saveFilterShortcuts(shortcuts) {
+    this.filterShortcuts = shortcuts;
+    localStorage.setItem('cfob_filter_shortcuts', JSON.stringify(shortcuts));
   }
 
   /**
@@ -521,6 +547,35 @@ export default class COB_Settings {
       this.app.search.updateSearchSuggestions(true);
       this.app.showToast("Saved ignored autocomplete keywords");
     });
+    this.app.$("cfobSaveFilterShortcutsBtn").addEventListener('click', () => {
+      const text = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobFilterShortcutsInput")).value;
+      /** @type {{keyword: string, filter: string}[]} */
+      const shortcuts = [];
+      const names = new Set();
+      const lines = text.split(/\r?\n/);
+      for (let index = 0; index < lines.length; index++) {
+        const line = lines[index].trim();
+        if (!line) continue;
+        const separator = line.indexOf('|');
+        const keyword = separator < 0 ? '' : line.slice(0, separator).trim();
+        const filter = separator < 0 ? '' : line.slice(separator + 1).trim();
+        if (!/^[\p{L}\p{N}_-]+$/u.test(keyword) || !filter) {
+          this.app.showToast(`Invalid filter shortcut on line ${index + 1}`);
+          return;
+        }
+        const normalizedKeyword = keyword.toLowerCase();
+        if (names.has(normalizedKeyword)) {
+          this.app.showToast(`Duplicate filter shortcut: ${keyword}`);
+          return;
+        }
+        names.add(normalizedKeyword);
+        shortcuts.push({ keyword, filter });
+      }
+      this.saveFilterShortcuts(shortcuts);
+      this.app.gallery.filterGallery();
+      this.app.search.updateSearchSuggestions(true);
+      this.app.showToast("Saved filter shortcuts");
+    });
   }
 
   bindOptionsModal() {
@@ -597,6 +652,8 @@ export default class COB_Settings {
       setStatus("cfobHiddenStatus", this.showHiddenFolders, 'Shown', 'Hidden');
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobHiddenFoldersInput")).value = this.hiddenFolders.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value = this.ignoredAutocompleteKeywords.join("\n");
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobFilterShortcutsInput")).value = this.filterShortcuts
+        .map(shortcut => `${shortcut.keyword} | ${shortcut.filter}`).join("\n");
       this.renderConfigFields();
       modal.querySelectorAll('.view-btn').forEach(button => {
         button.classList.toggle('active', /** @type {HTMLElement} */(button).dataset.view === this.getViewMode());

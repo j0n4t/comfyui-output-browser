@@ -172,6 +172,9 @@ export default class CFOB_Search {
       candidates.push(`${index + 1}:`);
       if (!/\s/.test(field.label)) candidates.push(`${field.label}:`);
     });
+    this.app.settings.filterShortcuts.forEach((/** @type {{ keyword: string; }} */ shortcut) => {
+      candidates.push(`@${shortcut.keyword}`);
+    });
     const prefix = token.toLowerCase();
     const ignored = new Set(this.app.settings.ignoredAutocompleteKeywords.map(keyword => keyword.toLowerCase()));
     const keywordPrefix = colonIndex >= 0 ? token.slice(colonIndex + 1).toLowerCase() : prefix;
