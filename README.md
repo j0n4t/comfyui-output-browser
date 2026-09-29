@@ -8,15 +8,15 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 - **Masonry Layout:** Toggle masonry on or off under **Options → Display → Masonry Grid**. When enabled, grid and compact views arrange previews in responsive columns while preserving each image's aspect ratio.
 - **Tabbed Options & Panel Sizing:** Open **Options** to adjust display and layout, manage hidden paths and ignored autocomplete keywords together under **Folders & Search**, or customize image card fields under **Custom Fields**. Set the width of left/right drawers and the height of top/bottom drawers with the panel size sliders.
-- **Spatial Navigation:** Browse through generated image cards seamlessly using your keyboard arrow keys (`↑`, `↓`, `←`, `→`). Combine with **`Shift`** to select ranges or **`Ctrl`** to shift focus without altering selections.
-- **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image. In the grid, **`↑`** from its first row returns to search.
-- **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Ctrl + Space`** to toggle individual item selections.
+- **Spatial Navigation:** Browse through generated image cards seamlessly using your keyboard arrow keys (`↑`, `↓`, `←`, `→`) without changing selection. Use **`Space`** to toggle the focused image's selection.
+- **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image without changing selection. In the grid, **`↑`** from its first row returns to search.
+- **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Space`** to toggle the focused image's selection.
 - **File Management:** Instantly send unwanted outputs to the trash (`Delete`), download files locally (`D`), rename a selected image (`R`), or move selected images to an existing or newly created folder (`M`).
 - **Workflow Recovery:** Select any image card and press **`W`** to extract and load its embedded workflow straight back into your ComfyUI workspace.
 
 ### 2. Full-Screen View & Zoom
 
-- **Immersive Inspection:** Press **`Enter`** or **`Space`** on any highlighted card to enter full-screen mode, allowing you to cycle through batches using the left and right arrow keys.
+- **Immersive Inspection:** Press **`F`** or **`Enter`** on any highlighted card to enter full-screen mode, allowing you to cycle through batches using the left and right arrow keys.
 - **Full View Layout:** Choose **Options → View Mode → Full View** to browse one image at a time with search, sync, and options controls available in the viewer.
 - **Precision Zooming:** Zoom in or out smoothly using **`+`** / **`-`** keys, or snap right back to default dimensions with **`0`**.
 - **Panel-Sized Full View:** Enable **Options → Constrain Full View to Browser** to keep the image viewer inside the browser panel instead of covering the whole screen.
@@ -47,12 +47,12 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 |                      | **`M`**                                        | Move selected item(s) to an existing or new folder.                    |
 |                      | **`R`**                                        | Rename the selected image; enter a `/`-separated path to move it too. |
 |                      | **`I`**                                        | Open the metadata inspector popup.                                    |
-|                      | **`Enter` or `Space`**                         | Open full-screen view for the selected image.                         |
-|                      | **`Ctrl + Space`**                             | Toggle selection state for the focused item.                          |
+|                      | **`F` / `Enter`**                              | Open full-screen view for the focused or selected image.              |
+|                      | **`Space`**                                    | Toggle selection state for the focused item.                          |
 |                      | **`Delete`**                                   | Move selected item(s) to the trash.                                   |
 |                      | **`D`**                                        | Download selected file(s).                                            |
 |                      | **`W`**                                        | Load the embedded workflow into ComfyUI.                              |
-|                      | **`Arrow Keys`**                               | Navigate the grid (hold **`Shift`** to select ranges).                |
+|                      | **`Arrow Keys`**                               | Navigate the grid without changing selection.                         |
 |                      | **`PageUp` / `PageDown`**                      | Move up or down by about one grid page.                               |
 |                      | **`Home` / `End`**                             | Focus the first or last image in the grid.                            |
 | **Full-Screen View** | **`Escape`**                                   | Exit full-screen mode and return to the grid.                         |

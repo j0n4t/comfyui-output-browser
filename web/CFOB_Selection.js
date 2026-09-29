@@ -8,17 +8,12 @@ export default class CFOB_Selection {
     const app = this.app;
     if (!app.filteredImages.length) return;
 
-    app.selection.clearSelection(false);
     app.lastSelectedIdx = 0;
-    app.selectionAnchorIdx = 0;
-    app.selectedImages.add(app.filteredImages[0].name);
     const cards = Array.from(app.$("cfobGalleryGrid").querySelectorAll('.image-card'));
     cards.forEach((card, index) => /** @type {HTMLElement} */(card).classList.toggle('focused', index === 0));
     const firstCard = cards[0];
     firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     /** @type {HTMLElement | undefined} */ (firstCard)?.focus();
-    app.selection.updateCardStyles();
-    app.selection.updateActionBar();
   }
 
   /**
@@ -34,9 +29,6 @@ export default class CFOB_Selection {
     if (!cards.length) return;
 
     const direction = e.key;
-    const isShift = e.shiftKey;
-    const isCtrl = e.ctrlKey || e.metaKey;
-
     let currentIdx = Math.max(0, Math.min(app.lastSelectedIdx, cards.length - 1));
 
     const isMasonry = grid.classList.contains('masonry')
@@ -114,39 +106,14 @@ export default class CFOB_Selection {
 
     nextIdx = Math.max(0, Math.min(nextIdx, app.filteredImages.length - 1));
 
-    if (app.selectionAnchorIdx === undefined) {
-      app.selectionAnchorIdx = currentIdx;
-    }
-
-    if (isShift) {
-      app.selection.clearSelection(false);
-      const start = Math.min(app.selectionAnchorIdx, nextIdx);
-      const end = Math.max(app.selectionAnchorIdx, nextIdx);
-      for (let i = start; i <= end; i++) {
-        app.selectedImages.add(app.filteredImages[i].name);
-      }
-    } else if (isCtrl) {
-      app.selectionAnchorIdx = nextIdx;
-    } else {
-      app.selection.clearSelection(false);
-      app.selectedImages.add(app.filteredImages[nextIdx].name);
-      app.selectionAnchorIdx = nextIdx;
-    }
-
     app.lastSelectedIdx = nextIdx;
 
     cards.forEach((c, i) => {
-      const cb = /** @type {HTMLInputElement} */ (c.querySelector('.card-checkbox'));
-      if (cb) cb.checked = app.selectedImages.has(app.filteredImages[i].name);
-
       const el = /** @type {HTMLElement} */ (c);
       el.classList.toggle('focused', i === nextIdx);
       if (i === nextIdx) el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     });
     /** @type {HTMLElement} */ (cards[nextIdx]).focus();
-
-    app.selection.updateCardStyles();
-    app.selection.updateActionBar();
   }
 
   updateActionBar() {

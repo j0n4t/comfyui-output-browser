@@ -464,6 +464,19 @@ export default class ComfyOutputBrowser {
         else if (key === 'i' && !e.ctrlKey) {
           if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected(); }
         }
+        else if (key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          if (!target.closest('button, a, [role="button"]')) {
+            const focusedImage = this.filteredImages[this.lastSelectedIdx];
+            const selectedImage = this.selectedImages.size === 1
+              ? this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0])
+              : null;
+            const img = focusedImage || selectedImage;
+            if (img) {
+              e.preventDefault(); e.stopPropagation();
+              this.fullView.openFullView(img);
+            }
+          }
+        }
         else if (key === 'enter' && !e.ctrlKey) {
           if (!target.closest('button, a, [role="button"]')) {
             const focusedImage = this.filteredImages[this.lastSelectedIdx];
@@ -475,37 +488,34 @@ export default class ComfyOutputBrowser {
           }
         }
         else if (key === ' ') {
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault(); e.stopPropagation();
-            if (this.lastSelectedIdx !== -1 && this.filteredImages[this.lastSelectedIdx]) {
-              const targetImg = this.filteredImages[this.lastSelectedIdx];
-              if (this.selectedImages.has(targetImg.name)) {
-                this.selectedImages.delete(targetImg.name);
-              } else {
-                this.selectedImages.add(targetImg.name);
-              }
-              this.selectionAnchorIdx = this.lastSelectedIdx; // Reset anchor
+          if (!e.altKey && !target.closest('button, a, [role="button"]')) {
+            const checkboxName = target.matches('.card-checkbox')
+              ? /** @type {HTMLInputElement} */ (target).value
+              : null;
+            const focusedIndex = checkboxName
+              ? this.filteredImages.findIndex(img => img.name === checkboxName)
+              : this.lastSelectedIdx >= 0 && this.lastSelectedIdx < this.filteredImages.length
+                ? this.lastSelectedIdx
+                : this.selectedImages.size === 1
+                  ? this.filteredImages.findIndex(img => img.name === Array.from(this.selectedImages)[0])
+                  : -1;
+            const targetImg = this.filteredImages[focusedIndex];
+            if (!targetImg) return;
 
-              const cards = Array.from(this.$("cfobGalleryGrid").querySelectorAll('.image-card'));
-              const targetCard = cards[this.lastSelectedIdx];
-              if (targetCard) {
-                const cb = /** @type {HTMLInputElement} */ (targetCard.querySelector('.card-checkbox'));
-                if (cb) cb.checked = this.selectedImages.has(targetImg.name);
-              }
-              this.selection.updateCardStyles();
-              this.selection.updateActionBar();
-            }
-          }
-          else if (
-            target.tagName !== 'INPUT' &&
-            !target.closest('button, a, [role="button"]') &&
-            (this.filteredImages[this.lastSelectedIdx] || this.selectedImages.size === 1)
-          ) {
-            // Standard Space: Open Full View
             e.preventDefault(); e.stopPropagation();
-            const img = this.filteredImages[this.lastSelectedIdx] ||
-              this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
-            if (img) this.fullView.openFullView(img);
+            this.lastSelectedIdx = focusedIndex;
+            if (this.selectedImages.has(targetImg.name)) {
+              this.selectedImages.delete(targetImg.name);
+            } else {
+              this.selectedImages.add(targetImg.name);
+            }
+            this.selectionAnchorIdx = focusedIndex;
+
+            const targetCard = this.$("cfobGalleryGrid").querySelectorAll('.image-card')[focusedIndex];
+            const checkbox = targetCard?.querySelector('.card-checkbox');
+            if (checkbox) /** @type {HTMLInputElement} */ (checkbox).checked = this.selectedImages.has(targetImg.name);
+            this.selection.updateCardStyles();
+            this.selection.updateActionBar();
           }
         }
         else if (e.key === 'Delete') {
