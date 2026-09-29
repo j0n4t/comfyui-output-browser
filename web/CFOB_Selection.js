@@ -232,7 +232,7 @@ export default class CFOB_Selection {
     app.root?.querySelectorAll('.card-checkbox').forEach(cb => /** @type {HTMLInputElement} */(cb).checked = false);
 
     if (resetAnchor) {
-      app.lastSelectedIdx = focusedIndex >= 0 ? focusedIndex : restoreGridFocus ? previousIndex : -1;
+      app.lastSelectedIdx = focusedIndex >= 0 ? focusedIndex : (focusedCard || restoreGridFocus) ? previousIndex : -1;
       app.selectionAnchorIdx = -1;
       app.root?.querySelectorAll('.image-card').forEach(c => /** @type {HTMLElement} */(c).style.boxShadow = '');
     }

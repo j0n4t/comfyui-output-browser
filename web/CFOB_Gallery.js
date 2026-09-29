@@ -229,7 +229,7 @@ export default class CFOB_Gallery {
       : null;
     const focusedName = focusedCard instanceof HTMLElement ? focusedCard.dataset.name : null;
     const previousIndex = focusedName
-      ? this.app.filteredImages.findIndex(img => img.name === focusedName)
+      ? this.app.lastSelectedIdx
       : -1;
 
     grid.innerHTML = "";
@@ -328,7 +328,9 @@ export default class CFOB_Gallery {
     grid.appendChild(fragment);
     if (focusedCard) {
       const focusIndex = this.app.filteredImages.findIndex(img => img.name === focusedName);
-      const targetIndex = focusIndex >= 0 ? focusIndex : Math.min(previousIndex, this.app.filteredImages.length - 1);
+      const targetIndex = focusIndex >= 0
+        ? focusIndex
+        : Math.max(0, Math.min(previousIndex, this.app.filteredImages.length - 1));
       const card = grid.querySelectorAll('.image-card')[targetIndex];
       if (card) {
         this.app.lastSelectedIdx = targetIndex;
