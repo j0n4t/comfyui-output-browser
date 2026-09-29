@@ -277,6 +277,8 @@ export default class ComfyOutputBrowser {
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
     this.$("cfobMenuBtn").addEventListener('click', () => this.settings.toggleOptionsMenu());
     const searchInput = this.$("cfobSearchInput");
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let searchInputTimer = null;
     let searchWasFocusedOnPointerDown = false;
     searchInput.addEventListener('pointerdown', () => {
       searchWasFocusedOnPointerDown = document.activeElement === searchInput;
@@ -291,8 +293,12 @@ export default class ComfyOutputBrowser {
       this.searchHistoryIndex = this.searchHistory.length;
       this.activeSearchSuggestionIndex = -1;
       this.search.allowEmptySearchSuggestions = false;
-      this.gallery.filterGallery();
-      this.search.updateSearchSuggestions(true);
+      if (searchInputTimer !== null) clearTimeout(searchInputTimer);
+      searchInputTimer = setTimeout(() => {
+        this.gallery.filterGallery();
+        this.search.updateSearchSuggestions(true);
+        searchInputTimer = null;
+      }, 150);
     });
     searchInput.addEventListener('focus', () => this.search.updateSearchSuggestions(true));
     searchInput.addEventListener('blur', () => {
@@ -302,6 +308,8 @@ export default class ComfyOutputBrowser {
     searchInput.addEventListener('keydown', (e) => this.search.handleSearchKeydown(e));
 
     this.$("cfobClearSearchBtn").addEventListener('click', () => {
+      if (searchInputTimer !== null) clearTimeout(searchInputTimer);
+      searchInputTimer = null;
       /** @type {HTMLInputElement} */ (searchInput).value = "";
       this.searchHistoryIndex = this.searchHistory.length;
       this.gallery.filterGallery();
