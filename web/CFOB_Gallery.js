@@ -9,9 +9,12 @@ export default class CFOB_Gallery {
   /** @param {import("./ComfyOutputBrowser.js").default} app */
   constructor(app) {
     this.app = app;
+    /** @type {CFOB_Image[]} */
+    this.lastRenderedLoadedImages = [];
   }
 
   filterGallery() {
+    const previousFilteredImages = this.app.filteredImages;
     const currentFullViewImage = this.app.settings.fullViewMode
       ? this.app.filteredImages[this.app.fullView.currentImageIndex]
       : null;
@@ -87,14 +90,21 @@ export default class CFOB_Gallery {
     const eligibleImages = this.app.loadedImages.filter(img =>
       effectiveShowHidden || !this.app.isImageInHiddenFolder(img.name)
     );
-    /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null }>} */
+    /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null; fields: Map<string, string | null> }>} */
     const imageTextCache = new WeakMap();
     const matchesTerm = (/** @type {CFOB_Image} */ img, /** @type {CFOB_SearchTerm} */ term) => {
       let text = imageTextCache.get(img);
       if (!text) {
-        text = { name: (img.name || "").toLowerCase(), prompt: null, workflow: null };
+        text = { name: (img.name || "").toLowerCase(), prompt: null, workflow: null, fields: new Map() };
         imageTextCache.set(img, text);
       }
+      const matchesField = (/** @type {string} */ paths) => {
+        if (!text.fields.has(paths)) {
+          const value = this.app.resolveFieldValue(img, paths);
+          text.fields.set(paths, value === null ? null : String(value).toLowerCase());
+        }
+        return text.fields.get(paths)?.includes(term.searchValue) || false;
+      };
       let match = false;
       if (term.searchKey) {
         if (term.searchKey === 'name' || term.searchKey === 'path') {
@@ -106,11 +116,9 @@ export default class CFOB_Gallery {
           if (text.workflow === null) text.workflow = img.workflow ? (JSON.stringify(img.workflow) || "").toLowerCase() : "";
           match = text.workflow.includes(term.searchValue);
         } else if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= this.app.settings.fieldConfigs.length) {
-          const value = this.app.resolveFieldValue(img, this.app.settings.fieldConfigs[term.fieldIdx - 1].paths);
-          match = value !== null && String(value).toLowerCase().includes(term.searchValue);
+          match = matchesField(this.app.settings.fieldConfigs[term.fieldIdx - 1].paths);
         } else if (term.fieldMatch) {
-          const value = this.app.resolveFieldValue(img, term.fieldMatch.paths);
-          match = value !== null && String(value).toLowerCase().includes(term.searchValue);
+          match = matchesField(term.fieldMatch.paths);
         }
       } else {
         if (text.prompt === null) text.prompt = img.prompt ? (JSON.stringify(img.prompt) || "").toLowerCase() : "";
@@ -130,31 +138,32 @@ export default class CFOB_Gallery {
 
     const matchingGroups = parsedQuery.length
       ? parsedQuery.map(andGroup => {
-          /** @type {Set<CFOB_Image> | null} */
+          /** @type {CFOB_Image[] | null} */
           let groupMatches = null;
           for (const term of andGroup) {
-            let termMatches = eligibleImages.filter(img => matchesTerm(img, term));
-            if (term.range) termMatches = applyRange(termMatches, term.range);
-            const termMatchSet = new Set(termMatches);
             if (groupMatches === null) {
-              groupMatches = termMatchSet;
+              groupMatches = eligibleImages.filter(img => matchesTerm(img, term));
+              if (term.range) groupMatches = applyRange(groupMatches, term.range);
+            } else if (term.range) {
+              const termMatches = applyRange(eligibleImages.filter(img => matchesTerm(img, term)), term.range);
+              const termMatchSet = new Set(termMatches);
+              groupMatches = groupMatches.filter(img => termMatchSet.has(img));
             } else {
-              /** @type {Set<CFOB_Image>} */
-              const intersection = new Set();
-              for (const img of groupMatches) {
-                if (termMatchSet.has(img)) intersection.add(img);
-              }
-              groupMatches = intersection;
+              groupMatches = groupMatches.filter(img => matchesTerm(img, term));
             }
-            if (groupMatches.size === 0) break;
+            if (groupMatches.length === 0) break;
           }
-          return groupMatches || new Set(eligibleImages);
+          return groupMatches || eligibleImages;
         })
-      : [new Set(eligibleImages)];
-    const matchingImageSet = new Set(matchingGroups.flatMap(group => [...group]));
+      : [eligibleImages];
+    const matchingImageSet = new Set(matchingGroups.flat());
     this.app.filteredImages = eligibleImages.filter(img => matchingImageSet.has(img));
 
-    this.renderGallery();
+    const sourceImagesChanged = this.lastRenderedLoadedImages.length !== this.app.loadedImages.length ||
+      this.lastRenderedLoadedImages.some((img, index) => img !== this.app.loadedImages[index]);
+    const resultsChanged = previousFilteredImages.length !== this.app.filteredImages.length ||
+      previousFilteredImages.some((img, index) => img !== this.app.filteredImages[index]);
+    if (sourceImagesChanged || resultsChanged) this.renderGallery();
     this.app.selection.updateActionBar();
     if (this.app.settings.fullViewMode && this.app.$("cfobFullViewModal").classList.contains('active')) {
       if (this.app.filteredImages.length) {
@@ -212,6 +221,7 @@ export default class CFOB_Gallery {
   renderGallery() {
     const grid = this.app.$("cfobGalleryGrid");
     if (!grid) return;
+    this.lastRenderedLoadedImages = this.app.loadedImages.slice();
 
     const activeElement = document.activeElement;
     const focusedCard = activeElement instanceof HTMLElement && grid.contains(activeElement)
@@ -248,6 +258,7 @@ export default class CFOB_Gallery {
     }
 
     const fragment = document.createDocumentFragment();
+    const loadedImageIndexes = new Map(this.app.loadedImages.map((img, index) => [img, index]));
 
     this.app.filteredImages.forEach((img, idx) => {
       const isSelected = this.app.selectedImages.has(img.name);
@@ -255,7 +266,7 @@ export default class CFOB_Gallery {
       card.className = `image-card ${isSelected ? 'selected' : ''} ${idx === this.app.lastSelectedIdx ? 'focused' : ''}`;
       card.tabIndex = -1;
       card.dataset.name = img.name;
-      card.dataset.index = String(this.app.loadedImages.indexOf(img));
+      card.dataset.index = String(loadedImageIndexes.get(img) ?? -1);
 
       card.innerHTML = `
         <div class="checkbox-wrapper">
