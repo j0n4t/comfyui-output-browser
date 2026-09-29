@@ -215,10 +215,6 @@ export const CFOB_QUERY_STYLES = /*css*/ `
     #cfob-root .top-bar { gap: 0.625em; }
     #cfob-root .actions-group { width: 100%; gap: 0.4em; }
     #cfob-root .search-wrapper { max-width: none; width: 100%; order: -1; }
-    #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
-    #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
-    #cfob-root .gallery-container.masonry.view-grid,
-    #cfob-root .gallery-container.masonry.view-compact { column-width: 12.5em; }
     #cfob-root .action-bar { padding: 0.4em; justify-content: center; gap: 0.2em; }
     #cfob-root .nodes-grid { grid-template-columns: repeat(auto-fill, minmax(12.5em, 1fr)); }
   }
