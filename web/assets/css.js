@@ -6,7 +6,8 @@ export const CFOB_STYLES = /*css*/ `
 
     /* User-controlled sizing */
     --grid-size: 380px;
-    --compact-size: max(120px, calc(var(--grid-size) - 180px));
+    --compact-offset: 180px;
+    --compact-size: max(20px, calc(var(--grid-size) - var(--compact-offset)));
 
     /* Color Palette: Backgrounds */
     --color-bg-base: #18181b;

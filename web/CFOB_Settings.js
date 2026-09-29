@@ -133,6 +133,10 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <div class="options-slider-heading"><label for="cfobGridSizeSlider">Image Size</label><span class="options-slider-value" id="cfobGridSizeVal"></span></div>
               <input type="range" class="options-slider" id="cfobGridSizeSlider" min="20" max="800" step="10">
             </div>
+            <div class="options-setting options-slider-setting">
+              <div class="options-slider-heading"><label for="cfobCompactOffsetSlider">Compact Grid Offset</label><span class="options-slider-value" id="cfobCompactOffsetVal"></span></div>
+              <input type="range" class="options-slider" id="cfobCompactOffsetSlider" min="0" max="600" step="10">
+            </div>
             <button class="options-setting options-toggle" id="cfobToggleMasonryBtn" type="button"><span>Masonry Grid</span><span class="options-toggle-status" id="cfobMasonryStatus"></span></button>
             <div class="options-setting"><label for="cfobScrollDirectionSelect">Scroll Direction</label>
               <select class="options-control" id="cfobScrollDirectionSelect"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select>
@@ -308,6 +312,7 @@ export default class COB_Settings {
     /** @type {'row' | 'column'} */
     this.gridFillOrder = savedGridFillOrder === 'column' ? 'column' : 'row';
     this.uiScale = Number(localStorage.getItem('cfob_ui_scale') || 1.0);
+    this.compactSizeOffset = Number(localStorage.getItem('cfob_compact_offset') || 180);
 
     /** @type {HTMLElement | null} */
     this.activePopover = null;
@@ -388,6 +393,16 @@ export default class COB_Settings {
     this.gridSize = Math.max(20, Math.min(800, Number(size) || 380));
     localStorage.setItem('cfob_grid_size', String(this.gridSize));
     this.app.root?.style.setProperty('--grid-size', `${this.gridSize}px`);
+    this.app.gallery?.syncGridLayout?.();
+  }
+
+  /**
+   * @param {string | number} offset
+   */
+  setCompactSizeOffset(offset) {
+    this.compactSizeOffset = Math.max(0, Math.min(600, Number(offset) || 180));
+    localStorage.setItem('cfob_compact_offset', String(this.compactSizeOffset));
+    this.app.root?.style.setProperty('--compact-offset', `${this.compactSizeOffset}px`);
     this.app.gallery?.syncGridLayout?.();
   }
 
@@ -678,6 +693,9 @@ export default class COB_Settings {
       const gridSlider = /** @type {HTMLInputElement} */ (this.app.$("cfobGridSizeSlider"));
       gridSlider.value = String(this.gridSize);
       this.app.$("cfobGridSizeVal").textContent = `${this.gridSize}px`;
+      const compactOffsetSlider = /** @type {HTMLInputElement} */ (this.app.$("cfobCompactOffsetSlider"));
+      compactOffsetSlider.value = String(this.compactSizeOffset);
+      this.app.$("cfobCompactOffsetVal").textContent = `${this.compactSizeOffset}px`;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobModeSelect")).value = this.browserMode;
       this.syncGridFillOrderControl();
       /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollDirectionSelect")).value = this.scrollDir;
@@ -706,6 +724,11 @@ export default class COB_Settings {
       const value = Number(/** @type {HTMLInputElement} */(event.target).value);
       this.setGridSize(value);
       this.app.$("cfobGridSizeVal").textContent = `${value}px`;
+    });
+    this.app.$("cfobCompactOffsetSlider").addEventListener('input', (event) => {
+      const value = Number(/** @type {HTMLInputElement} */(event.target).value);
+      this.setCompactSizeOffset(value);
+      this.app.$("cfobCompactOffsetVal").textContent = `${value}px`;
     });
     modal.querySelectorAll('.view-btn').forEach(button => {
       button.addEventListener('click', () => {

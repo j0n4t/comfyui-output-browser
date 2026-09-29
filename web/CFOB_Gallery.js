@@ -11,6 +11,15 @@ export default class CFOB_Gallery {
     this.cardCache = new Map();
     /** @type {ResizeObserver | null} */
     this.resizeObserver = null;
+    /** @type {number | null} */
+    this._resizeRafId = null;
+    // Cache last syncGridLayout result to skip redundant style writes
+    this._lastSyncRows = -1;
+    this._lastSyncCols = -1;
+    this._lastSyncAvailableHeight = -1;
+    this._lastSyncItemSize = -1;
+    /** @type {boolean | null} */
+    this._lastSyncIsHorizontalRow = null;
   }
 
   /**
@@ -42,16 +51,18 @@ export default class CFOB_Gallery {
 
     if (img.isParsed) card.dataset.parsed = "true";
 
+    // Cache frequently accessed child refs directly on the card element to avoid
+    // repeated querySelector calls during every render pass.
     const cb = /** @type {HTMLInputElement} */ (card.querySelector('.card-checkbox'));
+    /** @type {any} */ (card)._cfobCheckbox = cb;
+    /** @type {any} */ (card)._cfobBody = card.querySelector('.card-body');
+
     cb.addEventListener('click', (e) => this.app.selection.handleCheckboxClick(e, img.name));
 
     const previewImg = /** @type {HTMLImageElement} */ (card.querySelector('.card-preview'));
     previewImg.addEventListener('click', () => {
       const idx = Number(card.dataset.filterIndex);
-      this.app.lastSelectedIdx = idx;
-      this.app.root?.querySelectorAll('.image-card').forEach(item => {
-        item.classList.toggle('focused', Number(/** @type {HTMLElement} */(item).dataset.filterIndex) === idx);
-      });
+      this._setFocusedIdx(idx);
       card.focus();
       this.app.fullView.openFullView(img);
     });
@@ -72,10 +83,7 @@ export default class CFOB_Gallery {
       const target = /** @type {HTMLElement} */ (e.target);
       if (!target.closest('.card-preview, button, input, a, [contenteditable="true"]')) {
         const idx = Number(card.dataset.filterIndex);
-        this.app.lastSelectedIdx = idx;
-        this.app.root?.querySelectorAll('.image-card').forEach(item => {
-          item.classList.toggle('focused', Number(/** @type {HTMLElement} */(item).dataset.filterIndex) === idx);
-        });
+        this._setFocusedIdx(idx);
         card.focus();
       }
     });
@@ -83,6 +91,29 @@ export default class CFOB_Gallery {
     if (this.app.observer) this.app.observer.observe(card);
 
     return card;
+  }
+
+  /**
+   * Updates app.lastSelectedIdx and toggles the 'focused' CSS class on only the
+   * previously-focused card and the newly-focused card. This replaces the old
+   * O(n) querySelectorAll+forEach broadcast that iterated the entire grid.
+   * @param {number} idx
+   */
+  _setFocusedIdx(idx) {
+    const prev = this.app.lastSelectedIdx;
+    this.app.lastSelectedIdx = idx;
+    if (prev !== idx && prev >= 0) {
+      const grid = this.app.$("cfobGalleryGrid");
+      const prevCard = grid
+        ? /** @type {HTMLElement | null} */ (grid.querySelector(`.image-card[data-filter-index="${prev}"]`))
+        : null;
+      prevCard?.classList.remove('focused');
+    }
+    const grid = this.app.$("cfobGalleryGrid");
+    const newCard = grid
+      ? /** @type {HTMLElement | null} */ (grid.querySelector(`.image-card[data-filter-index="${idx}"]`))
+      : null;
+    newCard?.classList.add('focused');
   }
 
   /** @returns {HTMLElement[]} */
@@ -191,6 +222,8 @@ export default class CFOB_Gallery {
 
     const loadedImageIndexes = new Map(this.app.loadedImages.map((img, index) => [img, index]));
     const fragment = document.createDocumentFragment();
+    const lastSelectedIdx = this.app.lastSelectedIdx;
+    const selectedImages = this.app.selectedImages;
 
     // Populate fragment strictly with filtered items.
     // By keeping hidden items out of the flow entirely, CSS Masonry & Flex/Grid flow works flawlessly.
@@ -198,21 +231,23 @@ export default class CFOB_Gallery {
       const card = this.cardCache.get(img.name);
       if (!card) return;
 
-      const isSelected = this.app.selectedImages.has(img.name);
+      const isSelected = selectedImages.has(img.name);
 
       // Update state classes independently without wiping .expanded class
       card.classList.toggle('selected', isSelected);
-      card.classList.toggle('focused', idx === this.app.lastSelectedIdx);
+      card.classList.toggle('focused', idx === lastSelectedIdx);
       card.dataset.index = String(loadedImageIndexes.get(img) ?? -1);
       card.dataset.filterIndex = String(idx);
 
-      const cb = /** @type {HTMLInputElement} */ (card.querySelector('.card-checkbox'));
+      // Use cached checkbox ref — avoids one querySelector per card per render
+      const cb = /** @type {HTMLInputElement} */ (/** @type {any} */ (card)._cfobCheckbox);
       if (cb && cb.checked !== isSelected) cb.checked = isSelected;
 
       // Parse metadata updates incrementally on-the-fly without destroying the main node
       if (img.isParsed && !card.dataset.parsed) {
         card.dataset.parsed = "true";
-        const body = card.querySelector('.card-body');
+        // Use cached body ref — avoids one querySelector per card per render
+        const body = /** @type {HTMLElement | null} */ (/** @type {any} */ (card)._cfobBody);
         if (body) body.innerHTML = this.app.getCardFieldsHtml(img);
       }
 
@@ -252,7 +287,14 @@ export default class CFOB_Gallery {
 
     if (!this.resizeObserver && typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(() => {
-        this.syncGridLayout();
+        // Debounce via rAF: coalesce rapid resize events into a single layout pass
+        if (this._resizeRafId !== null) return;
+        this._resizeRafId = requestAnimationFrame(() => {
+          this._resizeRafId = null;
+          // Invalidate cached height so the next syncGridLayout recomputes
+          this._lastSyncAvailableHeight = -1;
+          this.syncGridLayout();
+        });
       });
       this.resizeObserver.observe(container);
     }
@@ -263,15 +305,26 @@ export default class CFOB_Gallery {
       && this.app.settings.getGalleryViewMode() !== 'full';
 
     if (!isHorizontalRow) {
-      grid.style.removeProperty('--cfob-col-count');
-      grid.style.removeProperty('--cfob-row-count');
+      if (this._lastSyncIsHorizontalRow !== false) {
+        this._lastSyncIsHorizontalRow = false;
+        grid.style.removeProperty('--cfob-col-count');
+        grid.style.removeProperty('--cfob-row-count');
+        // Reset cached values so they are recomputed if layout switches back
+        this._lastSyncRows = -1;
+        this._lastSyncCols = -1;
+      }
       return;
     }
 
     const count = this.app.filteredImages.length;
     if (count === 0) {
-      grid.style.setProperty('--cfob-col-count', '1');
-      grid.style.setProperty('--cfob-row-count', '1');
+      if (this._lastSyncRows !== 1 || this._lastSyncCols !== 1 || this._lastSyncIsHorizontalRow !== true) {
+        this._lastSyncIsHorizontalRow = true;
+        this._lastSyncRows = 1;
+        this._lastSyncCols = 1;
+        grid.style.setProperty('--cfob-col-count', '1');
+        grid.style.setProperty('--cfob-row-count', '1');
+      }
       return;
     }
 
@@ -282,6 +335,21 @@ export default class CFOB_Gallery {
     const availableHeight = Math.max(1, container.clientHeight - paddingBottom);
     const rows = Math.max(1, Math.floor((availableHeight + gap) / (itemSize + gap)));
     const cols = Math.max(1, Math.ceil(count / rows));
+
+    // Skip writing to the DOM if nothing changed
+    if (
+      this._lastSyncIsHorizontalRow === true &&
+      this._lastSyncRows === rows &&
+      this._lastSyncCols === cols &&
+      this._lastSyncAvailableHeight === availableHeight &&
+      this._lastSyncItemSize === itemSize
+    ) return;
+
+    this._lastSyncIsHorizontalRow = true;
+    this._lastSyncRows = rows;
+    this._lastSyncCols = cols;
+    this._lastSyncAvailableHeight = availableHeight;
+    this._lastSyncItemSize = itemSize;
 
     grid.style.setProperty('--cfob-row-count', String(rows));
     grid.style.setProperty('--cfob-col-count', String(cols));

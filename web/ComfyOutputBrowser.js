@@ -153,6 +153,7 @@ export default class ComfyOutputBrowser {
     this.settings.setGridFillOrder(this.settings.gridFillOrder);
     this.settings.setScrollDirection(this.settings.scrollDir);
     this.settings.setGridSize(this.settings.gridSize);
+    this.settings.setCompactSizeOffset(this.settings.compactSizeOffset);
     this.settings.setBrowserMode(this.settings.browserMode);
     this.settings.setConstrainFullView(this.settings.constrainFullView);
     this.observer = new IntersectionObserver((entries) => {

@@ -181,11 +181,17 @@ export default class CFOB_Selection {
       app.selectionAnchorIdx = fIdx;
     }
 
+    const prevIdx = app.lastSelectedIdx;
     app.lastSelectedIdx = fIdx;
-    app.root?.querySelectorAll('.image-card').forEach(c => {
-      const index = Number(/** @type {HTMLElement} */ (c).dataset.filterIndex);
-      c.classList.toggle('focused', index === fIdx);
-    });
+
+    // Only touch the two affected cards instead of iterating the whole grid
+    const grid = app.$("cfobGalleryGrid");
+    if (grid && prevIdx !== fIdx && prevIdx >= 0) {
+      /** @type {HTMLElement | null} */ (grid.querySelector(`.image-card[data-filter-index="${prevIdx}"]`))?.classList.remove('focused');
+    }
+    if (grid) {
+      /** @type {HTMLElement | null} */ (grid.querySelector(`.image-card[data-filter-index="${fIdx}"]`))?.classList.add('focused');
+    }
 
     app.selection.updateActionBar();
     app.selection.updateCardStyles();
