@@ -275,7 +275,7 @@ export default class ComfyOutputBrowser {
   bindEvents() {
     this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.hideWithTransition());
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
-    this.$("cfobMenuBtn").addEventListener('click', (e) => this.settings.toggleOptionsMenu(e));
+    this.$("cfobMenuBtn").addEventListener('click', () => this.settings.toggleOptionsMenu());
     const searchInput = this.$("cfobSearchInput");
     let searchWasFocusedOnPointerDown = false;
     searchInput.addEventListener('pointerdown', () => {

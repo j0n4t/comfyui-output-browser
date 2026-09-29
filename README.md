@@ -6,7 +6,8 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 ### 1. Grid / Gallery Mode
 
-- **Masonry Layout:** Toggle masonry on or off under **Options → Image Size → Masonry Grid**. When enabled, grid and compact views arrange previews in responsive columns while preserving each image's aspect ratio.
+- **Masonry Layout:** Toggle masonry on or off under **Options → Display → Masonry Grid**. When enabled, grid and compact views arrange previews in responsive columns while preserving each image's aspect ratio.
+- **Tabbed Options & Panel Sizing:** Open **Options** to adjust display and layout, manage hidden paths and ignored autocomplete keywords together under **Folders & Search**, or customize image card fields under **Custom Fields**. Set the width of left/right drawers and the height of top/bottom drawers with the panel size sliders.
 - **Spatial Navigation:** Browse through generated image cards seamlessly using your keyboard arrow keys (`↑`, `↓`, `←`, `→`). Combine with **`Shift`** to select ranges or **`Ctrl`** to shift focus without altering selections.
 - **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image. In the grid, **`↑`** from its first row returns to search.
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Ctrl + Space`** to toggle individual item selections.
@@ -77,6 +78,6 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 | **`.` (Prefix)**              | **Force Show Hidden:** Temporarily overrides the hidden folder filter if the entire query starts with a dot.                                                                                  | `.drafts`, `. name:test`                       |
 | **Combined**                  | Syntaxes can be chained to create complex queries.                                                                                                                                            | `prompt:"blue sky" !name:test, 1:sdxl`         |
 
-Use **Options → Ignore Autocomplete Keywords...** to hide exact words from autocomplete suggestions. Enter one keyword per line or separate them with commas. Ignored words still work in filters; the list is empty by default because no workflow-independent terms can be safely assumed useless.
+Use **Options → Folders & Search → Autocomplete Keywords to Ignore** to hide exact words from autocomplete suggestions. Enter one keyword per line or separate them with commas. Ignored words still work in filters; the list is empty by default because no workflow-independent terms can be safely assumed useless.
 
 Autocomplete ranks matching keywords by how many images contain them. `name:` suggests filenames (not folder names), completing at most five characters beyond the typed prefix; `path:` suggests directories, with root folders before nested folders. Starting a new comma-separated filter group also opens suggestions for that group.

@@ -50,22 +50,38 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .inspector-json-selected-path { color: var(--color-text-muted); font-family: var(--font-mono); font-size: 0.75em; overflow-wrap: anywhere; }
 
   #cfob-root .popover-menu { position: fixed; background: var(--color-bg-popover); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: 0 0.625em 1.5625em rgba(0,0,0,0.6); padding: 0.5em; z-index: var(--z-popover); display: flex; flex-direction: column; gap: 0.5em; min-width: 15em; max-width: 20em; }
-  #cfob-root .popover-section { display: flex; flex-direction: column; gap: 0.25em; border-bottom: 1px solid var(--color-border-light); padding-bottom: 0.375em; }
-  #cfob-root .popover-section:last-child { border-bottom: none; padding-bottom: 0; }
   #cfob-root .popover-header { font-size: 0.625em; font-weight: 700; color: var(--color-text-muted); padding: 0.125em 0.25em; text-transform: uppercase; letter-spacing: 0.5px; }
-  #cfob-root .popover-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5em; padding: 0.3em; font-size: 0.75em; color: var(--color-text-primary); }
   #cfob-root .popover-item { padding: 0.3em; font-size: 0.75em; color: var(--color-text-inverse); background: transparent; border: none; text-align: left; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; transition: background 0.15s; }
   #cfob-root .popover-item:hover { background: var(--color-bg-panel-hover); color: var(--color-accent); }
 
-  #cfob-root .popover-view-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--color-bg-base); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; width: 100%; }
-  #cfob-root .popover-view-toggles .view-btn { flex: 1; background: transparent; color: var(--color-text-muted); border: none; padding: 0.375em 0.5em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.375em; font-size: 0.75em; transition: all 0.15s; border-right: 1px solid var(--color-border); }
-  #cfob-root .popover-view-toggles .view-btn:nth-child(2n) { border-right: none; }
-  #cfob-root .popover-view-toggles .view-btn:nth-child(n+3) { border-top: 1px solid var(--color-border); }
-  #cfob-root .popover-view-toggles .view-btn:hover, #cfob-root .popover-view-toggles .view-btn.active { background: var(--color-bg-panel-hover); color: var(--color-accent); }
-
-  #cfob-root .popover-slider-container { display: flex; align-items: center; gap: 0.5em; width: 100%; }
-  #cfob-root .popover-slider { flex: 1; accent-color: var(--color-accent); cursor: pointer; height: 0.25em; }
-  #cfob-root .popover-select { background: var(--color-bg-base); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: var(--radius-sm); padding: 0.2em 0.4em; font-size: 0.75em; outline: none; }
+  #cfob-root .options-modal-content { max-width: 42em; }
+  #cfob-root .options-tabs { display: flex; flex-wrap: wrap; gap: 0.25em; padding: 0.75em 1.25em 0; border-bottom: 1px solid var(--color-border); }
+  #cfob-root .options-tab { border: 0; border-bottom: 2px solid transparent; border-radius: var(--radius-sm) var(--radius-sm) 0 0; padding: 0.625em 1em; background: transparent; color: var(--color-text-muted); font: inherit; cursor: pointer; }
+  #cfob-root .options-tab:hover { background: var(--color-bg-panel-hover); color: var(--color-text-primary); }
+  #cfob-root .options-tab.active { border-bottom-color: var(--color-accent); color: var(--color-text-inverse); }
+  #cfob-root .options-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+  #cfob-root .options-modal-body { padding: 1.25em; }
+  #cfob-root .options-tab-panel { display: none; flex-direction: column; gap: 1em; }
+  #cfob-root .options-tab-panel.active { display: flex; }
+  #cfob-root .options-section { display: flex; flex-direction: column; gap: 0.5em; }
+  #cfob-root .options-section-title { margin: 0; color: var(--color-text-muted); font-size: 0.75em; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  #cfob-root .options-setting { display: flex; align-items: center; justify-content: space-between; gap: 1em; padding: 0.625em 0.75em; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-surface); font-size: 0.8125em; }
+  #cfob-root .options-setting > label:first-child { color: var(--color-text-primary); }
+  #cfob-root .options-slider-setting { align-items: stretch; flex-direction: column; gap: 0.5em; }
+  #cfob-root .options-slider-heading { display: flex; justify-content: space-between; align-items: center; gap: 0.75em; }
+  #cfob-root .options-slider-value { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+  #cfob-root .options-slider { width: 100%; accent-color: var(--color-accent); cursor: pointer; }
+  #cfob-root .options-slider:disabled { cursor: not-allowed; opacity: 0.45; }
+  #cfob-root .options-control { max-width: 15em; background: var(--color-bg-base); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: var(--radius-sm); padding: 0.375em 0.5em; font: inherit; }
+  #cfob-root .options-toggle { justify-content: flex-start; width: 100%; color: var(--color-text-primary); text-align: left; cursor: pointer; }
+  #cfob-root .options-toggle:hover { border-color: var(--color-border-hover); background: var(--color-bg-panel-hover); }
+  #cfob-root .options-toggle-status { margin-left: auto; color: var(--color-text-muted); font-weight: 600; }
+  #cfob-root .options-toggle-status.enabled { color: var(--color-success); }
+  #cfob-root .options-view-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--color-bg-base); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; width: 100%; }
+  #cfob-root .options-view-toggles .view-btn { display: flex; align-items: center; justify-content: center; gap: 0.375em; padding: 0.625em 0.5em; border: 0; border-right: 1px solid var(--color-border); background: transparent; color: var(--color-text-muted); cursor: pointer; font-size: 0.8125em; }
+  #cfob-root .options-view-toggles .view-btn:nth-child(2n) { border-right: 0; }
+  #cfob-root .options-view-toggles .view-btn:nth-child(n+3) { border-top: 1px solid var(--color-border); }
+  #cfob-root .options-view-toggles .view-btn:hover, #cfob-root .options-view-toggles .view-btn.active { background: var(--color-bg-panel-hover); color: var(--color-accent); }
 
   #cfob-root .folder-list { display: flex; flex-wrap: wrap; gap: 0.375em; max-height: 10em; overflow-y: auto; margin-top: 0.5em; padding-top: 0.75em; border-top: 1px solid var(--color-border-light); }
   #cfob-root .folder-chip { background: var(--color-bg-panel-hover); border: 1px solid var(--color-border); padding: 0.375em 0.625em; border-radius: var(--radius-xl); font-size: 0.75em; cursor: pointer; color: var(--color-text-primary); transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.25em; }
@@ -87,52 +103,109 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
 `;
 
 export const CFOB_SETTINGS_MODALS_HTML = `
-  <div class="modal-overlay" id="cfobConfigModal" data-dialog-modal>
-    <div class="modal-content">
-      <div class="modal-header">${ICONS.pane}<h3>Customize Image Details Card Fields</h3><button class="icon-btn" id="cfobCloseConfigBtn" data-modal-dismiss>${ICONS.close}</button></div>
-      <div class="modal-body"><p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define custom card fields. Enter fallback paths separated by commas or newlines. <br><em>Syntax examples: <code>Positive Prompt.text</code>, <code>KSampler.seed</code>, <code>6.inputs.text</code></em></p>
-        <div id="cfobConfigFieldsList" style="display: flex; flex-direction: column; gap: 0.75em;"></div>
-        <button class="btn" id="cfobAddFieldBtn" style="align-self: flex-start;">+ Add Custom Field</button>
+  <div class="modal-overlay" id="cfobOptionsModal" data-dialog-modal>
+    <div class="modal-content options-modal-content">
+      <div class="modal-header">${ICONS.more}<h3>Options</h3><button class="icon-btn" id="cfobCloseOptionsBtn" data-modal-dismiss aria-label="Close options">${ICONS.close}</button></div>
+      <div class="options-tabs" id="cfobOptionsTabs" role="tablist" aria-label="Options categories">
+        <button class="options-tab active" id="cfobDisplayTab" type="button" role="tab" aria-selected="true" aria-controls="cfobOptionsDisplay" tabindex="0" data-target="cfobOptionsDisplay">Display</button>
+        <button class="options-tab" id="cfobLayoutTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsLayout" tabindex="-1" data-target="cfobOptionsLayout">Layout</button>
+        <button class="options-tab" id="cfobFoldersTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsFolders" tabindex="-1" data-target="cfobOptionsFolders">Folders & Search</button>
+        <button class="options-tab" id="cfobFieldsTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsFields" tabindex="-1" data-target="cfobOptionsFields">Custom Fields</button>
       </div>
-      <div class="modal-footer"><button class="btn btn-danger" id="cfobResetConfigBtn">Reset Defaults</button><button class="btn btn-primary" id="cfobSaveConfigBtn">Save & Apply</button></div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="cfobHiddenFoldersModal" data-dialog-modal>
-    <div class="modal-content">
-      <div class="modal-header">
-        ${ICONS.hidden}
-        <h3>Configure Hidden Folders</h3>
-        <button class="icon-btn" id="cfobCloseHiddenFoldersBtn" data-modal-dismiss>${ICONS.close}</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">
-          Specify folder names or path keywords to hide (one per line or comma-separated). Folders starting with <code>.</code> (e.g. <code>.cache</code>) are automatically hidden when hidden folders are toggled off.
-        </p>
-        <textarea id="cfobHiddenFoldersInput" class="config-paths-textarea" style="height: 8.75em; width: 100%;" placeholder="temp&#10;trash&#10;drafts"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-danger" id="cfobResetHiddenFoldersBtn">Reset Defaults</button>
-        <button class="btn btn-primary" id="cfobSaveHiddenFoldersBtn">Save & Apply</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="cfobIgnoredKeywordsModal" data-dialog-modal>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Ignore Autocomplete Keywords</h3>
-        <button class="icon-btn" id="cfobCloseIgnoredKeywordsBtn" data-modal-dismiss>${ICONS.close}</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">
-          Hide exact keywords from search autocomplete (one per line or comma-separated). This does not affect filtering. Only add terms that are always present and never useful to search for; the sample workflows do not establish any universal terms.
-        </p>
-        <textarea id="cfobIgnoredKeywordsInput" class="config-paths-textarea" style="height: 8.75em; width: 100%;" placeholder="No ignored keywords"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-danger" id="cfobResetIgnoredKeywordsBtn">Reset Defaults</button>
-        <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn">Save & Apply</button>
+      <div class="modal-body options-modal-body">
+        <section class="options-tab-panel active" id="cfobOptionsDisplay" role="tabpanel" aria-labelledby="cfobDisplayTab">
+          <div class="options-section">
+            <h4 class="options-section-title">View Mode</h4>
+            <div class="options-view-toggles">
+              <button class="view-btn" data-view="compact" title="Compact Grid">${ICONS.gridSmall} Compact</button>
+              <button class="view-btn" data-view="grid" title="Standard Grid">${ICONS.gridBig} Grid</button>
+              <button class="view-btn" data-view="list" title="List View">${ICONS.gridList} List</button>
+              <button class="view-btn" data-view="full" title="Full View">${ICONS.zoomReset} Full View</button>
+            </div>
+          </div>
+          <div class="options-section">
+            <h4 class="options-section-title">Appearance</h4>
+            <div class="options-setting options-slider-setting">
+              <div class="options-slider-heading"><label for="cfobScaleSlider">UI Scale</label><span class="options-slider-value" id="cfobScaleVal"></span></div>
+              <input type="range" class="options-slider" id="cfobScaleSlider" min="0.7" max="1.4" step="0.05">
+            </div>
+            <div class="options-setting options-slider-setting">
+              <div class="options-slider-heading"><label for="cfobGridSizeSlider">Image Size</label><span class="options-slider-value" id="cfobGridSizeVal"></span></div>
+              <input type="range" class="options-slider" id="cfobGridSizeSlider" min="20" max="800" step="10">
+            </div>
+            <button class="options-setting options-toggle" id="cfobToggleMasonryBtn" type="button"><span>Masonry Grid</span><span class="options-toggle-status" id="cfobMasonryStatus"></span></button>
+            <button class="options-setting options-toggle" id="cfobToggleHiddenBtn" type="button"><span>Hidden Folders</span><span class="options-toggle-status" id="cfobHiddenStatus"></span></button>
+          </div>
+        </section>
+        <section class="options-tab-panel" id="cfobOptionsLayout" role="tabpanel" aria-labelledby="cfobLayoutTab">
+          <div class="options-section">
+            <h4 class="options-section-title">Panel</h4>
+            <div class="options-setting"><label for="cfobModeSelect">Position</label>
+              <select class="options-control" id="cfobModeSelect">
+                <option value="full">Full Screen</option><option value="right">Right Drawer</option><option value="left">Left Drawer</option><option value="down">Bottom Drawer</option><option value="up">Top Drawer</option>
+              </select>
+            </div>
+            <div class="options-setting options-slider-setting">
+              <div class="options-slider-heading"><label for="cfobPanelWidthSlider">Panel Width</label><span class="options-slider-value" id="cfobPanelWidthVal"></span></div>
+              <input type="range" class="options-slider" id="cfobPanelWidthSlider" min="300" step="10" aria-describedby="cfobPanelSizeHint">
+            </div>
+            <div class="options-setting options-slider-setting">
+              <div class="options-slider-heading"><label for="cfobPanelHeightSlider">Panel Height</label><span class="options-slider-value" id="cfobPanelHeightVal"></span></div>
+              <input type="range" class="options-slider" id="cfobPanelHeightSlider" min="200" step="10" aria-describedby="cfobPanelSizeHint">
+            </div>
+            <p id="cfobPanelSizeHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">Width applies to left and right drawers; height applies to top and bottom drawers.</p>
+          </div>
+          <div class="options-section">
+            <h4 class="options-section-title">Navigation</h4>
+            <div class="options-setting"><label for="cfobScrollSelect">Scroll Direction</label>
+              <select class="options-control" id="cfobScrollSelect"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select>
+            </div>
+            <div class="options-setting"><label for="cfobSortSelect">Sort By</label>
+              <select class="options-control" id="cfobSortSelect">
+                <option value="default">Server Order</option><option value="name_asc">Name (A-Z)</option><option value="name_desc">Name (Z-A)</option><option value="mtime_asc">Older First</option><option value="mtime_desc">Newer First</option>
+              </select>
+            </div>
+          </div>
+          <div class="options-section">
+            <h4 class="options-section-title">Behavior</h4>
+            <button class="options-setting options-toggle" id="cfobToggleAutoHideBtn" type="button"><span>Auto-Hide Panel</span><span class="options-toggle-status" id="cfobAutoHideStatus"></span></button>
+            <button class="options-setting options-toggle" id="cfobToggleConstrainFullViewBtn" type="button"><span>Constrain Full View to Browser</span><span class="options-toggle-status" id="cfobConstrainStatus"></span></button>
+          </div>
+        </section>
+        <section class="options-tab-panel" id="cfobOptionsFolders" role="tabpanel" aria-labelledby="cfobFoldersTab">
+          <div class="options-section">
+            <h4 class="options-section-title">Hidden Paths</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Specify folder names or path keywords to hide (one per line or comma-separated). Folders starting with <code>.</code> are automatically hidden when hidden folders are toggled off.</p>
+            <textarea id="cfobHiddenFoldersInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="temp&#10;trash&#10;drafts"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+              <button class="btn btn-danger" id="cfobResetHiddenFoldersBtn" type="button">Reset Defaults</button>
+              <button class="btn btn-primary" id="cfobSaveHiddenFoldersBtn" type="button">Save Hidden Paths</button>
+            </div>
+          </div>
+          <div class="options-section">
+            <h4 class="options-section-title">Autocomplete Keywords to Ignore</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Hide exact keywords from search autocomplete (one per line or comma-separated). This does not affect filtering.</p>
+            <textarea id="cfobIgnoredKeywordsInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No ignored keywords"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+              <button class="btn btn-danger" id="cfobResetIgnoredKeywordsBtn" type="button">Clear Keywords</button>
+              <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn" type="button">Save Keywords</button>
+            </div>
+          </div>
+        </section>
+        <section class="options-tab-panel" id="cfobOptionsFields" role="tabpanel" aria-labelledby="cfobFieldsTab">
+          <div class="options-section">
+            <h4 class="options-section-title">Customize Image Details Card Fields</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define custom card fields. Enter fallback paths separated by commas or newlines. Examples: <code>Positive Prompt.text</code>, <code>KSampler.seed</code>, <code>6.inputs.text</code>.</p>
+            <div id="cfobConfigFieldsList" style="display: flex; flex-direction: column; gap: 0.75em;"></div>
+            <div style="display: flex; justify-content: space-between; gap: 0.5em;">
+              <button class="btn" id="cfobAddFieldBtn" type="button">+ Add Field</button>
+              <div style="display: flex; gap: 0.5em;">
+                <button class="btn btn-danger" id="cfobResetConfigBtn" type="button">Reset Defaults</button>
+                <button class="btn btn-primary" id="cfobSaveConfigBtn" type="button">Save</button>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -352,6 +425,13 @@ export default class COB_Settings {
     }
   }
 
+  /** @param {number | null} width @param {number | null} height */
+  setSidebarSize(width, height) {
+    this.app.updateSidebarSize(width, height);
+    if (width !== null) localStorage.setItem('comfy_folder_browser_width', String(this.sidebarWidth));
+    if (height !== null) localStorage.setItem('comfy_folder_browser_height', String(this.sidebarHeight));
+  }
+
   /** @param {boolean} constrain */
   setConstrainFullView(constrain) {
     this.constrainFullView = Boolean(constrain);
@@ -361,6 +441,7 @@ export default class COB_Settings {
 
   bindEvents() {
     this.modals.bindEvents();
+    this.bindOptionsModal();
     document.addEventListener('click', (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
       if (this.activePopover && !this.activePopover.contains(target) && !target.closest('#cfobMenuBtn')) {
@@ -369,8 +450,14 @@ export default class COB_Settings {
       }
     });
 
-    this.app.$("cfobAddFieldBtn").addEventListener('click', () => { this.fieldConfigs.push({ label: "Custom Field", paths: "" }); this.openConfigModal(); });
-    this.app.$("cfobResetConfigBtn").addEventListener('click', () => { this.resetConfig(); this.openConfigModal(); });
+    this.app.$("cfobAddFieldBtn").addEventListener('click', () => {
+      this.fieldConfigs.push({ label: "Custom Field", paths: "" });
+      this.renderConfigFields();
+    });
+    this.app.$("cfobResetConfigBtn").addEventListener('click', () => {
+      this.resetConfig();
+      this.renderConfigFields();
+    });
     this.app.$("cfobSaveConfigBtn").addEventListener('click', () => {
       /** @type {CFOB_CardFieldSettings[]} */
       const newCfgs = [];
@@ -381,7 +468,8 @@ export default class COB_Settings {
       });
       this.saveConfig(newCfgs);
       this.app.gallery.renderGallery();
-      this.modals.close(this.app.$("cfobConfigModal"));
+      this.renderConfigFields();
+      this.app.showToast("Saved card field configuration");
     });
 
     // Enhanced Inspector Tabs with Keyboard Navigation
@@ -413,263 +501,183 @@ export default class COB_Settings {
     });
 
     this.app.$("cfobResetHiddenFoldersBtn").addEventListener('click', () => {
-      this.saveHiddenFoldersConfig(["temp", "trash"]);
-      this.openHiddenFoldersModal();
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobHiddenFoldersInput")).value = "temp\ntrash";
     });
     this.app.$("cfobSaveHiddenFoldersBtn").addEventListener('click', () => {
       const val = /** @type {HTMLInputElement} */ (this.app.$("cfobHiddenFoldersInput")).value;
       const list = val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean);
       this.saveHiddenFoldersConfig(list);
       this.app.gallery.filterGallery();
-      this.modals.close(this.app.$("cfobHiddenFoldersModal"));
       this.app.showToast("Saved hidden folders configuration");
     });
 
     this.app.$("cfobResetIgnoredKeywordsBtn").addEventListener('click', () => {
-      this.saveIgnoredAutocompleteKeywords([]);
-      this.openIgnoredAutocompleteKeywordsModal();
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value = "";
     });
     this.app.$("cfobSaveIgnoredKeywordsBtn").addEventListener('click', () => {
       const val = /** @type {HTMLInputElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value;
       const keywords = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim().toLowerCase()).filter(Boolean))];
       this.saveIgnoredAutocompleteKeywords(keywords);
       this.app.search.updateSearchSuggestions(true);
-      this.modals.close(this.app.$("cfobIgnoredKeywordsModal"));
       this.app.showToast("Saved ignored autocomplete keywords");
     });
   }
 
-  /** @param {Event} e  */
-  toggleOptionsMenu(e) {
-    if (this.activePopover) {
-      this.activePopover.remove();
-      this.activePopover = null;
-      return;
-    }
+  bindOptionsModal() {
+    const modal = this.app.$("cfobOptionsModal");
+    const tablist = this.app.$("cfobOptionsTabs");
+    const tabs = /** @type {HTMLElement[]} */ (Array.from(tablist.querySelectorAll('.options-tab')));
+    const activateTab = (/** @type {HTMLElement} */ tab, focus = false) => {
+      tabs.forEach(item => {
+        const isActive = item === tab;
+        item.classList.toggle('active', isActive);
+        item.setAttribute('aria-selected', String(isActive));
+        item.tabIndex = isActive ? 0 : -1;
+      });
+      modal.querySelectorAll('.options-tab-panel').forEach(panel => {
+        panel.classList.toggle('active', /** @type {HTMLElement} */(panel).id === tab.dataset.target);
+      });
+      if (focus) tab.focus();
+    };
 
-    const btn = /** @type {HTMLButtonElement} */ (e.currentTarget);
-    const rect = btn.getBoundingClientRect();
-    const popover = document.createElement('div');
-    popover.className = 'popover-menu';
-
-    const currentView = this.app.settings.getViewMode();
-
-    popover.innerHTML = `
-      <div class="popover-section">
-        <div class="popover-header">View Mode</div>
-        <div class="popover-view-toggles">
-          <button class="view-btn ${currentView === 'compact' ? 'active' : ''}" data-view="compact" title="Compact Grid">${ICONS.gridSmall} Compact</button>
-          <button class="view-btn ${currentView === 'grid' ? 'active' : ''}" data-view="grid" title="Standard Grid">${ICONS.gridBig} Grid</button>
-          <button class="view-btn ${currentView === 'list' ? 'active' : ''}" data-view="list" title="List View">${ICONS.gridList} List</button>
-          <button class="view-btn ${currentView === 'full' ? 'active' : ''}" data-view="full" title="Full View">${ICONS.zoomReset}Full View</button>
-        </div>
-      </div>
-
-      <div class="popover-section">
-        <div class="popover-header">UI Scale</div>
-        <div class="popover-row">
-          <div class="popover-slider-container">
-            <input type="range" class="popover-slider" id="cfobScaleSlider" min="0.7" max="1.4" step="0.05" value="${this.app.settings.uiScale}">
-            <span id="cfobScaleVal" style="font-size: 0.75em; font-weight: 600; min-width: 3em; text-align: right;">${Math.round(this.app.settings.uiScale * 100)}%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="popover-section">
-        <div class="popover-header">Image Size</div>
-        <div class="popover-row">
-          <div class="popover-slider-container">
-            <input type="range" class="popover-slider" id="cfobGridSizeSlider" min="20" max="800" step="10" value="${this.app.settings.gridSize}">
-            <span id="cfobGridSizeVal" style="font-size: 0.75em; font-weight: 600; min-width: 3em; text-align: right;">${this.app.settings.gridSize}px</span>
-          </div>
-        </div>
-        <button class="popover-item" id="cfobToggleMasonryBtn">
-          <span>Masonry Grid</span>
-          <span style="font-weight: 600; color: ${this.app.settings.masonryEnabled ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.app.settings.masonryEnabled ? 'On' : 'Off'}</span>
-        </button>
-      </div>
-
-      <div class="popover-section">
-        <div class="popover-header">Layout & Navigation</div>
-        <div class="popover-row">
-          <span>Position</span>
-          <select class="popover-select" id="cfobModeSelect">
-            <option value="full" ${this.app.settings.browserMode === 'full' ? 'selected' : ''}>Full Screen</option>
-            <option value="right" ${this.app.settings.browserMode === 'right' ? 'selected' : ''}>Right Drawer</option>
-            <option value="left" ${this.app.settings.browserMode === 'left' ? 'selected' : ''}>Left Drawer</option>
-            <option value="down" ${this.app.settings.browserMode === 'down' ? 'selected' : ''}>Bottom Drawer</option>
-            <option value="up" ${this.app.settings.browserMode === 'up' ? 'selected' : ''}>Top Drawer</option>
-          </select>
-        </div>
-        <div class="popover-row">
-          <span>Scroll Direction</span>
-          <select class="popover-select" id="cfobScrollSelect">
-            <option value="vertical" ${this.scrollDir === 'vertical' ? 'selected' : ''}>Vertical</option>
-            <option value="horizontal" ${this.scrollDir === 'horizontal' ? 'selected' : ''}>Horizontal</option>
-          </select>
-        </div>
-        <div class="popover-row">
-          <span>Sort By</span>
-          <select class="popover-select" id="cfobSortSelect">
-            <option value="default" ${this.currentSort === 'default' ? 'selected' : ''}>Server Order</option>
-            <option value="name_asc" ${this.currentSort === 'name_asc' ? 'selected' : ''}>Name (A-Z)</option>
-            <option value="name_desc" ${this.currentSort === 'name_desc' ? 'selected' : ''}>Name (Z-A)</option>
-            <option value="mtime_asc" ${this.currentSort === 'mtime_asc' ? 'selected' : ''}>Older First</option>
-            <option value="mtime_desc" ${this.currentSort === 'mtime_desc' ? 'selected' : ''}>Newer First</option>
-          </select>
-        </div>
-        <button class="popover-item" id="cfobToggleAutoHideBtn">
-          <span>Auto-Hide Panel</span>
-          <span style="font-weight: 600; color: ${this.autoHide ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.autoHide ? 'On' : 'Off'}</span>
-        </button>
-        <button class="popover-item" id="cfobToggleConstrainFullViewBtn">
-          <span>Constrain Full View to Browser</span>
-          <span style="font-weight: 600; color: ${this.constrainFullView ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.constrainFullView ? 'On' : 'Off'}</span>
-        </button>
-      </div>
-
-      <div class="popover-section">
-        <div class="popover-header">Preferences</div>
-        <button class="popover-item" id="cfobToggleHiddenBtn">
-          <span>Hidden Folders</span>
-          <span style="font-weight: 600; color: ${this.showHiddenFolders ? 'var(--color-success)' : 'var(--color-text-muted)'}">${this.showHiddenFolders ? 'Shown' : 'Hidden'}</span>
-        </button>
-        <button class="popover-item" id="cfobConfigHiddenBtn">
-          <span>Configure Hidden Paths...</span>
-        </button>
-        <button class="popover-item" id="cfobConfigIgnoredKeywordsBtn">
-          <span>Ignore Autocomplete Keywords...</span>
-        </button>
-        <button class="popover-item" id="cfobConfigFieldsBtn">
-          <span>Customize Card Fields...</span>
-        </button>
-      </div>
-    `;
-
-    popover.querySelectorAll('.view-btn').forEach(vBtn => {
-      vBtn.addEventListener('click', (ev) => {
-        const target = /** @type {HTMLElement} */(ev.currentTarget);
-        const mode = target.dataset.view;
-        this.app.settings.setViewMode(mode);
-        popover.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-        target.classList.add('active');
-        if (mode === 'full') {
-          popover.remove();
-          this.activePopover = null;
-        }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => activateTab(/** @type {HTMLElement} */(tab)));
+      tab.addEventListener('keydown', (event) => {
+        const keyEvent = /** @type {KeyboardEvent} */ (event);
+        let nextIndex = index;
+        if (keyEvent.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+        else if (keyEvent.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+        else if (keyEvent.key === 'Home') nextIndex = 0;
+        else if (keyEvent.key === 'End') nextIndex = tabs.length - 1;
+        else return;
+        keyEvent.preventDefault();
+        activateTab(/** @type {HTMLElement} */(tabs[nextIndex]), true);
       });
     });
 
-    const scaleSlider = /** @type {HTMLElement} */ (popover.querySelector('#cfobScaleSlider'));
-    const scaleValDisplay = /** @type {HTMLElement} */ (popover.querySelector('#cfobScaleVal'));
-    scaleSlider.addEventListener('input', (ev) => {
-      const val = parseFloat(/** @type {HTMLInputElement} */(ev.target).value);
-      this.app.settings.setUiScale(val);
-      scaleValDisplay.innerText = `${Math.round(val * 100)}%`;
-    });
-
-    const gridSizeSlider = /** @type {HTMLElement} */ (popover.querySelector('#cfobGridSizeSlider')); const gridSizeValDisplay = /** @type {HTMLElement} */ (popover.querySelector('#cfobGridSizeVal'));
-    gridSizeSlider.addEventListener('input', (ev) => {
-      const val = Number(/** @type {HTMLInputElement} */(ev.target).value);
-      this.app.settings.setGridSize(val);
-      gridSizeValDisplay.innerText = `${val}px`;
-    });
-
-    const toggleMasonryBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobToggleMasonryBtn'));
-    toggleMasonryBtn.addEventListener('click', () => {
-      this.app.settings.setMasonryEnabled(!this.app.settings.masonryEnabled);
-      const status = toggleMasonryBtn.lastElementChild;
-      if (status) {
-        status.textContent = this.app.settings.masonryEnabled ? 'On' : 'Off';
-        status.setAttribute('style', `font-weight: 600; color: var(${this.app.settings.masonryEnabled ? '--color-success' : '--color-text-muted'})`);
+    /** @param {string} id @param {boolean} enabled @param {string} [onText] @param {string} [offText] */
+    const setStatus = (id, enabled, onText = 'On', offText = 'Off') => {
+      const status = /** @type {HTMLElement} */ (this.app.$(id));
+      status.textContent = enabled ? onText : offText;
+      status.classList.toggle('enabled', enabled);
+    };
+    const syncSizeControls = () => {
+      const widthSlider = /** @type {HTMLInputElement} */ (this.app.$("cfobPanelWidthSlider"));
+      const heightSlider = /** @type {HTMLInputElement} */ (this.app.$("cfobPanelHeightSlider"));
+      const maxWidth = Math.max(300, window.innerWidth - 100);
+      const maxHeight = Math.max(200, window.innerHeight - 100);
+      widthSlider.max = String(maxWidth);
+      heightSlider.max = String(maxHeight);
+      if ((this.browserMode === 'left' || this.browserMode === 'right') && this.sidebarWidth > maxWidth) {
+        this.setSidebarSize(maxWidth, null);
       }
-    });
+      if ((this.browserMode === 'up' || this.browserMode === 'down') && this.sidebarHeight > maxHeight) {
+        this.setSidebarSize(null, maxHeight);
+      }
+      widthSlider.value = String(Math.min(maxWidth, Math.max(300, this.sidebarWidth)));
+      heightSlider.value = String(Math.min(maxHeight, Math.max(200, this.sidebarHeight)));
+      this.app.$("cfobPanelWidthVal").textContent = `${widthSlider.value}px`;
+      this.app.$("cfobPanelHeightVal").textContent = `${heightSlider.value}px`;
+      widthSlider.disabled = this.browserMode !== 'left' && this.browserMode !== 'right';
+      heightSlider.disabled = this.browserMode !== 'up' && this.browserMode !== 'down';
+    };
+    const syncOptions = () => {
+      const scaleSlider = /** @type {HTMLInputElement} */ (this.app.$("cfobScaleSlider"));
+      scaleSlider.value = String(this.uiScale);
+      this.app.$("cfobScaleVal").textContent = `${Math.round(this.uiScale * 100)}%`;
+      const gridSlider = /** @type {HTMLInputElement} */ (this.app.$("cfobGridSizeSlider"));
+      gridSlider.value = String(this.gridSize);
+      this.app.$("cfobGridSizeVal").textContent = `${this.gridSize}px`;
+      /** @type {HTMLSelectElement} */ (this.app.$("cfobModeSelect")).value = this.browserMode;
+      /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollSelect")).value = this.scrollDir;
+      /** @type {HTMLSelectElement} */ (this.app.$("cfobSortSelect")).value = this.currentSort;
+      setStatus("cfobMasonryStatus", this.masonryEnabled);
+      setStatus("cfobAutoHideStatus", this.autoHide);
+      setStatus("cfobConstrainStatus", this.constrainFullView);
+      setStatus("cfobHiddenStatus", this.showHiddenFolders, 'Shown', 'Hidden');
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobHiddenFoldersInput")).value = this.hiddenFolders.join("\n");
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value = this.ignoredAutocompleteKeywords.join("\n");
+      this.renderConfigFields();
+      modal.querySelectorAll('.view-btn').forEach(button => {
+        button.classList.toggle('active', /** @type {HTMLElement} */(button).dataset.view === this.getViewMode());
+      });
+      syncSizeControls();
+    };
 
-    const modeSelect = /** @type {HTMLElement} */(popover.querySelector('#cfobModeSelect'));
-    modeSelect.addEventListener('change', (ev) => {
-      this.app.settings.setBrowserMode(/** @type {HTMLInputElement} */(ev.target).value);
+    this.app.$("cfobScaleSlider").addEventListener('input', (event) => {
+      const value = Number(/** @type {HTMLInputElement} */(event.target).value);
+      this.setUiScale(value);
+      this.app.$("cfobScaleVal").textContent = `${Math.round(value * 100)}%`;
     });
-
-    const scrollSelect = /** @type {HTMLElement} */(popover.querySelector('#cfobScrollSelect'));
-    scrollSelect.addEventListener('change', (ev) => {
-      this.scrollDir = /** @type {HTMLInputElement} */(ev.target).value;
+    this.app.$("cfobGridSizeSlider").addEventListener('input', (event) => {
+      const value = Number(/** @type {HTMLInputElement} */(event.target).value);
+      this.setGridSize(value);
+      this.app.$("cfobGridSizeVal").textContent = `${value}px`;
+    });
+    modal.querySelectorAll('.view-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const mode = /** @type {HTMLElement} */ (button).dataset.view;
+        if (!mode) return;
+        if (mode === 'full') this.modals.close(modal);
+        this.setViewMode(mode);
+        modal.querySelectorAll('.view-btn').forEach(item => item.classList.toggle('active', item === button));
+      });
+    });
+    this.app.$("cfobToggleMasonryBtn").addEventListener('click', () => {
+      this.setMasonryEnabled(!this.masonryEnabled);
+      setStatus("cfobMasonryStatus", this.masonryEnabled);
+    });
+    this.app.$("cfobModeSelect").addEventListener('change', (event) => {
+      this.setBrowserMode(/** @type {HTMLSelectElement} */(event.target).value);
+      syncSizeControls();
+    });
+    this.app.$("cfobPanelWidthSlider").addEventListener('input', (event) => {
+      this.setSidebarSize(Number(/** @type {HTMLInputElement} */(event.target).value), null);
+      this.app.$("cfobPanelWidthVal").textContent = `${this.sidebarWidth}px`;
+    });
+    this.app.$("cfobPanelHeightSlider").addEventListener('input', (event) => {
+      this.setSidebarSize(null, Number(/** @type {HTMLInputElement} */(event.target).value));
+      this.app.$("cfobPanelHeightVal").textContent = `${this.sidebarHeight}px`;
+    });
+    this.app.$("cfobScrollSelect").addEventListener('change', (event) => {
+      this.scrollDir = /** @type {HTMLSelectElement} */ (event.target).value;
       localStorage.setItem('cfob_scroll_dir', this.scrollDir);
-      const mainCont = /** @type {HTMLElement} */ (this.app.$("cfobMainContainer"));
-      if (this.scrollDir === 'horizontal') {
-        mainCont.classList.add('scroll-horizontal');
-      } else {
-        mainCont.classList.remove('scroll-horizontal');
-      }
+      this.app.$("cfobMainContainer").classList.toggle('scroll-horizontal', this.scrollDir === 'horizontal');
     });
-
-    const sortSelect = /** @type {HTMLElement} */ (popover.querySelector('#cfobSortSelect'));
-    sortSelect.addEventListener('change', (ev) => {
-      this.currentSort = /** @type {HTMLInputElement} */ (ev.target).value;
+    this.app.$("cfobSortSelect").addEventListener('change', (event) => {
+      this.currentSort = /** @type {HTMLSelectElement} */ (event.target).value;
       localStorage.setItem('cfob_sort', this.currentSort);
       this.app.applySort();
       this.app.gallery.filterGallery();
     });
-
-    const toggleHiddenBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobToggleHiddenBtn'));
-    toggleHiddenBtn.addEventListener('click', () => {
+    this.app.$("cfobToggleHiddenBtn").addEventListener('click', () => {
       this.showHiddenFolders = !this.showHiddenFolders;
       localStorage.setItem('comfy_folder_browser_show_hidden', String(this.showHiddenFolders));
       this.app.gallery.filterGallery();
-      popover.remove();
-      this.activePopover = null;
+      setStatus("cfobHiddenStatus", this.showHiddenFolders, 'Shown', 'Hidden');
     });
-
-    const configHiddenBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobConfigHiddenBtn'));
-    configHiddenBtn.addEventListener('click', () => {
-      this.openHiddenFoldersModal();
-      popover.remove();
-      this.activePopover = null;
-    });
-
-    const configIgnoredKeywordsBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobConfigIgnoredKeywordsBtn'));
-    configIgnoredKeywordsBtn.addEventListener('click', () => {
-      this.openIgnoredAutocompleteKeywordsModal();
-      popover.remove();
-      this.activePopover = null;
-    });
-
-    const configFieldsBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobConfigFieldsBtn'));
-    configFieldsBtn.addEventListener('click', () => {
-      this.openConfigModal();
-      popover.remove();
-      this.activePopover = null;
-    });
-
-    const sort5 = /** @type {HTMLElement} */ (popover.querySelector('#cfobToggleAutoHideBtn'));
-    sort5.addEventListener('click', () => {
+    this.app.$("cfobToggleAutoHideBtn").addEventListener('click', () => {
       this.autoHide = !this.autoHide;
       localStorage.setItem('comfy_folder_browser_auto_hide', String(this.autoHide));
+      setStatus("cfobAutoHideStatus", this.autoHide);
       this.app.showToast(`Auto-hide ${this.autoHide ? 'enabled' : 'disabled'}`);
-      popover.remove();
-      this.activePopover = null;
     });
-
-    const constrainFullViewBtn = /** @type {HTMLElement} */ (popover.querySelector('#cfobToggleConstrainFullViewBtn'));
-    constrainFullViewBtn.addEventListener('click', () => {
-      this.app.settings.setConstrainFullView(!this.constrainFullView);
-      popover.remove();
-      this.activePopover = null;
+    this.app.$("cfobToggleConstrainFullViewBtn").addEventListener('click', () => {
+      this.setConstrainFullView(!this.constrainFullView);
+      setStatus("cfobConstrainStatus", this.constrainFullView);
     });
+    modal.addEventListener('show-options', syncOptions);
+  }
 
-    this.app.root?.appendChild(popover);
-    this.activePopover = popover;
-
-    const popRect = popover.getBoundingClientRect();
-    let top = rect.bottom + 6;
-    let left = rect.right - popRect.width;
-
-    if (left < 10) left = 10;
-    if (top + popRect.height > window.innerHeight - 10) {
-      top = rect.top - popRect.height - 6;
+  toggleOptionsMenu() {
+    const modal = this.app.$("cfobOptionsModal");
+    if (modal.classList.contains('active')) {
+      this.modals.close(modal);
+      return;
     }
-
-    popover.style.top = `${top}px`;
-    popover.style.left = `${left}px`;
+    modal.dispatchEvent(new Event('show-options'));
+    const selectedTab = /** @type {HTMLElement | null} */ (modal.querySelector('.options-tab[aria-selected="true"]'));
+    this.modals.open(modal, selectedTab);
   }
 
   /**
@@ -886,8 +894,7 @@ export default class COB_Settings {
     });
   }
 
-  openConfigModal() {
-    const modal = this.app.$("cfobConfigModal");
+  renderConfigFields() {
     const list = this.app.$("cfobConfigFieldsList");
     list.innerHTML = "";
 
@@ -904,27 +911,12 @@ export default class COB_Settings {
 
       item.querySelector('.remove-field-btn')?.addEventListener('click', () => {
         this.fieldConfigs.splice(idx, 1);
-        this.openConfigModal();
+        this.renderConfigFields();
       });
 
       list.appendChild(item);
     });
 
-    this.modals.open(modal, this.app.$("cfobAddFieldBtn"));
-  }
-
-  openHiddenFoldersModal() {
-    const modal = this.app.$("cfobHiddenFoldersModal");
-    const input = /** @type {HTMLInputElement} */ (this.app.$("cfobHiddenFoldersInput"));
-    input.value = this.hiddenFolders.join("\n");
-    this.modals.open(modal, input);
-  }
-
-  openIgnoredAutocompleteKeywordsModal() {
-    const modal = this.app.$("cfobIgnoredKeywordsModal");
-    const input = /** @type {HTMLInputElement} */ (this.app.$("cfobIgnoredKeywordsInput"));
-    input.value = this.ignoredAutocompleteKeywords.join("\n");
-    this.modals.open(modal, input);
   }
 
   /**
