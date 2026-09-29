@@ -116,7 +116,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-main img.dragging { transition: none; cursor: grabbing; }
 
   @media (max-width: 768px) {
-    #cfob-root .full-view-top-bar { top: 0.5em; left: 0.5em; right: 0.5em; padding: 0.375em; gap: 0.375em; }
+    #cfob-root .full-view-top-bar { top: 0em; left: 0em; right: 0em; padding: 0.3em; gap: 0.3em; }
     #cfob-root .full-view-browser-controls { gap: 0.25em; margin-right: 0.25em; }
     #cfob-root .full-view-browser-controls .search-wrapper { min-width: 5em; }
     #cfob-root .full-view-actions .btn { min-width: auto; }
