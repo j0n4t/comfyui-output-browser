@@ -3,6 +3,12 @@ export default class CFOB_Search {
   constructor(app) {
     this.app = app;
     this.allowEmptySearchSuggestions = false;
+    /** @type {{value: string, kind: string, group: string}[]} */
+    this.suggestionItems = [];
+    this.renderedSuggestionCount = 0;
+    this.suggestionBatchSize = 30;
+    this.lastSuggestionGroup = "";
+    this.suggestionScrollBound = false;
   }
 
   /** @param {CFOB_Image} img @param {boolean} [refreshSuggestions] */
@@ -57,20 +63,20 @@ export default class CFOB_Search {
   handleSearchKeydown(e) {
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobSearchInput"));
     const suggestions = this.app.$("cfobSearchSuggestions");
-    const options = suggestions.querySelectorAll('[role="option"]');
     if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
       e.preventDefault();
       this.toggleSearchSuggestions();
     } else if (e.key === 'Tab') {
-      const suggestion = options[this.app.activeSearchSuggestionIndex] || options[0];
+      const index = this.app.activeSearchSuggestionIndex < 0 ? 0 : this.app.activeSearchSuggestionIndex;
+      const suggestion = this.suggestionItems[index];
       if (suggestion) {
         e.preventDefault();
-        this.completeSearchSuggestion(/** @type {HTMLElement} */(suggestion).dataset.value || "");
+        this.completeSearchSuggestion(suggestion.value, suggestion.kind === 'history');
       }
     } else if (e.key === 'ArrowUp') {
-      if (!suggestions.hidden && options.length) {
+      if (!suggestions.hidden && this.suggestionItems.length) {
         e.preventDefault();
-        this.cycleSearchSuggestions(-1, options.length);
+        this.cycleSearchSuggestions(-1, this.suggestionItems.length);
       } else if (this.app.searchHistory.length) {
         e.preventDefault();
         this.app.searchHistoryIndex = Math.max(0, this.app.searchHistoryIndex - 1);
@@ -80,9 +86,9 @@ export default class CFOB_Search {
         this.updateSearchSuggestions(true);
       }
     } else if (e.key === 'ArrowDown') {
-      if (!suggestions.hidden && options.length) {
+      if (!suggestions.hidden && this.suggestionItems.length) {
         e.preventDefault();
-        this.cycleSearchSuggestions(1, options.length);
+        this.cycleSearchSuggestions(1, this.suggestionItems.length);
       } else {
         e.preventDefault();
         this.addSearchHistory();
@@ -95,10 +101,11 @@ export default class CFOB_Search {
         if (this.app.filteredImages.length) input.blur();
       }
     } else if (e.key === 'Enter') {
-      const suggestion = options[this.app.activeSearchSuggestionIndex] || options[0];
+      const index = this.app.activeSearchSuggestionIndex < 0 ? 0 : this.app.activeSearchSuggestionIndex;
+      const suggestion = this.suggestionItems[index];
       if (!suggestions.hidden && suggestion) {
         e.preventDefault();
-        this.completeSearchSuggestion(/** @type {HTMLElement} */(suggestion).dataset.value || "");
+        this.completeSearchSuggestion(suggestion.value, suggestion.kind === 'history');
       } else {
         this.addSearchHistory();
         this.hideSearchSuggestions();
@@ -113,6 +120,7 @@ export default class CFOB_Search {
     } else {
       this.app.activeSearchSuggestionIndex = (this.app.activeSearchSuggestionIndex + direction + optionCount) % optionCount;
     }
+    this.renderSuggestionsThrough(this.app.activeSearchSuggestionIndex);
     this.app.$("cfobSearchSuggestions").querySelectorAll('[role="option"]').forEach((option, index) => {
       const active = index === this.app.activeSearchSuggestionIndex;
       option.setAttribute('aria-selected', String(active));
@@ -136,6 +144,9 @@ export default class CFOB_Search {
     const suggestions = this.app.$("cfobSearchSuggestions");
     suggestions.hidden = true;
     suggestions.replaceChildren();
+    this.suggestionItems = [];
+    this.renderedSuggestionCount = 0;
+    this.lastSuggestionGroup = "";
     this.app.$("cfobSearchInput").setAttribute('aria-expanded', 'false');
   }
 
@@ -156,7 +167,6 @@ export default class CFOB_Search {
     const token = value.slice(tokenStart);
     const colonIndex = token.indexOf(':');
     const key = colonIndex >= 0 ? token.slice(0, colonIndex).toLowerCase() : "";
-    this.app.activeSearchSuggestionIndex = -1;
     const candidates = ['name:', 'path:', 'prompt:', 'workflow:'];
     this.app.settings.fieldConfigs.forEach((/** @type {{ label: string; }} */ field, /** @type {number} */ index) => {
       candidates.push(`${index + 1}:`);
@@ -166,11 +176,20 @@ export default class CFOB_Search {
     const ignored = new Set(this.app.settings.ignoredAutocompleteKeywords.map(keyword => keyword.toLowerCase()));
     const keywordPrefix = colonIndex >= 0 ? token.slice(colonIndex + 1).toLowerCase() : prefix;
     const qualifier = colonIndex >= 0 ? token.slice(0, colonIndex + 1) : "";
-    /** @type {string[]} */
+    /** @type {{value: string, kind: string, group: string}[]} */
     const matches = [];
-    const add = (/** @type {string} */ match) => { if (!matches.includes(match) && matches.length < 8) matches.push(match); };
+    const seen = new Set();
+    const add = (/** @type {string} */ match, kind = 'completion', group = 'keywords') => {
+      if (seen.has(match)) return;
+      seen.add(match);
+      matches.push({ value: match, kind, group });
+    };
     if (!token.trim()) {
-      candidates.forEach(add);
+      candidates.forEach(candidate => add(candidate, 'completion', 'starters'));
+      if (!value.trim()) {
+        [...this.app.searchHistory].reverse().forEach(query => add(query, 'history', 'history'));
+      }
+      this.addKeywordSuggestions(add, ignored, '', '');
     } else if (key === 'name') {
       for (const filename of new Set(this.app.loadedImages.map(image => image.name.replace(/\\/g, '/').split('/').pop() || ""))) {
         if (filename.toLowerCase().startsWith(keywordPrefix) && filename.toLowerCase() !== keywordPrefix) add(`name:${filename.slice(0, keywordPrefix.length + 5)}`);
@@ -186,35 +205,91 @@ export default class CFOB_Search {
         .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b))
         .forEach(directory => add(`path:${directory}`));
     } else {
-      Array.from(this.app.keywordDictionary.entries())
-        .filter(([keyword]) => !ignored.has(keyword) && keyword.startsWith(keywordPrefix) && keyword !== keywordPrefix)
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .forEach(([keyword]) => add(`${qualifier}${keyword}`));
-      candidates.filter(candidate => candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix).forEach(add);
+      candidates.filter(candidate => candidate.toLowerCase().startsWith(prefix) && candidate.toLowerCase() !== prefix)
+        .forEach(candidate => add(candidate, 'completion', 'starters'));
       if (!key && !/\s/.test(token)) {
         for (const filename of new Set(this.app.loadedImages.map(image => image.name.replace(/\\/g, '/').split('/').pop() || ""))) {
-          if (filename.toLowerCase().startsWith(prefix) && filename.toLowerCase() !== prefix) add(filename.slice(0, prefix.length + 5));
+          if (filename.toLowerCase().startsWith(prefix) && filename.toLowerCase() !== prefix) {
+            add(filename.slice(0, prefix.length + 5), 'completion', 'starters');
+          }
         }
       }
+      if (!key) {
+        const historyPrefix = value.trim().toLowerCase();
+        this.app.searchHistory.slice().reverse()
+          .filter(query => query.toLowerCase().startsWith(historyPrefix) && query.toLowerCase() !== historyPrefix)
+          .forEach(query => add(query, 'history', 'history'));
+      }
+      this.addKeywordSuggestions(add, ignored, keywordPrefix, qualifier);
     }
+    this.suggestionItems = matches;
+    this.renderedSuggestionCount = 0;
+    this.lastSuggestionGroup = "";
     suggestions.replaceChildren();
+    suggestions.scrollTop = 0;
     if (!matches.length || document.activeElement !== input) {
       this.hideSearchSuggestions();
       return;
     }
-    for (const match of matches) {
+    this.app.activeSearchSuggestionIndex = -1;
+    if (!this.suggestionScrollBound) {
+      suggestions.addEventListener('scroll', () => {
+        if (suggestions.scrollTop + suggestions.clientHeight >= suggestions.scrollHeight - 32) {
+          this.renderMoreSuggestions();
+        }
+      });
+      this.suggestionScrollBound = true;
+    }
+    this.renderMoreSuggestions();
+    suggestions.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  /**
+   * @param {(match: string, kind?: string, group?: string) => void} add
+   * @param {Set<string>} ignored
+   * @param {string} prefix
+   * @param {string} qualifier
+   */
+  addKeywordSuggestions(add, ignored, prefix, qualifier) {
+    Array.from(this.app.keywordDictionary.entries())
+      .filter(([keyword]) => !ignored.has(keyword) && keyword.startsWith(prefix) && keyword !== prefix)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .forEach(([keyword]) => add(`${qualifier}${keyword}`, 'completion', 'keywords'));
+  }
+
+  renderMoreSuggestions() {
+    const suggestions = this.app.$("cfobSearchSuggestions");
+    const end = Math.min(this.suggestionItems.length, this.renderedSuggestionCount + this.suggestionBatchSize);
+    while (this.renderedSuggestionCount < end) {
+      const suggestion = this.suggestionItems[this.renderedSuggestionCount++];
+      if (suggestion.group !== this.lastSuggestionGroup) {
+        const heading = document.createElement('div');
+        heading.className = 'search-suggestion-group';
+        heading.setAttribute('role', 'presentation');
+        heading.textContent = suggestion.group === 'starters' ? 'Starters'
+          : suggestion.group === 'history' ? 'History' : 'Most Frequent Keywords';
+        suggestions.appendChild(heading);
+        this.lastSuggestionGroup = suggestion.group;
+      }
       const option = document.createElement('div');
       option.className = 'search-suggestion';
       option.setAttribute('role', 'option');
       option.setAttribute('aria-selected', 'false');
-      option.dataset.value = match;
-      option.textContent = match;
+      option.dataset.value = suggestion.value;
+      option.dataset.kind = suggestion.kind;
+      option.textContent = suggestion.value;
       option.addEventListener('mousedown', event => event.preventDefault());
-      option.addEventListener('click', () => this.completeSearchSuggestion(match));
+      option.addEventListener('click', () => this.completeSearchSuggestion(suggestion.value, suggestion.kind === 'history'));
       suggestions.appendChild(option);
     }
-    suggestions.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
+  }
+
+  /** @param {number} index */
+  renderSuggestionsThrough(index) {
+    while (this.renderedSuggestionCount <= index && this.renderedSuggestionCount < this.suggestionItems.length) {
+      this.renderMoreSuggestions();
+    }
   }
 
   showEmptySearchSuggestions() {
@@ -231,10 +306,19 @@ export default class CFOB_Search {
     }
   }
 
-  /** @param {string} completion */
-  completeSearchSuggestion(completion) {
+  /** @param {string} completion @param {boolean} [replaceQuery] */
+  completeSearchSuggestion(completion, replaceQuery = false) {
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobSearchInput"));
     const value = input.value;
+    if (replaceQuery) {
+      input.value = completion;
+      input.setSelectionRange(input.value.length, input.value.length);
+      this.app.searchHistoryIndex = this.app.searchHistory.length;
+      this.app.activeSearchSuggestionIndex = -1;
+      this.app.gallery.filterGallery();
+      this.updateSearchSuggestions(true);
+      return;
+    }
     let inQuotes = false, tokenStart = 0;
     for (let i = 0; i < value.length; i++) {
       if (value[i] === '"') inQuotes = !inQuotes;

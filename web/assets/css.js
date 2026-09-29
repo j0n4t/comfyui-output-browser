@@ -131,6 +131,7 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .search-input:focus { outline: none; border-color: var(--color-accent); }
   #cfob-root .search-suggestions { position: absolute; top: calc(100% + 0.25em); left: 0; right: 0; max-height: 18em; overflow-y: auto; background: var(--color-bg-popover); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 0.5em 1.5em rgba(0,0,0,0.5); z-index: var(--z-popover); }
   #cfob-root .search-suggestions[hidden] { display: none; }
+  #cfob-root .search-suggestion-group { position: sticky; top: 0; padding: 0.375em 0.75em; background: var(--color-bg-popover); color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); font-size: 0.6875em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
   #cfob-root .search-suggestion { padding: 0.5em 0.75em; color: var(--color-text-primary); font-size: 0.8125em; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #cfob-root .search-suggestion:hover, #cfob-root .search-suggestion[aria-selected="true"] { background: var(--color-bg-panel-hover); }
   #cfob-root .search-clear-btn { position: absolute; right: 0.375em; background: transparent; border: none; color: var(--color-text-muted); cursor: pointer; padding: 0.25em; display: none; align-items: center; justify-content: center; transition: color 0.15s; }

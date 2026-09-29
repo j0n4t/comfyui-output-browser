@@ -80,4 +80,4 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 
 Use **Options → Folders & Search → Autocomplete Keywords to Ignore** to hide exact words from autocomplete suggestions. Enter one keyword per line or separate them with commas. Ignored words still work in filters; the list is empty by default because no workflow-independent terms can be safely assumed useless.
 
-Autocomplete ranks matching keywords by how many images contain them. `name:` suggests filenames (not folder names), completing at most five characters beyond the typed prefix; `path:` suggests directories, with root folders before nested folders. Starting a new comma-separated filter group also opens suggestions for that group.
+Autocomplete suggestions scroll-load in groups: filter starters first, then recent search history, followed by matching keywords ranked by how many images contain them. `name:` suggests filenames (not folder names), completing at most five characters beyond the typed prefix; `path:` suggests directories, with root folders before nested folders. Starting a new comma-separated filter group also opens suggestions for that group.
