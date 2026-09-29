@@ -43,8 +43,8 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 | **Grid / Gallery**   | **`Escape`**                                   | Close modals, blur inputs, clear selections, or hide the browser.     |
 |                      | **`1` – `9`**                                  | Copy the 1st through 9th metadata field value to the clipboard.       |
 |                      | **`Ctrl + A` / `Meta + A`**                    | Select all filtered image cards.                                      |
-| **Global**           | **`Ctrl + Shift + S` / `Meta + Shift + S`**    | Sync outputs from server, including in Full View mode.                 |
-|                      | **`M`**                                        | Move selected item(s) to an existing or new folder.                    |
+| **Global**           | **`Ctrl + Shift + S` / `Meta + Shift + S`**    | Sync outputs from server, including in Full View mode.                |
+|                      | **`M`**                                        | Move selected item(s) to an existing or new folder.                   |
 |                      | **`R`**                                        | Rename the selected image; enter a `/`-separated path to move it too. |
 |                      | **`I`**                                        | Open the metadata inspector popup.                                    |
 |                      | **`F` / `Enter`**                              | Open full-screen view for the focused or selected image.              |
@@ -84,3 +84,7 @@ Use **Options → Folders & Search → Autocomplete Keywords to Ignore** to hide
 Configure reusable filters under **Options → Folders & Search → Filter Shortcuts**, one per line in `keyword | filter` format, then reference them as `@keyword`. For example, `animals | dog, cat, wolf` expands `@animals` to those alternatives and can be combined with other terms.
 
 Autocomplete suggestions scroll-load in groups: filter starters first, then recent search history, followed by matching keywords ranked by how many images contain them. `name:` suggests filenames (not folder names), completing at most five characters beyond the typed prefix; `path:` suggests directories, with root folders before nested folders. Starting a new comma-separated filter group also opens suggestions for that group.
+
+## Development tips
+
+- Run the filter logic test suite with `npm test` (Node.js 18 or newer; no dependencies required).
