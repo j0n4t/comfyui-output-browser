@@ -288,6 +288,7 @@ export default class COB_Settings {
     this.app.root?.style.setProperty('--compact-size', `${Math.max(20, this.gridSize - 180)}px`);
   }
 
+  /** @param {boolean} enabled */
   setMasonryEnabled(enabled) {
     this.masonryEnabled = enabled;
     localStorage.setItem('cfob_masonry_enabled', String(enabled));

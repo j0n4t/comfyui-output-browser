@@ -38,19 +38,19 @@ const BROWSER_HTML = `
     ${ICONS.picture}
     <h3 id="cfobEmptyStateTitle">No Images Loaded</h3><p id="cfobEmptyStateDesc">Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect.</p>
   </div>
-  
-  <div id="cfobActionBar" class="action-bar">
-    <span id="cfobSelectionCount" style="font-weight: 600; color: var(--color-text-inverse); min-width: 5em;">1 selected</span>
-    <div style="width: 1px; height: 1.25em; background: var(--color-border);"></div>
-    <button class="btn btn-primary" id="cfobActionOpen">${ICONS.workflow}<span>Load Workflow</span></button>
-    <button class="btn" id="cfobActionInspect">${ICONS.inspect}<span>Inspect Nodes</span></button>
-    <button class="btn" id="cfobActionDownload">${ICONS.download}<span>Download</span></button>
-    <button class="btn" id="cfobActionRename">${ICONS.rename}<span>Rename</span></button>
-    <button class="btn" id="cfobActionMove">${ICONS.move}<span>Move</span></button>
-    <button class="btn btn-danger" id="cfobActionDelete">${ICONS.trash}<span>Delete</span></button>
-    <div style="width: 1px; height: 1.25em; background: var(--color-border);"></div>
-    <button class="icon-btn" id="cfobActionClear" title="Clear Selection">${ICONS.close}</button>
-  </div>
+</div>
+
+<div id="cfobActionBar" class="action-bar">
+  <span id="cfobSelectionCount" style="font-weight: 600; color: var(--color-text-inverse); min-width: 5em;">1 selected</span>
+  <div style="width: 1px; height: 1.25em; background: var(--color-border);"></div>
+  <button class="btn btn-primary" id="cfobActionOpen">${ICONS.workflow}<span>Load Workflow</span></button>
+  <button class="btn" id="cfobActionInspect">${ICONS.inspect}<span>Inspect Nodes</span></button>
+  <button class="btn" id="cfobActionDownload">${ICONS.download}<span>Download</span></button>
+  <button class="btn" id="cfobActionRename">${ICONS.rename}<span>Rename</span></button>
+  <button class="btn" id="cfobActionMove">${ICONS.move}<span>Move</span></button>
+  <button class="btn btn-danger" id="cfobActionDelete">${ICONS.trash}<span>Delete</span></button>
+  <div style="width: 1px; height: 1.25em; background: var(--color-border);"></div>
+  <button class="icon-btn" id="cfobActionClear" title="Clear Selection">${ICONS.close}</button>
 </div>
 
 ${CFOB_FULL_VIEW_HTML}
