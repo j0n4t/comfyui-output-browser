@@ -4,9 +4,9 @@ export const CFOB_STYLES = /*css*/ `
     --cfob-scale: 1;
     font-size: calc(16px * var(--cfob-scale));
 
-    /* JS-Controlled Sizing */
+    /* User-controlled sizing */
     --grid-size: 380px;
-    --compact-size: 200px;
+    --compact-size: max(120px, calc(var(--grid-size) - 180px));
 
     /* Color Palette: Backgrounds */
     --color-bg-base: #18181b;
@@ -137,7 +137,7 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .search-clear-btn { position: absolute; right: 0.375em; background: transparent; border: none; color: var(--color-text-muted); cursor: pointer; padding: 0.25em; display: none; align-items: center; justify-content: center; transition: color 0.15s; }
   #cfob-root .search-clear-btn:hover { color: var(--color-text-inverse); }
 
-  #cfob-root .main-container { flex: 1; overflow-y: auto; padding: 0.4em; position: relative; }
+  #cfob-root .main-container { flex: 1; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 0.4em; position: relative; }
   #cfob-root .drop-overlay { position: absolute; inset: 0.625em; border: 0.125em dashed var(--color-accent); border-radius: var(--radius-xl); background: var(--color-accent-alpha); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; cursor: pointer; pointer-events: none; opacity: 0; transition: opacity 0.2s ease; }
   #cfob-root .main-container.dragover .drop-overlay { opacity: 1; pointer-events: all; }
 
@@ -157,38 +157,37 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .card-body { padding: 0.75em 0.875em; display: flex; flex-direction: column; gap: 0.625em; font-size: 0.75em; }
   #cfob-root .image-card.expanded .card-header .toggle-icon { transform: rotate(180deg); }
 
-  #cfob-root .gallery-container { display: grid; gap: 0.4em; align-items: start; padding-bottom: 5em; }
+  #cfob-root .gallery-container { --gallery-item-size: var(--grid-size); display: grid; gap: 0.4em; align-items: start; padding-bottom: 5em; }
   #cfob-root .gallery-container .image-card .card-body { display: none; }
   #cfob-root .gallery-container .image-card.expanded .card-body { display: flex; }
-  #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(var(--grid-size), 1fr)); }
+  #cfob-root .gallery-container.view-grid { grid-template-columns: repeat(auto-fill, minmax(var(--gallery-item-size), 1fr)); }
+  #cfob-root .gallery-container.view-compact { --gallery-item-size: var(--compact-size); grid-template-columns: repeat(auto-fill, minmax(var(--gallery-item-size), 1fr)); }
+  #cfob-root .gallery-container.view-grid.grid-column-first,
+  #cfob-root .gallery-container.view-compact.grid-column-first { grid-auto-flow: column; }
   #cfob-root .gallery-container.view-grid .image-card { flex-direction: column; }
   #cfob-root .gallery-container.view-grid .card-preview { width: 100%; height: calc(var(--grid-size) * 0.63); background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
-  #cfob-root .gallery-container.view-compact { grid-template-columns: repeat(auto-fill, minmax(var(--compact-size), 1fr)); }
   #cfob-root .gallery-container.view-compact .image-card { flex-direction: column; border-radius: var(--radius-md); }
   #cfob-root .gallery-container.view-compact .card-preview { width: 100%; height: calc(var(--compact-size) * 0.75); background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
-  #cfob-root .gallery-container.masonry.view-grid,
-  #cfob-root .gallery-container.masonry.view-compact { display: block; column-width: var(--grid-size); column-gap: 0.4em; }
-  #cfob-root .gallery-container.masonry.view-grid .image-card,
-  #cfob-root .gallery-container.masonry.view-compact .image-card { display: inline-flex; flex-direction: column; width: 100%; margin-bottom: 0.4em; break-inside: avoid; }
+  #cfob-root .gallery-container.masonry.view-grid.grid-column-first,
+  #cfob-root .gallery-container.masonry.view-compact.grid-column-first { display: block; column-width: var(--gallery-item-size); column-gap: 0.4em; column-fill: balance; }
+  #cfob-root .gallery-container.masonry.view-grid.grid-column-first .image-card,
+  #cfob-root .gallery-container.masonry.view-compact.grid-column-first .image-card { display: inline-flex; flex-direction: column; width: 100%; margin: 0 0 0.4em; break-inside: avoid; vertical-align: top; }
   #cfob-root .gallery-container.masonry.view-grid .card-preview,
   #cfob-root .gallery-container.masonry.view-compact .card-preview { display: block; width: 100%; height: auto; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-bottom: 1px solid var(--color-border); }
-  #cfob-root .gallery-container.masonry.view-compact { column-width: var(--compact-size); }
 
   #cfob-root .main-container.scroll-horizontal { overflow-x: auto; overflow-y: hidden; }
-  #cfob-root .main-container.scroll-horizontal .gallery-container { grid-auto-flow: column; grid-template-rows: repeat(auto-fill, minmax(var(--grid-size), 1fr)); grid-auto-columns: minmax(var(--grid-size), 1fr); height: 100%; padding-bottom: 1.25em; padding-right: 5em; }
-  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-grid { display: grid; column-width: auto; column-gap: normal; }
-  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-grid .image-card,
-  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-compact .image-card { display: flex; width: auto; margin-bottom: 0; }
-  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-grid .card-preview { height: calc(var(--grid-size) * 0.63); }
-  #cfob-root .main-container.scroll-horizontal .gallery-container.view-compact { grid-template-rows: repeat(auto-fill, minmax(var(--compact-size), 1fr)); grid-auto-columns: minmax(var(--compact-size), 1fr); }
-  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-compact { display: grid; column-width: auto; column-gap: normal; }
-  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.view-compact .card-preview { height: calc(var(--compact-size) * 0.75); }
-  #cfob-root .main-container.scroll-horizontal .gallery-container.view-list { grid-template-rows: 1fr; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.grid-column-first:not(.view-list):not(.masonry) { grid-auto-flow: column; grid-template-columns: none; grid-template-rows: repeat(auto-fill, minmax(var(--gallery-item-size), 1fr)); grid-auto-columns: var(--gallery-item-size); width: max-content; min-width: 100%; height: 100%; min-height: 100%; padding: 0 5em 1.25em 0; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container:not(.grid-column-first):not(.view-list) { grid-auto-flow: row; grid-template-rows: repeat(var(--cfob-row-count, auto-fill), minmax(var(--gallery-item-size), 1fr)); grid-template-columns: repeat(var(--cfob-col-count, 1), var(--gallery-item-size)); width: max-content; min-width: 100%; height: 100%; min-height: 100%; padding: 0 5em 1.25em 0; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry:not(.grid-column-first) .card-preview { max-height: calc(var(--gallery-item-size) * 0.85); }
+  #cfob-root .main-container:not(.scroll-horizontal) .gallery-container.grid-column-first:not(.masonry) { display: block; column-width: var(--gallery-item-size); column-gap: 0.4em; column-fill: balance; }
+  #cfob-root .main-container:not(.scroll-horizontal) .gallery-container.grid-column-first:not(.masonry) .image-card { display: inline-flex; flex-direction: column; width: 100%; margin: 0 0 0.4em; break-inside: avoid; vertical-align: top; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.grid-column-first { height: 100%; min-height: 100%; column-fill: auto; padding: 0 5em 1.25em 0; }
 
   #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
   #cfob-root .gallery-container.view-list .image-card { flex-direction: row; max-height: 200px; }
   #cfob-root .gallery-container.view-list .card-preview { width: 10em; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-right: 1px solid var(--color-border); }
   #cfob-root .gallery-container.view-list .card-body { display: flex; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.view-list { grid-auto-flow: column; grid-template-columns: none; grid-template-rows: 1fr; grid-auto-columns: var(--gallery-item-size); width: max-content; min-width: 100%; height: 100%; min-height: 100%; padding: 0 5em 1.25em 0; }
 
   #cfob-root .action-bar { position: absolute; bottom: 1.25em; left: 50%; transform: translateX(-50%) translateY(6.25em); background: var(--color-bg-panel); border: 1px solid var(--color-accent); border-radius: var(--radius-lg); padding: 0.625em 1.25em; display: flex; align-items: center; gap: 0.9375em; box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.8); z-index: var(--z-action-bar); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
   #cfob-root .action-bar.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }

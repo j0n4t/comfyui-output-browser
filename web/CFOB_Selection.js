@@ -9,11 +9,11 @@ export default class CFOB_Selection {
     if (!app.filteredImages.length) return;
 
     app.lastSelectedIdx = 0;
-    const cards = Array.from(app.$("cfobGalleryGrid").querySelectorAll('.image-card'));
-    cards.forEach((card, index) => /** @type {HTMLElement} */(card).classList.toggle('focused', index === 0));
+    const cards = app.gallery.getOrderedCards();
+    cards.forEach((card, index) => card.classList.toggle('focused', index === 0));
     const firstCard = cards[0];
-    firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-    /** @type {HTMLElement | undefined} */ (firstCard)?.focus();
+    firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
+    firstCard?.focus();
   }
 
   /**
@@ -25,18 +25,19 @@ export default class CFOB_Selection {
     if (!app.filteredImages.length) return;
 
     const grid = app.$("cfobGalleryGrid");
-    const cards = Array.from(grid.querySelectorAll('.image-card'));
+    const cards = app.gallery.getOrderedCards();
     if (!cards.length) return;
 
     const direction = e.key;
     let currentIdx = Math.max(0, Math.min(app.lastSelectedIdx, cards.length - 1));
 
     const isMasonry = grid.classList.contains('masonry')
-      && !app.$("cfobMainContainer").classList.contains('scroll-horizontal')
+      && grid.classList.contains('grid-column-first')
       && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
+    const isColumnFlow = grid.classList.contains('grid-column-first');
     let masonryNextIdx = currentIdx;
     if (isMasonry && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(direction)) {
-      const currentRect = /** @type {HTMLElement} */ (cards[currentIdx]).getBoundingClientRect();
+      const currentRect = cards[currentIdx].getBoundingClientRect();
       const currentX = currentRect.left + currentRect.width / 2;
       const currentY = currentRect.top + currentRect.height / 2;
       const isVertical = direction === 'ArrowUp' || direction === 'ArrowDown' || direction === 'PageUp' || direction === 'PageDown';
@@ -47,7 +48,7 @@ export default class CFOB_Selection {
         const targetY = currentY + (direction === 'PageUp' ? -1 : 1) * app.$("cfobMainContainer").clientHeight;
         for (let i = 0; i < cards.length; i++) {
           if (i === currentIdx) continue;
-          const rect = /** @type {HTMLElement} */ (cards[i]).getBoundingClientRect();
+          const rect = cards[i].getBoundingClientRect();
           const score = Math.abs(rect.top + rect.height / 2 - targetY)
             + Math.abs(rect.left + rect.width / 2 - currentX) * 0.25;
           if (score < nextScore) {
@@ -59,7 +60,7 @@ export default class CFOB_Selection {
         let bestCrossDistance = Infinity;
         for (let i = 0; i < cards.length; i++) {
           if (i === currentIdx) continue;
-          const rect = /** @type {HTMLElement} */ (cards[i]).getBoundingClientRect();
+          const rect = cards[i].getBoundingClientRect();
           const candidateX = rect.left + rect.width / 2;
           const candidateY = rect.top + rect.height / 2;
           const primaryDistance = isVertical ? candidateY - currentY : candidateX - currentX;
@@ -79,9 +80,14 @@ export default class CFOB_Selection {
 
     let cols = 1;
     if (!isMasonry) {
-      const firstOffset = /** @type {HTMLElement} */(cards[0]).offsetTop;
+      const firstOffset = isColumnFlow
+        ? cards[0].offsetLeft
+        : cards[0].offsetTop;
       for (let i = 1; i < cards.length; i++) {
-        if (/** @type {HTMLElement} */(cards[i]).offsetTop > firstOffset) {
+        const offset = isColumnFlow
+          ? cards[i].offsetLeft
+          : cards[i].offsetTop;
+        if (offset > firstOffset) {
           cols = i;
           break;
         }
@@ -91,14 +97,14 @@ export default class CFOB_Selection {
 
     let nextIdx = isMasonry ? masonryNextIdx : app.lastSelectedIdx;
     if (nextIdx === -1) nextIdx = 0;
-    if (!isMasonry && direction === 'ArrowLeft') nextIdx--;
-    else if (!isMasonry && direction === 'ArrowRight') nextIdx++;
-    else if (!isMasonry && direction === 'ArrowUp') nextIdx -= cols;
-    else if (!isMasonry && direction === 'ArrowDown') nextIdx += cols;
+    if (!isMasonry && direction === 'ArrowLeft') nextIdx -= isColumnFlow ? cols : 1;
+    else if (!isMasonry && direction === 'ArrowRight') nextIdx += isColumnFlow ? cols : 1;
+    else if (!isMasonry && direction === 'ArrowUp') nextIdx -= isColumnFlow ? 1 : cols;
+    else if (!isMasonry && direction === 'ArrowDown') nextIdx += isColumnFlow ? 1 : cols;
     else if (!isMasonry && (direction === 'PageUp' || direction === 'PageDown')) {
       const container = app.$("cfobMainContainer");
       const pageRows = Math.max(1, Math.floor(container.clientHeight / Math.max(1, cards[0].clientHeight)));
-      const pageItems = cols * pageRows;
+      const pageItems = (isColumnFlow ? 1 : cols) * pageRows;
       nextIdx += direction === 'PageUp' ? -pageItems : pageItems;
     }
     else if (direction === 'Home') nextIdx = 0;
@@ -109,11 +115,11 @@ export default class CFOB_Selection {
     app.lastSelectedIdx = nextIdx;
 
     cards.forEach((c, i) => {
-      const el = /** @type {HTMLElement} */ (c);
+      const el = c;
       el.classList.toggle('focused', i === nextIdx);
-      if (i === nextIdx) el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+      if (i === nextIdx) el.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
     });
-    /** @type {HTMLElement} */ (cards[nextIdx]).focus();
+    cards[nextIdx].focus();
   }
 
   updateActionBar() {
@@ -176,8 +182,9 @@ export default class CFOB_Selection {
     }
 
     app.lastSelectedIdx = fIdx;
-    app.root?.querySelectorAll('.image-card').forEach((c, i) => {
-      /** @type {HTMLElement} */ (c).classList.toggle('focused', i === fIdx);
+    app.root?.querySelectorAll('.image-card').forEach(c => {
+      const index = Number(/** @type {HTMLElement} */ (c).dataset.filterIndex);
+      c.classList.toggle('focused', index === fIdx);
     });
 
     app.selection.updateActionBar();
@@ -208,11 +215,11 @@ export default class CFOB_Selection {
     app.selection.updateActionBar();
 
     if (restoreGridFocus) {
-      const cards = app.$("cfobGalleryGrid").querySelectorAll('.image-card');
+      const cards = app.gallery.getOrderedCards();
       const card = cards[Math.max(0, Math.min(previousIndex, cards.length - 1))];
       if (card) {
         app.lastSelectedIdx = Math.max(0, Math.min(previousIndex, cards.length - 1));
-        /** @type {HTMLElement} */ (card).focus();
+        card.focus();
       }
       else app.$("cfobSearchInput").focus();
     }

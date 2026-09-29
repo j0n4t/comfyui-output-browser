@@ -150,14 +150,11 @@ export default class ComfyOutputBrowser {
 
     const savedView = localStorage.getItem('comfy_folder_browser_view') || 'grid';
     this.settings.setViewMode(savedView);
+    this.settings.setGridFillOrder(this.settings.gridFillOrder);
+    this.settings.setScrollDirection(this.settings.scrollDir);
     this.settings.setGridSize(this.settings.gridSize);
     this.settings.setBrowserMode(this.settings.browserMode);
     this.settings.setConstrainFullView(this.settings.constrainFullView);
-    this.root.style.setProperty('--grid-size', `${this.settings.gridSize}px`);
-    this.root.style.setProperty('--compact-size', `${Math.max(120, this.settings.gridSize - 180)}px`);
-    if (this.settings.scrollDir === 'horizontal') {
-      this.$("cfobMainContainer").classList.add('scroll-horizontal');
-    }
     this.observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -498,7 +495,7 @@ export default class ComfyOutputBrowser {
             }
             this.selectionAnchorIdx = focusedIndex;
 
-            const targetCard = this.$("cfobGalleryGrid").querySelectorAll('.image-card')[focusedIndex];
+            const targetCard = this.gallery.getOrderedCards()[focusedIndex];
             const checkbox = targetCard?.querySelector('.card-checkbox');
             if (checkbox) /** @type {HTMLInputElement} */ (checkbox).checked = this.selectedImages.has(targetImg.name);
             this.selection.updateCardStyles();
@@ -525,19 +522,19 @@ export default class ComfyOutputBrowser {
           }
           if (e.key === 'ArrowUp' && this.lastSelectedIdx >= 0) {
             const grid = this.$("cfobGalleryGrid");
-            const cards = Array.from(grid.querySelectorAll('.image-card'));
-            const currentCard = /** @type {HTMLElement | undefined} */ (cards[this.lastSelectedIdx]);
+            const cards = this.gallery.getOrderedCards();
+            const currentCard = cards[this.lastSelectedIdx];
             const isMasonry = grid.classList.contains('masonry')
-              && !this.$("cfobMainContainer").classList.contains('scroll-horizontal')
+              && grid.classList.contains('grid-column-first')
               && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
             const isFirstRow = isMasonry && currentCard
               ? !cards.some((card) => {
-                  const candidate = /** @type {HTMLElement} */ (card);
-                  return candidate !== currentCard
-                    && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2
-                      < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;
-                })
-              : Boolean(cards[0] && currentCard && currentCard.offsetTop <= /** @type {HTMLElement} */ (cards[0]).offsetTop);
+                const candidate = card;
+                return candidate !== currentCard
+                  && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2
+                  < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;
+              })
+              : Boolean(cards[0] && currentCard && currentCard.offsetTop <= cards[0].offsetTop);
             if (isFirstRow) {
               e.preventDefault(); e.stopPropagation();
               searchInput.focus();

@@ -134,10 +134,24 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <input type="range" class="options-slider" id="cfobGridSizeSlider" min="20" max="800" step="10">
             </div>
             <button class="options-setting options-toggle" id="cfobToggleMasonryBtn" type="button"><span>Masonry Grid</span><span class="options-toggle-status" id="cfobMasonryStatus"></span></button>
-            <button class="options-setting options-toggle" id="cfobToggleHiddenBtn" type="button"><span>Hidden Folders</span><span class="options-toggle-status" id="cfobHiddenStatus"></span></button>
+            <div class="options-setting"><label for="cfobScrollDirectionSelect">Scroll Direction</label>
+              <select class="options-control" id="cfobScrollDirectionSelect"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select>
+            </div>
+            <div class="options-setting"><label for="cfobGridFillOrderSelect">Grid Fill Order</label>
+              <select class="options-control" id="cfobGridFillOrderSelect"><option value="row">Row first</option><option value="column">Column first</option></select>
+            </div>
           </div>
         </section>
         <section class="options-tab-panel" id="cfobOptionsLayout" role="tabpanel" aria-labelledby="cfobLayoutTab">
+         <div class="options-section">
+            <h4 class="options-section-title">Behavior</h4>
+            <div class="options-setting"><label for="cfobSortSelect">Sort By</label>
+              <select class="options-control" id="cfobSortSelect">
+                <option value="default">Server Order</option><option value="name_asc">Name (A-Z)</option><option value="name_desc">Name (Z-A)</option><option value="mtime_asc">Older First</option><option value="mtime_desc">Newer First</option>
+              </select>
+            </div>
+            <button class="options-setting options-toggle" id="cfobToggleHiddenBtn" type="button"><span>Hidden Folders</span><span class="options-toggle-status" id="cfobHiddenStatus"></span></button>
+          </div>
           <div class="options-section">
             <h4 class="options-section-title">Panel</h4>
             <div class="options-setting"><label for="cfobModeSelect">Position</label>
@@ -154,22 +168,8 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <input type="range" class="options-slider" id="cfobPanelHeightSlider" min="200" step="10" aria-describedby="cfobPanelSizeHint">
             </div>
             <p id="cfobPanelSizeHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">Width applies to left and right drawers; height applies to top and bottom drawers.</p>
-          </div>
-          <div class="options-section">
-            <h4 class="options-section-title">Navigation</h4>
-            <div class="options-setting"><label for="cfobScrollSelect">Scroll Direction</label>
-              <select class="options-control" id="cfobScrollSelect"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select>
-            </div>
-            <div class="options-setting"><label for="cfobSortSelect">Sort By</label>
-              <select class="options-control" id="cfobSortSelect">
-                <option value="default">Server Order</option><option value="name_asc">Name (A-Z)</option><option value="name_desc">Name (Z-A)</option><option value="mtime_asc">Older First</option><option value="mtime_desc">Newer First</option>
-              </select>
-            </div>
-          </div>
-          <div class="options-section">
-            <h4 class="options-section-title">Behavior</h4>
             <button class="options-setting options-toggle" id="cfobToggleAutoHideBtn" type="button"><span>Auto-Hide Panel</span><span class="options-toggle-status" id="cfobAutoHideStatus"></span></button>
-            <button class="options-setting options-toggle" id="cfobToggleConstrainFullViewBtn" type="button"><span>Constrain Full View to Browser</span><span class="options-toggle-status" id="cfobConstrainStatus"></span></button>
+            <button class="options-setting options-toggle" id="cfobToggleConstrainFullViewBtn" type="button"><span>Constrain Full View to Panel</span><span class="options-toggle-status" id="cfobConstrainStatus"></span></button>
           </div>
         </section>
         <section class="options-tab-panel" id="cfobOptionsFolders" role="tabpanel" aria-labelledby="cfobFoldersTab">
@@ -183,20 +183,20 @@ export const CFOB_SETTINGS_MODALS_HTML = `
             </div>
           </div>
           <div class="options-section">
+            <h4 class="options-section-title">Filter Shortcuts</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define one shortcut per line as <code>keyword | filter</code>, then use it in search with <code>@keyword</code>. Filters can use commas for alternatives. Example: <code>animals | dog, cat, wolf</code>.</p>
+            <textarea id="cfobFilterShortcutsInput" class="config-paths-textarea" style="height: 9em; width: 100%;" placeholder="animals | dog, cat, wolf"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+              <button class="btn btn-primary" id="cfobSaveFilterShortcutsBtn" type="button">Save Shortcuts</button>
+            </div>
+          </div>
+          <div class="options-section">
             <h4 class="options-section-title">Autocomplete Keywords to Ignore</h4>
             <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Hide exact keywords from search autocomplete (one per line or comma-separated). This does not affect filtering.</p>
             <textarea id="cfobIgnoredKeywordsInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No ignored keywords"></textarea>
             <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
               <button class="btn btn-danger" id="cfobResetIgnoredKeywordsBtn" type="button">Clear Keywords</button>
               <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn" type="button">Save Keywords</button>
-            </div>
-          </div>
-          <div class="options-section">
-            <h4 class="options-section-title">Filter Shortcuts</h4>
-            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define one shortcut per line as <code>keyword | filter</code>, then use it in search with <code>@keyword</code>. Filters can use commas for alternatives. Example: <code>animals | dog, cat, wolf</code>.</p>
-            <textarea id="cfobFilterShortcutsInput" class="config-paths-textarea" style="height: 9em; width: 100%;" placeholder="animals | dog, cat, wolf"></textarea>
-            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
-              <button class="btn btn-primary" id="cfobSaveFilterShortcutsBtn" type="button">Save Shortcuts</button>
             </div>
           </div>
         </section>
@@ -302,7 +302,11 @@ export default class COB_Settings {
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
     this.gridSize = Number(localStorage.getItem('cfob_grid_size') || 380);
     this.masonryEnabled = localStorage.getItem('cfob_masonry_enabled') !== 'false';
-    this.scrollDir = localStorage.getItem('cfob_scroll_dir') || 'vertical';
+    /** @type {'vertical' | 'horizontal'} */
+    this.scrollDir = localStorage.getItem('cfob_scroll_dir') === 'horizontal' ? 'horizontal' : 'vertical';
+    const savedGridFillOrder = localStorage.getItem('cfob_grid_fill_order');
+    /** @type {'row' | 'column'} */
+    this.gridFillOrder = savedGridFillOrder === 'column' ? 'column' : 'row';
     this.uiScale = Number(localStorage.getItem('cfob_ui_scale') || 1.0);
 
     /** @type {HTMLElement | null} */
@@ -384,7 +388,7 @@ export default class COB_Settings {
     this.gridSize = Math.max(20, Math.min(800, Number(size) || 380));
     localStorage.setItem('cfob_grid_size', String(this.gridSize));
     this.app.root?.style.setProperty('--grid-size', `${this.gridSize}px`);
-    this.app.root?.style.setProperty('--compact-size', `${Math.max(20, this.gridSize - 180)}px`);
+    this.app.gallery?.syncGridLayout?.();
   }
 
   /** @param {boolean} enabled */
@@ -392,6 +396,35 @@ export default class COB_Settings {
     this.masonryEnabled = enabled;
     localStorage.setItem('cfob_masonry_enabled', String(enabled));
     this.app.$("cfobGalleryGrid")?.classList.toggle('masonry', enabled);
+    this.syncGridFillOrderControl();
+    this.app.gallery?.syncGridLayout?.();
+  }
+
+  /** @param {'row' | 'column'} order */
+  setGridFillOrder(order) {
+    this.gridFillOrder = order;
+    localStorage.setItem('cfob_grid_fill_order', this.gridFillOrder);
+    const grid = this.app.$("cfobGalleryGrid");
+    grid?.classList.toggle('grid-column-first', this.gridFillOrder === 'column');
+    this.syncGridFillOrderControl();
+    this.app.gallery?.syncGridLayout?.();
+  }
+
+  syncGridFillOrderControl() {
+    const select = /** @type {HTMLSelectElement | null} */ (this.app.$("cfobGridFillOrderSelect"));
+    if (!select) return;
+    const rowOption = select.querySelector('option[value="row"]');
+    if (rowOption) rowOption.disabled = false;
+    select.value = this.gridFillOrder;
+  }
+
+  /** @param {'vertical' | 'horizontal'} direction */
+  setScrollDirection(direction) {
+    this.scrollDir = direction;
+    localStorage.setItem('cfob_scroll_dir', direction);
+    this.app.$("cfobMainContainer")?.classList.toggle('scroll-horizontal', direction === 'horizontal');
+    this.syncGridFillOrderControl();
+    this.app.gallery?.syncGridLayout?.();
   }
 
   getGalleryViewMode() {
@@ -420,7 +453,9 @@ export default class COB_Settings {
       this.fullViewMode = false;
     }
     if (grid && mode !== 'full') {
-      grid.className = `gallery-container view-${mode}${this.masonryEnabled ? ' masonry' : ''}`;
+      const fillClass = this.gridFillOrder === 'column' ? ' grid-column-first' : '';
+      grid.className = `gallery-container view-${mode}${this.masonryEnabled ? ' masonry' : ''}${fillClass}`;
+      this.app.gallery?.syncGridLayout?.();
     }
     localStorage.setItem('comfy_folder_browser_view', mode);
     if (mode === 'full') {
@@ -644,7 +679,8 @@ export default class COB_Settings {
       gridSlider.value = String(this.gridSize);
       this.app.$("cfobGridSizeVal").textContent = `${this.gridSize}px`;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobModeSelect")).value = this.browserMode;
-      /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollSelect")).value = this.scrollDir;
+      this.syncGridFillOrderControl();
+      /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollDirectionSelect")).value = this.scrollDir;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobSortSelect")).value = this.currentSort;
       setStatus("cfobMasonryStatus", this.masonryEnabled);
       setStatus("cfobAutoHideStatus", this.autoHide);
@@ -696,10 +732,11 @@ export default class COB_Settings {
       this.setSidebarSize(null, Number(/** @type {HTMLInputElement} */(event.target).value));
       this.app.$("cfobPanelHeightVal").textContent = `${this.sidebarHeight}px`;
     });
-    this.app.$("cfobScrollSelect").addEventListener('change', (event) => {
-      this.scrollDir = /** @type {HTMLSelectElement} */ (event.target).value;
-      localStorage.setItem('cfob_scroll_dir', this.scrollDir);
-      this.app.$("cfobMainContainer").classList.toggle('scroll-horizontal', this.scrollDir === 'horizontal');
+    this.app.$("cfobGridFillOrderSelect").addEventListener('change', (event) => {
+      this.setGridFillOrder(/** @type {HTMLSelectElement} */(event.target).value === 'column' ? 'column' : 'row');
+    });
+    this.app.$("cfobScrollDirectionSelect").addEventListener('change', (event) => {
+      this.setScrollDirection(/** @type {HTMLSelectElement} */(event.target).value === 'horizontal' ? 'horizontal' : 'vertical');
     });
     this.app.$("cfobSortSelect").addEventListener('change', (event) => {
       this.currentSort = /** @type {HTMLSelectElement} */ (event.target).value;

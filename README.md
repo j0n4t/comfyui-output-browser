@@ -6,9 +6,11 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 ### 1. Grid / Gallery Mode
 
-- **Masonry Layout:** Toggle masonry on or off under **Options → Display → Masonry Grid**. When enabled, grid and compact views arrange previews in responsive columns while preserving each image's aspect ratio.
+- **Masonry Layout:** Toggle masonry on or off under **Options → Display → Masonry Grid**. Masonry preserves each image's aspect ratio and supports both **Row first** and **Column first** ordering across vertical and horizontal scrolling.
 - **Tabbed Options & Panel Sizing:** Open **Options** to adjust display and layout, manage hidden paths and ignored autocomplete keywords together under **Folders & Search**, or customize image card fields under **Custom Fields**. Set the width of left/right drawers and the height of top/bottom drawers with the panel size sliders.
 - **Spatial Navigation:** Browse through generated image cards seamlessly using your keyboard arrow keys (`↑`, `↓`, `←`, `→`) without changing selection. Use **`Space`** to toggle the focused image's selection.
+- **Grid Fill Order:** Choose row-first or column-first image order under **Options → Display → Grid Fill Order**. Both vertical and horizontal scrolling support row-first and column-first orders for standard and masonry grids.
+- **Scroll Direction:** Choose vertical or horizontal scrolling under **Options → Display → Scroll Direction**. Horizontal scrolling supports both row-first and column-first grids; list view remains a horizontal row.
 - **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image without changing selection. In the grid, **`↑`** from its first row returns to search.
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Space`** to toggle the focused image's selection.
 - **File Management:** Instantly send unwanted outputs to the trash (`Delete`), download files locally (`D`), rename a selected image (`R`), or move selected images to an existing or newly created folder (`M`).

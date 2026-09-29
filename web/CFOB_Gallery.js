@@ -7,6 +7,91 @@ export default class CFOB_Gallery {
     this.app = app;
     /** @type {CFOB_Image[]} */
     this.lastRenderedLoadedImages = [];
+    /** @type {Map<string, HTMLElement>} */
+    this.cardCache = new Map();
+    /** @type {ResizeObserver | null} */
+    this.resizeObserver = null;
+  }
+
+  /**
+ * Builds the card node exactly once.
+ * @param {CFOB_Image} img 
+ * @returns {HTMLElement}
+ */
+  createCard(img) {
+    const card = document.createElement("div");
+    card.className = "image-card";
+    card.tabIndex = -1;
+    card.dataset.name = img.name;
+
+    card.innerHTML = `
+      <div class="checkbox-wrapper">
+        <input type="checkbox" class="card-checkbox" value="${this.app.escapeHtml(img.name)}">
+      </div>
+      <img class="card-preview" src="${this.app.escapeHtml(img.url)}" alt="${this.app.escapeHtml(img.name)}" loading="lazy">
+      <div class="card-content-wrapper">
+        <div class="card-header" title="${this.app.escapeHtml(img.name)}">
+          <span class="card-filename">${this.app.escapeHtml(img.name)}</span>
+          ${ICONS.toggle}
+        </div>
+        <div class="card-body">
+          ${img.isParsed ? this.app.getCardFieldsHtml(img) : '<i style="color: var(--color-text-disabled);">Loading...</i>'}
+        </div>
+      </div>
+    `;
+
+    if (img.isParsed) card.dataset.parsed = "true";
+
+    const cb = /** @type {HTMLInputElement} */ (card.querySelector('.card-checkbox'));
+    cb.addEventListener('click', (e) => this.app.selection.handleCheckboxClick(e, img.name));
+
+    const previewImg = /** @type {HTMLImageElement} */ (card.querySelector('.card-preview'));
+    previewImg.addEventListener('click', () => {
+      const idx = Number(card.dataset.filterIndex);
+      this.app.lastSelectedIdx = idx;
+      this.app.root?.querySelectorAll('.image-card').forEach(item => {
+        item.classList.toggle('focused', Number(/** @type {HTMLElement} */(item).dataset.filterIndex) === idx);
+      });
+      card.focus();
+      this.app.fullView.openFullView(img);
+    });
+
+    const header = /** @type {HTMLElement} */ (card.querySelector('.card-header'));
+    header.addEventListener('click', () => {
+      card.classList.toggle('expanded');
+    });
+
+    card.addEventListener('click', (e) => {
+      /** @type {HTMLElement | null} */
+      const copyBtn = /** @type {HTMLElement} */ (e.target).closest('.copy-val-btn');
+      if (copyBtn) {
+        e.stopPropagation();
+        this.app.actions.copyValue(copyBtn, copyBtn.dataset.val);
+        return;
+      }
+      const target = /** @type {HTMLElement} */ (e.target);
+      if (!target.closest('.card-preview, button, input, a, [contenteditable="true"]')) {
+        const idx = Number(card.dataset.filterIndex);
+        this.app.lastSelectedIdx = idx;
+        this.app.root?.querySelectorAll('.image-card').forEach(item => {
+          item.classList.toggle('focused', Number(/** @type {HTMLElement} */(item).dataset.filterIndex) === idx);
+        });
+        card.focus();
+      }
+    });
+
+    if (this.app.observer) this.app.observer.observe(card);
+
+    return card;
+  }
+
+  /** @returns {HTMLElement[]} */
+  getOrderedCards() {
+    const grid = this.app.$("cfobGalleryGrid");
+    if (!grid) return [];
+    // Thanks to replaceChildren pooling, visible cards are now naturally in the exact DOM order 
+    // without any hidden item gaps, entirely eliminating the need to parse and sort datasets in JS.
+    return Array.from(grid.querySelectorAll('.image-card'));
   }
 
   filterGallery() {
@@ -61,8 +146,6 @@ export default class CFOB_Gallery {
       ? this.app.lastSelectedIdx
       : -1;
 
-    grid.innerHTML = "";
-
     const countSpan = this.app.$("cfobImageCount");
     if (countSpan) {
       countSpan.innerText = `(${this.app.filteredImages.length})`;
@@ -81,90 +164,78 @@ export default class CFOB_Gallery {
         this.app.lastSelectedIdx = -1;
         this.app.$("cfobSearchInput").focus();
       }
+      grid.replaceChildren(); // Safely remove all visible cards without destroying events
+      this.syncGridLayout();
       return;
     } else {
       if (emptyState) emptyState.style.display = "none";
     }
 
-    const fragment = document.createDocumentFragment();
+    // Clean up removed items from the cache if loaded images shrink (deleted from disk/refresh)
+    const loadedNames = new Set(this.app.loadedImages.map(img => img.name));
+    if (this.cardCache.size > loadedNames.size) {
+      for (const [name, card] of this.cardCache.entries()) {
+        if (!loadedNames.has(name)) {
+          if (this.app.observer) this.app.observer.unobserve(card);
+          this.cardCache.delete(name);
+        }
+      }
+    }
+
+    // Provision missing cards on load/refresh incrementally
+    this.app.loadedImages.forEach((img) => {
+      if (!this.cardCache.has(img.name)) {
+        this.cardCache.set(img.name, this.createCard(img));
+      }
+    });
+
     const loadedImageIndexes = new Map(this.app.loadedImages.map((img, index) => [img, index]));
+    const fragment = document.createDocumentFragment();
 
+    // Populate fragment strictly with filtered items.
+    // By keeping hidden items out of the flow entirely, CSS Masonry & Flex/Grid flow works flawlessly.
     this.app.filteredImages.forEach((img, idx) => {
-      const isSelected = this.app.selectedImages.has(img.name);
-      const card = document.createElement("div");
-      card.className = `image-card ${isSelected ? 'selected' : ''} ${idx === this.app.lastSelectedIdx ? 'focused' : ''}`;
-      card.tabIndex = -1;
-      card.dataset.name = img.name;
-      card.dataset.index = String(loadedImageIndexes.get(img) ?? -1);
+      const card = this.cardCache.get(img.name);
+      if (!card) return;
 
-      card.innerHTML = `
-        <div class="checkbox-wrapper">
-          <input type="checkbox" class="card-checkbox" value="${this.app.escapeHtml(img.name)}" ${isSelected ? 'checked' : ''}>
-        </div>
-        <img class="card-preview" src="${this.app.escapeHtml(img.url)}" alt="${this.app.escapeHtml(img.name)}" loading="lazy">
-        <div class="card-content-wrapper">
-          <div class="card-header" title="${this.app.escapeHtml(img.name)}">
-            <span class="card-filename">${this.app.escapeHtml(img.name)}</span>
-            ${ICONS.toggle}
-          </div>
-          <div class="card-body">
-            ${img.isParsed ? this.app.getCardFieldsHtml(img) : '<i style="color: var(--color-text-disabled);">Loading...</i>'}
-          </div>
-        </div>
-      `;
+      const isSelected = this.app.selectedImages.has(img.name);
+
+      // Update state classes independently without wiping .expanded class
+      card.classList.toggle('selected', isSelected);
+      card.classList.toggle('focused', idx === this.app.lastSelectedIdx);
+      card.dataset.index = String(loadedImageIndexes.get(img) ?? -1);
+      card.dataset.filterIndex = String(idx);
 
       const cb = /** @type {HTMLInputElement} */ (card.querySelector('.card-checkbox'));
-      cb.addEventListener('click', (e) => this.app.selection.handleCheckboxClick(e, img.name));
+      if (cb && cb.checked !== isSelected) cb.checked = isSelected;
 
-      const previewImg = /** @type {HTMLImageElement} */ (card.querySelector('.card-preview'));
-      previewImg.addEventListener('click', () => {
-        this.app.lastSelectedIdx = idx;
-        this.app.root?.querySelectorAll('.image-card').forEach((item, index) => {
-          item.classList.toggle('focused', index === idx);
-        });
-        card.focus();
-        this.app.fullView.openFullView(img);
-      });
-
-      const header = /** @type {HTMLElement} */ (card.querySelector('.card-header'));
-      header.addEventListener('click', () => {
-        card.classList.toggle('expanded');
-      });
-
-      card.addEventListener('click', (e) => {
-        /** @type {HTMLElement | null} */
-        const copyBtn = /** @type {HTMLElement} */ (e.target).closest('.copy-val-btn');
-        if (copyBtn) {
-          e.stopPropagation();
-          this.app.actions.copyValue(copyBtn, copyBtn.dataset.val);
-          return;
-        }
-        const target = /** @type {HTMLElement} */ (e.target);
-        if (!target.closest('.card-preview, button, input, a, [contenteditable="true"]')) {
-          this.app.lastSelectedIdx = idx;
-          this.app.root?.querySelectorAll('.image-card').forEach((item, index) => {
-            item.classList.toggle('focused', index === idx);
-          });
-          card.focus();
-        }
-      });
-
-      if (this.app.observer) this.app.observer.observe(card);
+      // Parse metadata updates incrementally on-the-fly without destroying the main node
+      if (img.isParsed && !card.dataset.parsed) {
+        card.dataset.parsed = "true";
+        const body = card.querySelector('.card-body');
+        if (body) body.innerHTML = this.app.getCardFieldsHtml(img);
+      }
 
       fragment.appendChild(card);
     });
 
-    grid.appendChild(fragment);
+    // Single batch DOM swap (auto-removes cards no longer in the filtered fragment instantly)
+    grid.replaceChildren(fragment);
+    this.syncGridLayout();
+
     if (focusedCard) {
       const focusIndex = this.app.filteredImages.findIndex(img => img.name === focusedName);
       const targetIndex = focusIndex >= 0
         ? focusIndex
         : Math.max(0, Math.min(previousIndex, this.app.filteredImages.length - 1));
-      const card = grid.querySelectorAll('.image-card')[targetIndex];
+
+      const orderedCards = this.getOrderedCards();
+      const card = orderedCards[targetIndex];
+
       if (card) {
         this.app.lastSelectedIdx = targetIndex;
-        grid.querySelectorAll('.image-card').forEach((item, index) => {
-          item.classList.toggle('focused', index === targetIndex);
+        orderedCards.forEach((item, i) => {
+          item.classList.toggle('focused', i === targetIndex);
         });
         /** @type {HTMLElement} */ (card).focus();
       } else {
@@ -172,5 +243,47 @@ export default class CFOB_Gallery {
         this.app.$("cfobSearchInput").focus();
       }
     }
+  }
+
+  syncGridLayout() {
+    const grid = this.app.$("cfobGalleryGrid");
+    const container = this.app.$("cfobMainContainer");
+    if (!grid || !container) return;
+
+    if (!this.resizeObserver && typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => {
+        this.syncGridLayout();
+      });
+      this.resizeObserver.observe(container);
+    }
+
+    const isHorizontalRow = this.app.settings.scrollDir === 'horizontal'
+      && this.app.settings.gridFillOrder === 'row'
+      && this.app.settings.getGalleryViewMode() !== 'list'
+      && this.app.settings.getGalleryViewMode() !== 'full';
+
+    if (!isHorizontalRow) {
+      grid.style.removeProperty('--cfob-col-count');
+      grid.style.removeProperty('--cfob-row-count');
+      return;
+    }
+
+    const count = this.app.filteredImages.length;
+    if (count === 0) {
+      grid.style.setProperty('--cfob-col-count', '1');
+      grid.style.setProperty('--cfob-row-count', '1');
+      return;
+    }
+
+    const itemSize = parseFloat(getComputedStyle(grid).getPropertyValue('--gallery-item-size')) || this.app.settings.gridSize || 380;
+    const fontSize = parseFloat(getComputedStyle(grid).fontSize) || 16;
+    const gap = 0.4 * fontSize;
+    const paddingBottom = 1.25 * fontSize;
+    const availableHeight = Math.max(1, container.clientHeight - paddingBottom);
+    const rows = Math.max(1, Math.floor((availableHeight + gap) / (itemSize + gap)));
+    const cols = Math.max(1, Math.ceil(count / rows));
+
+    grid.style.setProperty('--cfob-row-count', String(rows));
+    grid.style.setProperty('--cfob-col-count', String(cols));
   }
 }
