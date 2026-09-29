@@ -731,18 +731,21 @@ export default class ComfyOutputBrowser {
       const existingMap = new Map(this.loadedImages.map(img => [img.name, img]));
       const validImages = [];
       const newFilesToFetch = [];
+      let existingImagesChanged = false;
 
       for (const fileObj of allFilesData) {
         if (existingMap.has(fileObj.name)) {
           const image = existingMap.get(fileObj.name);
           if (image) {
-            if (fileObj.mtime && image.mtime && image.mtime !== fileObj.mtime) {
+            if (image.mtime !== fileObj.mtime) {
               this.search.removeImageKeywords(image.name);
               image.mtime = fileObj.mtime;
               image.isParsed = false;
               image.prompt = null;
               image.workflow = null;
-              image.url = this.api.getImageUrl(fileObj.name) + `&t=${fileObj.mtime}`;
+              image.url = this.api.getImageUrl(fileObj.name) + (fileObj.mtime ? `&t=${fileObj.mtime}` : '');
+              this.gallery.invalidateCard(image.name);
+              existingImagesChanged = true;
             }
             validImages.push(image);
           }
@@ -757,7 +760,7 @@ export default class ComfyOutputBrowser {
         return { name: fileObj.name, mtime: fileObj.mtime, url, prompt: null, workflow: null, isParsed: false, isParsing: false };
       });
 
-      if (newImages.length > 0 || validImages.length !== this.loadedImages.length) {
+      if (newImages.length > 0 || validImages.length !== this.loadedImages.length || existingImagesChanged) {
         this.loadedImages = [...newImages, ...validImages];
         this.search.rebuildKeywordDictionary();
         this.applySort();

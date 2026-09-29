@@ -93,6 +93,14 @@ export default class CFOB_Gallery {
     return card;
   }
 
+  /** @param {string} name */
+  invalidateCard(name) {
+    const card = this.cardCache.get(name);
+    if (!card) return;
+    if (this.app.observer) this.app.observer.unobserve(card);
+    this.cardCache.delete(name);
+  }
+
   /**
    * Updates app.lastSelectedIdx and toggles the 'focused' CSS class on only the
    * previously-focused card and the newly-focused card. This replaces the old
