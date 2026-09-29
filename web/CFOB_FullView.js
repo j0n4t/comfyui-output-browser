@@ -113,6 +113,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-layout .full-view-top-bar, #cfob-root .full-view-layout .nav-btn, #cfob-root .full-view-layout .full-view-sidebar { transition: opacity 0.2s ease, width 0.3s; }
 
   #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.1s ease-out; transform-origin: center; cursor: grab; }
+  #cfob-root .full-view-main img { touch-action: none; }
   #cfob-root .full-view-main img.dragging { transition: none; cursor: grabbing; }
 
   @media (max-width: 768px) {
@@ -222,16 +223,21 @@ export default class CFOB_FullView {
     this.app.$("cfobNextImgBtn").addEventListener('click', () => this.navigateImage(1));
 
     let touchStartX = 0;
-    let touchEndX = 0;
+    let touchImageInteraction = false;
     const fvModal = this.app.$("cfobFullViewModal");
     const fvMain = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'));
 
     fvMain.addEventListener('touchstart', (e) => {
       touchStartX = e.changedTouches[0].screenX;
+      if (e.touches.length > 1) touchImageInteraction = true;
     }, { passive: true });
 
     fvMain.addEventListener('touchend', (e) => {
-      touchEndX = e.changedTouches[0].screenX;
+      if (touchImageInteraction) {
+        if (e.touches.length === 0) touchImageInteraction = false;
+        return;
+      }
+      const touchEndX = e.changedTouches[0].screenX;
 
       if (fvModal.classList.contains('active')) {
         const swipeDistance = touchStartX - touchEndX;
@@ -254,8 +260,40 @@ export default class CFOB_FullView {
 
     const fvImg = this.app.$("cfobFullViewImg");
 
-    // Pan & Click-to-hide Logic
+    /** @type {Map<number, {x: number, y: number, pointerType: string}>} */
+    const activePointers = new Map();
+    /** @type {{distance: number, zoom: number, panX: number, panY: number, midpointX: number, midpointY: number} | null} */
+    let pinchStart = null;
+    const getPinchPoints = () => Array.from(activePointers.values()).slice(0, 2);
+
+    fvImg.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return;
+      if (e.pointerType === 'touch' && this.fvZoom > 1) touchImageInteraction = true;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, pointerType: e.pointerType });
+      fvImg.setPointerCapture(e.pointerId);
+
+      if (activePointers.size >= 2) {
+        touchImageInteraction = true;
+        const [first, second] = getPinchPoints();
+        const midpointX = (first.x + second.x) / 2;
+        const midpointY = (first.y + second.y) / 2;
+        pinchStart = {
+          distance: Math.max(1, Math.hypot(second.x - first.x, second.y - first.y)),
+          zoom: this.fvZoom,
+          panX: this.fvPanX,
+          panY: this.fvPanY,
+          midpointX,
+          midpointY
+        };
+        this.fvIsDragging = false;
+        this.fvHasDragged = true;
+        fvImg.classList.remove('dragging');
+        e.preventDefault();
+      }
+    });
+
     fvImg.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
       this.fvIsDragging = true;
       this.fvHasDragged = false;
       this.fvStartX = e.clientX - this.fvPanX;
@@ -268,26 +306,80 @@ export default class CFOB_FullView {
       if (!this.fvIsDragging) return;
       const newX = e.clientX - this.fvStartX;
       const newY = e.clientY - this.fvStartY;
-
       if (Math.abs(newX - this.fvPanX) > 3 || Math.abs(newY - this.fvPanY) > 3) {
         this.fvHasDragged = true;
       }
-
       this.fvPanX = newX;
       this.fvPanY = newY;
       this.updateFullViewTransform(false);
     });
 
     window.addEventListener('mouseup', (e) => {
-      if (this.fvIsDragging) {
-        this.fvIsDragging = false;
-        fvImg.classList.remove('dragging');
+      if (!this.fvIsDragging) return;
+      this.fvIsDragging = false;
+      fvImg.classList.remove('dragging');
+      if (!this.fvHasDragged && e.target === fvImg) this.toggleFullViewUI();
+    });
 
-        if (!this.fvHasDragged && e.target === fvImg) {
-          this.toggleFullViewUI();
+    fvImg.addEventListener('pointermove', (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, pointerType: e.pointerType });
+
+      if (pinchStart && activePointers.size >= 2) {
+        const [first, second] = getPinchPoints();
+        const midpointX = (first.x + second.x) / 2;
+        const midpointY = (first.y + second.y) / 2;
+        const distance = Math.max(1, Math.hypot(second.x - first.x, second.y - first.y));
+        const zoom = Math.max(0.1, Math.min(pinchStart.zoom * distance / pinchStart.distance, 15));
+        const bounds = fvMain.getBoundingClientRect();
+        const centerX = bounds.left + bounds.width / 2;
+        const centerY = bounds.top + bounds.height / 2;
+        const zoomRatio = zoom / pinchStart.zoom;
+        this.fvZoom = zoom;
+        this.fvPanX = midpointX - pinchStart.midpointX + pinchStart.panX
+          + (pinchStart.midpointX - centerX) * (1 - zoomRatio);
+        this.fvPanY = midpointY - pinchStart.midpointY + pinchStart.panY
+          + (pinchStart.midpointY - centerY) * (1 - zoomRatio);
+        this.updateFullViewTransform(false);
+        this.fvHasDragged = true;
+        e.preventDefault();
+      } else if (this.fvIsDragging) {
+        const newX = e.clientX - this.fvStartX;
+        const newY = e.clientY - this.fvStartY;
+        if (Math.abs(newX - this.fvPanX) > 3 || Math.abs(newY - this.fvPanY) > 3) {
+          this.fvHasDragged = true;
         }
+        this.fvPanX = newX;
+        this.fvPanY = newY;
+        this.updateFullViewTransform(false);
       }
     });
+
+    /** @param {PointerEvent} e */
+    const finishImagePointer = (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.delete(e.pointerId);
+      if (fvImg.hasPointerCapture(e.pointerId)) fvImg.releasePointerCapture(e.pointerId);
+
+      if (pinchStart) {
+        pinchStart = null;
+        this.fvIsDragging = false;
+        fvImg.classList.remove('dragging');
+        const remainingPointer = activePointers.values().next().value;
+        if (remainingPointer?.pointerType === 'touch' && this.fvZoom > 1) {
+          this.fvIsDragging = true;
+          this.fvStartX = remainingPointer.x - this.fvPanX;
+          this.fvStartY = remainingPointer.y - this.fvPanY;
+          fvImg.classList.add('dragging');
+        }
+      } else if (this.fvIsDragging) {
+        this.fvIsDragging = false;
+        fvImg.classList.remove('dragging');
+        if (!this.fvHasDragged && e.pointerType === 'mouse') this.toggleFullViewUI();
+      }
+    };
+    fvImg.addEventListener('pointerup', finishImagePointer);
+    fvImg.addEventListener('pointercancel', finishImagePointer);
 
     // Mouse Wheel Zoom Support
     fvMain.addEventListener('wheel', (e) => {
