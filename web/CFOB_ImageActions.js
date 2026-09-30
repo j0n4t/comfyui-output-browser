@@ -1,5 +1,4 @@
 // @ts-ignore
-import { app as comfyApp } from "../../scripts/app.js";
 import ICONS from "./assets/icons.js";
 
 export default class CFOB_ImageActions {
@@ -177,12 +176,21 @@ export default class CFOB_ImageActions {
   async loadWorkflowImage(img) {
     const app = this.app;
     if (!img || !app.root) return;
+    
+    // Check if running in standalone mode by verifying the global ComfyUI app context
+    // @ts-ignore
+    if (!window.app || typeof window.app.loadGraphData !== 'function') {
+        app.showToast("Load Workflow is disabled in standalone mode.");
+        return;
+    }
+
     if (!img.isParsed) {
       app.showToast("Loading metadata...");
       await app.api.loadMetadata(img);
     }
     if (img.workflow) {
-      comfyApp.loadGraphData(img.workflow);
+      // @ts-ignore
+      window.app.loadGraphData(img.workflow);
       app.hideWithTransition();
       app.selection.clearSelection();
       app.showToast("Workflow loaded successfully!");

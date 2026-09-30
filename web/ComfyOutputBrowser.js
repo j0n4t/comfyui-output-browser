@@ -1,5 +1,3 @@
-// @ts-ignore
-import { app } from "../../scripts/app.js";
 import { CFOB_QUERY_STYLES, CFOB_STYLES } from "./assets/css.js";
 import ICONS from "./assets/icons.js";
 import CFOB_API from "./CFOB_API.js";
@@ -251,10 +249,17 @@ export default class ComfyOutputBrowser {
         launcherBtn.className = "floating";
         document.body.appendChild(launcherBtn);
       } else {
-        const standardMenuTarget = app.menu?.actionsGroup?.element || app.menu?.settingsGroup?.element || document.querySelector(".comfy-menu");
-        launcherBtn.className = "bg-secondary-background border-none hover:bg-secondary-background-hover inline-flex items-center justify-center size-8";
-        launcherBtn.style.border = "4px";
-        standardMenuTarget?.appendChild(launcherBtn);
+        const comfyMenu = document.querySelector(".comfy-menu");
+        if (comfyMenu) {
+          launcherBtn.className = "bg-secondary-background border-none hover:bg-secondary-background-hover inline-flex items-center justify-center size-8";
+          launcherBtn.style.border = "4px";
+          // @ts-ignore
+          const standardMenuTarget = window.app?.menu?.actionsGroup?.element || window.app?.menu?.settingsGroup?.element || comfyMenu;
+          standardMenuTarget?.appendChild(launcherBtn);
+        } else {
+          launcherBtn.className = "floating";
+          document.body.appendChild(launcherBtn);
+        }
       }
     };
 
@@ -932,22 +937,47 @@ export default class ComfyOutputBrowser {
 
 const browser = new ComfyOutputBrowser();
 
-app.registerExtension({
-  name: "Comfy.OutputBrowser",
-  commands: [
-    {
-      id: "OutputBrowser.FocusSearch",
-      label: "Output Browser: Focus Search",
-      function: () => { browser.showWithTransition(); },
-    }
-  ],
-  keybindings: [
-    {
-      combo: { key: "?", ctrl: true, shift: true },
-      commandId: "OutputBrowser.FocusSearch"
-    }
-  ],
-  async setup() {
+// @ts-ignore Check the flag we injected via __init__.py to prevent the 404 network request
+if (window.CFOB_STANDALONE) {
+  console.log("Running Output Browser in standalone mode.");
+  window.addEventListener('DOMContentLoaded', () => {
     browser.init();
-  }
-});
+
+    // Lock view format for full-screen mode
+    browser.settings.setBrowserMode('full');
+    browser.showWithTransition();
+
+    // Hide resizer grip
+    const resizer = document.getElementById("cfob-resizer");
+    if (resizer) resizer.style.display = 'none';
+  });
+} else {
+  // We are inside ComfyUI, safe to import app.js
+  // @ts-ignore
+  import("../../scripts/app.js").then((module) => {
+    const app = module.app;
+    app.registerExtension({
+      name: "Comfy.OutputBrowser",
+      commands: [
+        {
+          id: "OutputBrowser.FocusSearch",
+          label: "Output Browser: Focus Search",
+          function: () => { browser.showWithTransition(); },
+        }
+      ],
+      keybindings: [
+        {
+          combo: { key: "?", ctrl: true, shift: true },
+          commandId: "OutputBrowser.FocusSearch"
+        }
+      ],
+      async setup() {
+        // @ts-ignore
+        window.app = app;
+        browser.init();
+      }
+    });
+  }).catch((err) => {
+    console.error("Failed to load ComfyUI context:", err);
+  });
+}
