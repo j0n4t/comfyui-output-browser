@@ -1,6 +1,6 @@
 # ComfyUI Output Browser
 
-Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you organize generated images, inspect metadata, and instantly reload embedded node workflows.
+Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you view, organize generated images and inspect metadata.
 
 ## Core Operational Modes & Features
 
@@ -14,7 +14,6 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 - **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image without changing selection. In the grid, **`↑`** from its first row returns to search.
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Space`** to toggle the focused image's selection.
 - **File Management:** Instantly send unwanted outputs to the trash (`Delete`), download files locally (`D`), rename a selected image (`R`), or move selected images to an existing or newly created folder (`M`).
-- **Workflow Recovery:** Select any image card and press **`W`** to extract and load its embedded workflow straight back into your ComfyUI workspace.
 
 ### 2. Full-Screen View & Zoom
 
@@ -53,7 +52,6 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 |                      | **`Enter`**                                    | Toggle selection state for the focused item.                          |
 |                      | **`Delete`**                                   | Move selected item(s) to the trash.                                   |
 |                      | **`D`**                                        | Download selected file(s).                                            |
-|                      | **`W`**                                        | Load the embedded workflow into ComfyUI.                              |
 |                      | **`Arrow Keys`**                               | Navigate the grid without changing selection.                         |
 |                      | **`PageUp` / `PageDown`**                      | Move up or down by about one grid page.                               |
 |                      | **`Home` / `End`**                             | Focus the first or last image in the grid.                            |

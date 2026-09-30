@@ -190,21 +190,6 @@ export default class COB_API {
     else setTimeout(parseNext, 50);
   }
 
-  /** @param {FileList | null} fileList  */
-  async handleLocalFiles(fileList) {
-    const pngs = Array.from(fileList || []).filter(f => f.type === 'image/png' || f.name.toLowerCase().endsWith('.png'));
-
-    for (const file of pngs) {
-      const res = await this.processPngFile(file);
-      if (res) {
-        this.app.loadedImages = this.app.loadedImages.filter((/** @type {CFOB_Image} */ img) => img.name !== res.name);
-        this.app.loadedImages.unshift(res);
-        this.app.search.indexImageKeywords(res);
-      }
-    }
-    this.app.gallery.filterGallery();
-  }
-
   /** @param {string} str */
   sanitizeJson(str) {
     return str.replace(/(?<!["\w])\-?(?:NaN|Infinity)(?!["\w])/g, "null");

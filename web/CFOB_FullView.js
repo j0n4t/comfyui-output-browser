@@ -67,7 +67,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
 
   #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
   #cfob-root .full-view-main:focus { outline: none; }
-  #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; outline: none; }
   #cfob-root .full-view-main.has-no-images > img, #cfob-root .full-view-main.has-no-images > .nav-btn { display: none; }
   #cfob-root .full-view-empty-state { max-width: 32em; padding: 2em; color: var(--color-text-muted); text-align: center; }
   #cfob-root .full-view-empty-state[hidden] { display: none; }
@@ -298,40 +298,6 @@ export default class CFOB_FullView {
     document.addEventListener('click', (e) => {
       const target = /** @type {Node} */ (e.target);
       if (!moreMenu.contains(target) && !moreBtn.contains(target)) closeMoreMenu();
-    });
-
-    // Global Keybinds for Full View
-    window.addEventListener('keydown', (e) => {
-      const modal = this.app.$("cfobFullViewModal");
-      if (!modal || !modal.classList.contains('active')) return;
-
-      // Do not trigger hotkeys when typing in inputs/textareas, or modifying the resizer
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.target === this.app.$("cfobFullViewSidebarResizer")) return;
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
-
-      if (e.key === 'Escape' && moreMenu.classList.contains('open')) {
-        e.preventDefault();
-        closeMoreMenu();
-        moreBtn.focus();
-        return;
-      }
-
-      switch (e.key.toLowerCase()) {
-        case 'arrowleft': e.preventDefault(); this.navigateImage(-1); break;
-        case 'arrowright': e.preventDefault(); this.navigateImage(1); break;
-        case 'escape': e.preventDefault(); this.closeFullView(); break;
-        case 't': e.preventDefault(); this.cycleSidebarMode(); break;
-        case 'f': e.preventDefault(); this.applyFitMode('fit'); break;
-        case 'w': e.preventDefault(); this.applyFitMode('width'); break;
-        case 'h': e.preventDefault(); this.applyFitMode('height'); break;
-        case '1':
-        case 'o': e.preventDefault(); this.applyFitMode('original'); break;
-        case '=':
-        case '+': e.preventDefault(); this.setFullViewZoom(this.fvZoom * 1.1); break;
-        case '-':
-        case '_': e.preventDefault(); this.setFullViewZoom(this.fvZoom / 1.1); break;
-      }
     });
 
     this.app.$("cfobCloseFullViewBtn").addEventListener('click', () => this.resetFullViewTransform());

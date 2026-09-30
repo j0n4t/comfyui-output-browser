@@ -30,11 +30,10 @@ const BROWSER_HTML = `
 </div>
 
 <div class="main-container" id="cfobMainContainer">
-  <div class="drop-overlay">${ICONS.drop}<h3 style="margin: 0.625em 0 0 0; color: var(--color-text-inverse);">Drop PNGs Here</h3></div>
   <div class="gallery-container view-grid" id="cfobGalleryGrid"></div>
   <div class="empty-state" id="cfobEmptyState">
     ${ICONS.picture}
-    <h3 id="cfobEmptyStateTitle">No Images Loaded</h3><p id="cfobEmptyStateDesc">Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect.</p>
+    <h3 id="cfobEmptyStateTitle">No Images Loaded</h3><p id="cfobEmptyStateDesc">Click Refresh to load ComfyUI outputs to inspect.</p>
   </div>
 </div>
 
@@ -330,30 +329,6 @@ export default class ComfyOutputBrowser {
     this.$("cfobActionOpen").addEventListener('click', () => this.actions.loadWorkflowSelected());
     this.$("cfobActionInspect").addEventListener('click', () => this.actions.inspectSelected());
 
-    const mainCont = this.$("cfobMainContainer");
-    let dragCounter = 0;
-    mainCont.addEventListener('dragenter', (e) => {
-      e.preventDefault(); dragCounter++;
-      mainCont.classList.add('dragover');
-    });
-    mainCont.addEventListener('dragover', (e) => {
-      e.preventDefault();
-    });
-    mainCont.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      dragCounter--;
-      if (dragCounter <= 0) {
-        dragCounter = 0;
-        mainCont.classList.remove('dragover');
-      }
-    });
-    mainCont.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dragCounter = 0;
-      mainCont.classList.remove('dragover');
-      if (e.dataTransfer?.files.length) this.api.handleLocalFiles(e.dataTransfer.files);
-    });
-
     this.settings.bindEvents();
 
     document.addEventListener('keydown', (e) => {
@@ -423,13 +398,13 @@ export default class ComfyOutputBrowser {
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
         else if (!noModalOpen) return;
 
+        else if (key === 'f') { e.preventDefault(); e.stopPropagation(); this.fullView.applyFitMode("fit"); }
         else if (key === 'm') { e.preventDefault(); e.stopPropagation(); this.fullView.moveFullViewImage(); }
         else if (key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
         else if (key === 'g') { e.preventDefault(); e.stopPropagation(); this.fullView.goToImageNumber(); }
         else if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionInspect").click(); }
         else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
         else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
-        else if (key === 'w') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionOpen").click(); }
         else if (key === ' ') {
           if (target.closest('button, a, [role="button"]')) return;
           e.preventDefault(); e.stopPropagation();
@@ -513,9 +488,6 @@ export default class ComfyOutputBrowser {
         }
         else if (key === 'd') {
           if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.actions.downloadSelected(); }
-        }
-        else if (key === 'w') {
-          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.loadWorkflowSelected(); }
         }
         else if (
           ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', 'home', 'end'].includes(key) &&

@@ -196,7 +196,7 @@ export default class CFOB_Gallery {
         emptyState.style.display = "block";
         this.app.$("cfobEmptyStateTitle").innerText = "No Images Found";
         this.app.$("cfobEmptyStateDesc").innerText = this.app.loadedImages.length === 0
-          ? "Click Refresh to load ComfyUI outputs, or drop PNGs anywhere to inspect."
+          ? "Click Refresh to load ComfyUI outputs to inspect."
           : "No images match the current filter or hidden folder settings.";
       }
       if (focusedCard) {
@@ -309,8 +309,7 @@ export default class CFOB_Gallery {
 
     const isHorizontalRow = this.app.settings.scrollDir === 'horizontal'
       && this.app.settings.gridFillOrder === 'row'
-      && this.app.settings.getGalleryViewMode() !== 'list'
-      && this.app.settings.getGalleryViewMode() !== 'full';
+      && this.app.settings.getGalleryViewMode() !== 'list';
 
     if (!isHorizontalRow) {
       if (this._lastSyncIsHorizontalRow !== false) {
