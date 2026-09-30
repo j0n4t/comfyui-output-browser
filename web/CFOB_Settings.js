@@ -105,7 +105,7 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
 export const CFOB_SETTINGS_MODALS_HTML = `
   <div class="modal-overlay" id="cfobOptionsModal" data-dialog-modal>
     <div class="modal-content options-modal-content">
-      <div class="modal-header">${ICONS.more}<h3>Options</h3><button class="icon-btn" id="cfobCloseOptionsBtn" data-modal-dismiss aria-label="Close options">${ICONS.close}</button></div>
+      <div class="modal-header">${ICONS.config}<h3>Options</h3><button class="icon-btn" id="cfobCloseOptionsBtn" data-modal-dismiss aria-label="Close options">${ICONS.close}</button></div>
       <div class="options-tabs" id="cfobOptionsTabs" role="tablist" aria-label="Options categories">
         <button class="options-tab active" id="cfobDisplayTab" type="button" role="tab" aria-selected="true" aria-controls="cfobOptionsDisplay" tabindex="0" data-target="cfobOptionsDisplay">Display</button>
         <button class="options-tab" id="cfobLayoutTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsLayout" tabindex="-1" data-target="cfobOptionsLayout">Layout</button>
@@ -428,7 +428,7 @@ export default class COB_Settings {
   syncGridFillOrderControl() {
     const select = /** @type {HTMLSelectElement | null} */ (this.app.$("cfobGridFillOrderSelect"));
     if (!select) return;
-    const rowOption = select.querySelector('option[value="row"]');
+    const rowOption = /** @type {HTMLOptionElement} */ (select.querySelector('option[value="row"]'));
     if (rowOption) rowOption.disabled = false;
     select.value = this.gridFillOrder;
   }

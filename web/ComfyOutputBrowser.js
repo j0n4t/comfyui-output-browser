@@ -24,7 +24,7 @@ const BROWSER_HTML = `
       <button id="cfobClearSearchBtn" class="search-clear-btn" title="Clear search">${ICONS.close}</button>
     </div>
     <button class="btn" id="cfobRefreshBtn" title="Sync outputs from Server">${ICONS.refresh}<span>Refresh</span></button>
-    <button class="btn" id="cfobMenuBtn" title="Options">${ICONS.more}<span>Options</span></button>
+    <button class="btn" id="cfobMenuBtn" title="Options">${ICONS.config}<span>Options</span></button>
     <button class="btn btn-danger" id="cfobCloseBrowserBtn">${ICONS.close}<span>Close</span></button>
   </div>
 </div>

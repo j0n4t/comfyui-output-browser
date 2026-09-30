@@ -8,10 +8,21 @@ export const CFOB_FULL_VIEW_HTML = `
           <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
           <div class="full-view-browser-controls" id="cfobFullViewBrowserControls"></div>
           <div style="display: flex; gap: 0.5em; align-items: center;">
-            <button class="icon-btn" id="cfobZoomInBtn" title="Zoom In">${ICONS.zoomIn}</button>
-            <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out">${ICONS.zoomOut}</button>
-            <button class="icon-btn" id="cfobZoomResetBtn" title="Reset Zoom">${ICONS.zoomReset}</button>
-            <div style="width: 1px; height: 1.25em; background: var(--color-border); margin: 0 0.25em;"></div>
+            <div class="full-view-more-wrap">
+              <button class="icon-btn" id="cfobFullViewMoreBtn" title="Zoom and view options" aria-label="Zoom and view options" aria-haspopup="true" aria-expanded="false">
+                ${ICONS.more}
+              </button>
+              <div class="full-view-more-menu" id="cfobFullViewMoreMenu" role="menu" aria-label="Zoom and view options">
+                <button class="icon-btn text-btn" id="cfobZoomFitBtn" title="Fit View (F)" role="menuitem">Fit</button>
+                <button class="icon-btn text-btn" id="cfobZoomWidthBtn" title="Fit Width (W)" role="menuitem">W</button>
+                <button class="icon-btn text-btn" id="cfobZoomHeightBtn" title="Fit Height (H)" role="menuitem">H</button>
+                <button class="icon-btn text-btn" id="cfobZoomOriginalBtn" title="Original Size (1 / O)" role="menuitem">1:1</button>
+                <div class="full-view-more-divider" role="separator"></div>
+                <button class="icon-btn" id="cfobZoomInBtn" title="Zoom In (+)" role="menuitem">${ICONS.zoomIn}</button>
+                <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out (-)" role="menuitem">${ICONS.zoomOut}</button>
+                <button class="icon-btn" id="cfobZoomResetBtn" title="Reset Zoom" role="menuitem">${ICONS.zoomReset}</button>
+              </div>
+            </div>
             <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn" title="Cycle details pane position (T)" aria-label="Cycle details pane position (T)">${ICONS.pane}</button>
             <button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button>
           </div>
@@ -69,11 +80,18 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-browser-controls .btn { font-size: 0.75em; }
   #cfob-root .full-view-top-bar .icon-btn { color: var(--color-text-muted); }
   #cfob-root .full-view-top-bar .icon-btn:hover { color: var(--color-text-inverse); background: var(--color-bg-panel-hover); }
+  #cfob-root .full-view-top-bar .text-btn { font-size: 0.75em; font-weight: 600; padding: 0 0.5em; font-family: var(--font-mono, monospace); letter-spacing: 0.5px; border-radius: var(--radius-sm); }
   #cfob-root .full-view-top-bar .full-view-count { color: var(--color-text-muted); font-size: 0.8125em; white-space: nowrap; }
   #cfob-root .full-view-browser-controls .search-input { background: #00000040 }
   #cfob-root .full-view-count { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; font-size: 0.875em; cursor: pointer; }
   #cfob-root .full-view-count:hover { text-decoration: underline; }
   #cfob-root .full-view-count:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+  #cfob-root .full-view-more-wrap { position: relative; display: flex; }
+  #cfob-root .full-view-more-menu { position: absolute; top: calc(100% + 0.4em); right: 0; display: none; flex-direction: row; align-items: stretch; gap: 0.15em; min-width: 9em; padding: 0.4em; background: var(--color-bg-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md, 6px); box-shadow: 0 0.5em 1.5em rgba(0,0,0,0.45); z-index: 20; }
+  #cfob-root .full-view-more-menu.open { display: flex; }
+  #cfob-root .full-view-more-menu .icon-btn { display: flex; align-items: center; gap: 0.5em; width: 100%; padding: 0.35em 0.5em; border-radius: var(--radius-sm); }
+  #cfob-root .full-view-more-menu .text-btn { justify-content: flex-start; font-size: 0.75em; font-weight: 600; font-family: var(--font-mono, monospace); letter-spacing: 0.5px; }
+  #cfob-root .full-view-more-divider { height: 1px; background: var(--color-border); margin: 0.15em 0; }
 
   #cfob-root .full-view-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5em; width: 100%; }
   #cfob-root .full-view-actions .btn { font-size: 0.6875em; padding: 0.375em 0.5em; min-width: 10em; justify-content: center; }
@@ -251,10 +269,70 @@ export default class CFOB_FullView {
       }
     }, { passive: true });
 
-    // Zoom Buttons
+    // Zoom and Fit Mode Buttons
+    this.app.$("cfobZoomFitBtn").addEventListener('click', () => this.applyFitMode('fit'));
+    this.app.$("cfobZoomWidthBtn").addEventListener('click', () => this.applyFitMode('width'));
+    this.app.$("cfobZoomHeightBtn").addEventListener('click', () => this.applyFitMode('height'));
+    this.app.$("cfobZoomOriginalBtn").addEventListener('click', () => this.applyFitMode('original'));
+
     this.app.$("cfobZoomInBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom * 1.1));
     this.app.$("cfobZoomOutBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom / 1.1));
     this.app.$("cfobZoomResetBtn").addEventListener('click', () => this.resetFullViewTransform());
+
+    // Three-dot popup menu for zoom and fit options
+    const moreBtn = this.app.$("cfobFullViewMoreBtn");
+    const moreMenu = this.app.$("cfobFullViewMoreMenu");
+    /** @param {boolean} open */
+    const setMoreMenuOpen = (open) => {
+      moreMenu.classList.toggle('open', open);
+      moreBtn.setAttribute('aria-expanded', String(open));
+    };
+    const closeMoreMenu = () => setMoreMenuOpen(false);
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMoreMenuOpen(!moreMenu.classList.contains('open'));
+    });
+    moreMenu.addEventListener('click', (e) => {
+      if (e.target instanceof HTMLElement && e.target.closest('button')) closeMoreMenu();
+    });
+    document.addEventListener('click', (e) => {
+      const target = /** @type {Node} */ (e.target);
+      if (!moreMenu.contains(target) && !moreBtn.contains(target)) closeMoreMenu();
+    });
+
+    // Global Keybinds for Full View
+    window.addEventListener('keydown', (e) => {
+      const modal = this.app.$("cfobFullViewModal");
+      if (!modal || !modal.classList.contains('active')) return;
+
+      // Do not trigger hotkeys when typing in inputs/textareas, or modifying the resizer
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.target === this.app.$("cfobFullViewSidebarResizer")) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      if (e.key === 'Escape' && moreMenu.classList.contains('open')) {
+        e.preventDefault();
+        closeMoreMenu();
+        moreBtn.focus();
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'arrowleft': e.preventDefault(); this.navigateImage(-1); break;
+        case 'arrowright': e.preventDefault(); this.navigateImage(1); break;
+        case 'escape': e.preventDefault(); this.closeFullView(); break;
+        case 't': e.preventDefault(); this.cycleSidebarMode(); break;
+        case 'f': e.preventDefault(); this.applyFitMode('fit'); break;
+        case 'w': e.preventDefault(); this.applyFitMode('width'); break;
+        case 'h': e.preventDefault(); this.applyFitMode('height'); break;
+        case '1':
+        case 'o': e.preventDefault(); this.applyFitMode('original'); break;
+        case '=':
+        case '+': e.preventDefault(); this.setFullViewZoom(this.fvZoom * 1.1); break;
+        case '-':
+        case '_': e.preventDefault(); this.setFullViewZoom(this.fvZoom / 1.1); break;
+      }
+    });
 
     this.app.$("cfobCloseFullViewBtn").addEventListener('click', () => this.resetFullViewTransform());
 
@@ -414,6 +492,50 @@ export default class CFOB_FullView {
     this.app.$("cfobFVActionMove").addEventListener('click', () => this.moveFullViewImage());
     this.app.$("cfobFVActionDelete").addEventListener('click', () => this.deleteFullViewImage());
 
+  }
+
+  /**
+   * Applies specific view modes by dynamically calculating the required zoom target.
+   * @param {'fit' | 'width' | 'height' | 'original'} mode
+   */
+  applyFitMode(mode) {
+    const img = /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg"));
+    const main = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'));
+    if (!img || !main || !img.naturalWidth) return;
+
+    // Temporarily clear active transforms to retrieve bounded base CSS dimensions
+    const oldTransform = img.style.transform;
+    const oldTransition = img.style.transition;
+    img.style.transform = 'none';
+    img.style.transition = 'none';
+
+    const imgRect = img.getBoundingClientRect();
+    const mainRect = main.getBoundingClientRect();
+
+    let targetZoom = 1;
+    this.fvPanX = 0;
+    this.fvPanY = 0;
+
+    if (mode === 'fit') {
+      // Calculate the minimum scale needed to fit both dimensions perfectly
+      targetZoom = Math.min(mainRect.width / imgRect.width, mainRect.height / imgRect.height);
+    } else if (mode === 'width') {
+      targetZoom = mainRect.width / imgRect.width;
+    } else if (mode === 'height') {
+      targetZoom = mainRect.height / imgRect.height;
+    } else if (mode === 'original') {
+      targetZoom = img.naturalWidth / imgRect.width;
+    }
+
+    // Restore transforms prior to the next frame to prevent flashing
+    img.style.transform = oldTransform;
+    // eslint-disable-next-line no-unused-expressions
+    img.offsetHeight; // Force DOM reflow
+    img.style.transition = oldTransition;
+
+    // Constrain the target zoom factor and apply
+    this.fvZoom = Math.max(0.1, Math.min(targetZoom, 15));
+    this.updateFullViewTransform(true);
   }
 
   /** @param {number} value @param {number} min @param {number} max */
@@ -630,6 +752,9 @@ export default class CFOB_FullView {
   }
 
   closeFullView() {
+    const moreMenu = this.app.$("cfobFullViewMoreMenu");
+    moreMenu?.classList.remove('open');
+    this.app.$("cfobFullViewMoreBtn")?.setAttribute('aria-expanded', 'false');
     this.app.$("cfobFullViewModal").classList.remove('active');
     this.app.root?.classList.remove('full-view-active');
     this.restoreBrowserControls();
@@ -670,13 +795,36 @@ export default class CFOB_FullView {
     this.browserControlPlaceholders = null;
   }
 
+  reapplyCurrentFitMode() {
+    // If zoom is 1 and pan is 0, default to keeping 'fit' mode active
+    if (this.fvZoom === 1 && this.fvPanX === 0 && this.fvPanY === 0) {
+      this.applyFitMode('fit');
+    } else {
+      // Otherwise, maintain current zoom/transform
+      this.updateFullViewTransform(true);
+    }
+  }
+
   /** @param {number} dir */
   navigateImage(dir) {
     if (this.app.filteredImages.length === 0) return;
     this.currentImageIndex += dir;
     if (this.currentImageIndex < 0) this.currentImageIndex = this.app.filteredImages.length - 1;
     if (this.currentImageIndex >= this.app.filteredImages.length) this.currentImageIndex = 0;
+
+    // Update UI and re-apply the current fit mode based on zoom state or default preference
     this.updateFullViewUI();
+
+    // If the user was using a specific zoom constraint (e.g., fit, width, height), re-apply it after the image loads
+    const imgElement = /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg"));
+    if (imgElement.complete && imgElement.naturalWidth) {
+      this.reapplyCurrentFitMode();
+    } else {
+      imgElement.onload = () => {
+        this.reapplyCurrentFitMode();
+        imgElement.onload = null;
+      };
+    }
   }
 
   async goToImageNumber() {
