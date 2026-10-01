@@ -298,11 +298,11 @@ export default class ComfyOutputBrowser {
       if (searchInputTimer !== null) clearTimeout(searchInputTimer);
       searchInputTimer = setTimeout(() => {
         this.gallery.filterGallery();
-        this.search.updateSearchSuggestions(true);
+        this.search.refreshSearchSuggestionsIfOpen();
         searchInputTimer = null;
       }, 150);
     });
-    searchInput.addEventListener('focus', () => this.search.updateSearchSuggestions(true));
+    searchInput.addEventListener('focus', () => this.search.refreshSearchSuggestionsIfOpen());
     searchInput.addEventListener('blur', () => {
       this.search.addSearchHistory();
       this.search.hideSearchSuggestions();
@@ -316,7 +316,7 @@ export default class ComfyOutputBrowser {
       this.searchHistoryIndex = this.searchHistory.length;
       this.gallery.filterGallery();
       this.search.hideSearchSuggestions();
-      this.search.updateSearchSuggestions(true);
+      this.search.refreshSearchSuggestionsIfOpen();
     });
 
     this.fullView.bindEvents();
@@ -684,7 +684,7 @@ export default class ComfyOutputBrowser {
   setIdleParsingActive(isActive) {
     this.isIdleParsing = isActive;
     this.updateRefreshButtonAnimation();
-    if (!isActive && this.serverImageFetchCount === 0) this.search.updateSearchSuggestions();
+    if (!isActive && this.serverImageFetchCount === 0) this.search.refreshSearchSuggestionsIfOpen();
   }
 
   async fetchServerImages() {
@@ -768,7 +768,7 @@ export default class ComfyOutputBrowser {
     } finally {
       this.serverImageFetchCount--;
       this.updateRefreshButtonAnimation();
-      if (this.serverImageFetchCount === 0 && !this.isIdleParsing) this.search.updateSearchSuggestions();
+      if (this.serverImageFetchCount === 0 && !this.isIdleParsing) this.search.refreshSearchSuggestionsIfOpen();
     }
   }
 

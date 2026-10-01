@@ -9,6 +9,7 @@ export default class CFOB_Search {
     this.suggestionBatchSize = 30;
     this.lastSuggestionGroup = "";
     this.suggestionScrollBound = false;
+    this.wasFocusedBeforeClick = false; // Tracks if input was already focused
   }
 
   /** @param {CFOB_Image} img @param {boolean} [refreshSuggestions] */
@@ -30,7 +31,10 @@ export default class CFOB_Search {
     for (const keyword of keywords) {
       this.app.keywordDictionary.set(keyword, (this.app.keywordDictionary.get(keyword) || 0) + 1);
     }
-    if (refreshSuggestions && document.activeElement === this.app.$("cfobSearchInput")) {
+
+    // Update silently if background parsing happens while focused, without forcing the menu open
+    const suggestions = this.app.$("cfobSearchSuggestions");
+    if (refreshSuggestions && document.activeElement === this.app.$("cfobSearchInput") && suggestions && !suggestions.hidden) {
       this.updateSearchSuggestions();
     }
   }
@@ -45,7 +49,9 @@ export default class CFOB_Search {
       else this.app.keywordDictionary.set(keyword, count - 1);
     }
     this.app.imageKeywordIndex.delete(imageName);
-    if (refreshSuggestions && document.activeElement === this.app.$("cfobSearchInput")) {
+
+    const suggestions = this.app.$("cfobSearchSuggestions");
+    if (refreshSuggestions && document.activeElement === this.app.$("cfobSearchInput") && suggestions && !suggestions.hidden) {
       this.updateSearchSuggestions();
     }
   }
@@ -56,7 +62,11 @@ export default class CFOB_Search {
     for (const img of this.app.loadedImages) {
       if (img.isParsed) this.indexImageKeywords(img, false);
     }
-    if (document.activeElement === this.app.$("cfobSearchInput")) this.updateSearchSuggestions();
+
+    const suggestions = this.app.$("cfobSearchSuggestions");
+    if (document.activeElement === this.app.$("cfobSearchInput") && suggestions && !suggestions.hidden) {
+      this.updateSearchSuggestions();
+    }
   }
 
   /** @param {KeyboardEvent} e */
@@ -298,6 +308,13 @@ export default class CFOB_Search {
   showEmptySearchSuggestions() {
     this.allowEmptySearchSuggestions = true;
     this.updateSearchSuggestions(true);
+  }
+
+  refreshSearchSuggestionsIfOpen() {
+    const suggestions = this.app.$("cfobSearchSuggestions");
+    if (document.activeElement === this.app.$("cfobSearchInput") && suggestions && !suggestions.hidden) {
+      this.updateSearchSuggestions(true);
+    }
   }
 
   toggleSearchSuggestions() {
