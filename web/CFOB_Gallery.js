@@ -20,6 +20,14 @@ export default class CFOB_Gallery {
     this._lastSyncItemSize = -1;
     /** @type {boolean | null} */
     this._lastSyncIsHorizontalRow = null;
+    /** @type {boolean} */
+    this._packingActive = false;
+    /** @type {boolean} */
+    this._packingHorizontal = false;
+    /** @type {HTMLElement[]} */
+    this._packingCards = [];
+    /** @type {number | null} */
+    this._packingRafId = null;
   }
 
   /**
@@ -66,10 +74,17 @@ export default class CFOB_Gallery {
       card.focus();
       this.app.fullView.openFullView(img);
     });
+    // Masonry packing measures card heights, so it has to be redone once a
+    // thumbnail loads and its natural aspect ratio is known. Without this the
+    // spans stay sized for the not-yet-loaded cards and the grid overlaps.
+    previewImg.addEventListener('load', () => this._scheduleRepack());
 
     const header = /** @type {HTMLElement} */ (card.querySelector('.card-header'));
     header.addEventListener('click', () => {
       card.classList.toggle('expanded');
+      // Expanding reveals the metadata body, which changes the card's height and
+      // so the number of masonry rows it must span.
+      this._scheduleRepack();
     });
 
     card.addEventListener('click', (e) => {
@@ -307,9 +322,18 @@ export default class CFOB_Gallery {
       this.resizeObserver.observe(container);
     }
 
-    const isHorizontalRow = this.app.settings.scrollDir === 'horizontal'
-      && this.app.settings.gridFillOrder === 'row'
-      && this.app.settings.getGalleryViewMode() !== 'list';
+    const settings = this.app.settings;
+    const viewMode = settings.getGalleryViewMode();
+    const isHorizontal = settings.scrollDir === 'horizontal';
+    const isRowOrder = settings.gridFillOrder === 'row';
+    const isMasonryGrid = settings.masonryEnabled && isRowOrder
+      && (viewMode === 'grid' || viewMode === 'compact');
+
+    // Vertical row-first masonry can pack right away; the horizontal case needs
+    // the column count computed below, so it packs after that instead.
+    this.applyRowFirstMasonryPacking(isMasonryGrid && !isHorizontal, grid, false);
+
+    const isHorizontalRow = isHorizontal && isRowOrder && viewMode !== 'list';
 
     if (!isHorizontalRow) {
       if (this._lastSyncIsHorizontalRow !== false) {
@@ -320,6 +344,8 @@ export default class CFOB_Gallery {
         this._lastSyncRows = -1;
         this._lastSyncCols = -1;
       }
+      // Any earlier horizontal packing has to go, whatever the reason we left it.
+      this.applyRowFirstMasonryPacking(false, grid, true);
       return;
     }
 
@@ -332,6 +358,7 @@ export default class CFOB_Gallery {
         grid.style.setProperty('--cfob-col-count', '1');
         grid.style.setProperty('--cfob-row-count', '1');
       }
+      this.applyRowFirstMasonryPacking(isMasonryGrid, grid, true);
       return;
     }
 
@@ -343,22 +370,202 @@ export default class CFOB_Gallery {
     const rows = Math.max(1, Math.floor((availableHeight + gap) / (itemSize + gap)));
     const cols = Math.max(1, Math.ceil(count / rows));
 
-    // Skip writing to the DOM if nothing changed
-    if (
-      this._lastSyncIsHorizontalRow === true &&
-      this._lastSyncRows === rows &&
-      this._lastSyncCols === cols &&
-      this._lastSyncAvailableHeight === availableHeight &&
-      this._lastSyncItemSize === itemSize
-    ) return;
+    // The packing below replaces the fixed track list, so it must run even when the
+    // computed row/column counts are unchanged.
+    const layoutUnchanged = this._lastSyncIsHorizontalRow === true
+      && this._lastSyncRows === rows
+      && this._lastSyncCols === cols
+      && this._lastSyncAvailableHeight === availableHeight
+      && this._lastSyncItemSize === itemSize;
 
-    this._lastSyncIsHorizontalRow = true;
-    this._lastSyncRows = rows;
-    this._lastSyncCols = cols;
-    this._lastSyncAvailableHeight = availableHeight;
-    this._lastSyncItemSize = itemSize;
+    if (!layoutUnchanged) {
+      this._lastSyncIsHorizontalRow = true;
+      this._lastSyncRows = rows;
+      this._lastSyncCols = cols;
+      this._lastSyncAvailableHeight = availableHeight;
+      this._lastSyncItemSize = itemSize;
 
-    grid.style.setProperty('--cfob-row-count', String(rows));
-    grid.style.setProperty('--cfob-col-count', String(cols));
+      grid.style.setProperty('--cfob-row-count', String(rows));
+      grid.style.setProperty('--cfob-col-count', String(cols));
+    }
+
+    this.applyRowFirstMasonryPacking(isMasonryGrid, grid, true);
+  }
+
+  /**
+   * Removes the vertical gaps row-first masonry leaves below short cards.
+   *
+   * Row-first masonry keeps the source order, so a row is as tall as its tallest
+   * card and any shorter card in that row leaves dead space until the next row.
+   * Measuring each card and letting it span the exact number of grid rows it
+   * occupies packs every column tightly while preserving the reading order.
+   *
+   * Vertical scrolling uses the implicit columns from the stylesheet; horizontal
+   * scrolling has its fixed row tracks replaced so the columns can size themselves.
+   *
+   * @param {boolean} enabled
+   * @param {HTMLElement} grid
+   * @param {boolean} horizontal
+   */
+  applyRowFirstMasonryPacking(enabled, grid, horizontal) {
+    const alreadyPacked = this._packingActive && this._packingHorizontal === horizontal;
+
+    if (!enabled) {
+      // Only clear the packing when it was this layout's; the other orientation
+      // clears its own on its way in. The grid's own styles must go too: they are
+      // inline, so the stylesheet cannot take back over while they are set.
+      if (this._packingActive && this._packingHorizontal === horizontal) {
+        this._clearPacking(grid, true);
+      }
+      return;
+    }
+
+    if (!alreadyPacked) {
+      // Switching orientation: drop the other layout's packing and let the grid
+      // return to its natural sizing before the heights are measured.
+      if (this._packingActive) this._clearPacking(grid, true);
+      else if (horizontal) this._clearHorizontalPacking(grid);
+    }
+
+    const cards = /** @type {HTMLElement[]} */ (Array.from(grid.querySelectorAll('.image-card')));
+    if (!cards.length) return;
+
+    const fontSize = parseFloat(getComputedStyle(grid).fontSize) || 16;
+    const gap = 0.4 * fontSize;
+    // One row unit per pixel (with row-gap zeroed, the gap is baked into each
+    // span). Row tracks are then as tall as the cards, never shorter: a span that
+    // under-counts its card makes the card overflow and overlap the next one.
+    const unit = 1;
+
+    // Height has to be read while the grid is still a plain grid: with spans
+    // applied, a card's height is governed by its own span and would be circular.
+    const heights = cards.map(card => card.getBoundingClientRect().height);
+
+    grid.style.setProperty('grid-auto-rows', `${unit}px`);
+    grid.style.setProperty('row-gap', '0px');
+    // Plain row flow: the spans already fill the holes a short card would leave, and
+    // unlike 'dense' it can never reorder a card into an earlier column.
+    grid.style.setProperty('grid-auto-flow', 'row');
+
+    /** @type {{ cols: number, colWidth: number } | null} */
+    let columns = null;
+    if (horizontal) {
+      const container = this.app.$("cfobMainContainer");
+      const gridStyle = getComputedStyle(grid);
+      const itemSize = parseFloat(gridStyle.getPropertyValue('--gallery-item-size'))
+        || this.app.settings.gridSize || 380;
+      const paddingRight = parseFloat(gridStyle.paddingRight) || 0;
+      const paddingBottom = parseFloat(gridStyle.paddingBottom) || 0;
+      const availableWidth = Math.max(1, (container ? container.clientWidth : grid.clientWidth) - paddingRight);
+      const availableHeight = Math.max(1, (container ? container.clientHeight : grid.clientHeight) - paddingBottom);
+
+      // The stylesheet sizes rows from the nominal item size, but a masonry card is
+      // as tall as its image, so that row count puts a card past the bottom edge.
+      // Fit the rows to the measured heights instead: a card that cannot fit above
+      // the bottom moves into the next column, the way column-first behaves.
+      const rows = this._fitMasonryRows(heights, availableHeight, gap);
+      const cols = Math.max(1, Math.ceil(heights.length / rows));
+      // Resolve the column width the way CSS multi-column does, so row-first and
+      // column-first end up with the same card width instead of 380 vs 386.
+      const visible = Math.max(1, Math.floor((availableWidth + gap) / (itemSize + gap)));
+      const colWidth = Math.round(((availableWidth - (visible - 1) * gap) / visible) * 100) / 100;
+
+      grid.style.setProperty('--cfob-col-count', String(cols));
+      grid.style.setProperty('--cfob-row-count', String(rows));
+      // The stylesheet pins the row count for horizontal scrolling; the packed
+      // columns need rows sized by their content instead.
+      grid.style.setProperty('grid-template-rows', 'none');
+      grid.style.setProperty('align-content', 'start');
+      columns = { cols, colWidth };
+    }
+
+    for (let i = 0; i < cards.length; i++) {
+      const span = Math.max(1, Math.ceil((heights[i] + gap) / unit));
+      cards[i].style.setProperty('grid-row-end', `span ${span}`);
+    }
+    if (columns) {
+      grid.style.setProperty('grid-template-columns', `repeat(${columns.cols}, ${columns.colWidth}px)`);
+    }
+
+    this._packingActive = true;
+    this._packingHorizontal = horizontal;
+    this._packingCards = cards;
+  }
+
+  /**
+   * Largest number of rows at which no column's stacked cards exceed the pane.
+   *
+   * Cards are dealt row-major, so column c holds cards c, c+cols, c+2*cols...; the
+   * tallest of those sums decides whether the row count fits. Feasibility falls as
+   * the row count rises (fewer columns means more cards per column), so the first
+   * feasible count found scanning downwards is the one to use.
+   *
+   * @param {number[]} heights
+   * @param {number} availableHeight
+   * @param {number} gap
+   * @returns {number}
+   */
+  _fitMasonryRows(heights, availableHeight, gap) {
+    const count = heights.length;
+    for (let rows = count; rows >= 1; rows--) {
+      const cols = Math.ceil(count / rows);
+      let fits = true;
+      for (let c = 0; c < cols && fits; c++) {
+        let total = 0;
+        let n = 0;
+        for (let i = c; i < count; i += cols) {
+          total += heights[i] + (n ? gap : 0);
+          n++;
+        }
+        if (total > availableHeight) fits = false;
+      }
+      if (fits) return rows;
+    }
+    return 1;
+  }
+
+  /**
+   * Drops the packing styles. The cards' spans are always removed; the grid's own
+   * properties only when asked, since the incoming layout may have already set them.
+   * @param {HTMLElement} grid
+   * @param {boolean} clearGridStyles
+   */
+  _clearPacking(grid, clearGridStyles) {
+    for (const card of this._packingCards) card.style.removeProperty('grid-row-end');
+    this._packingCards = [];
+    this._packingActive = false;
+    this._packingHorizontal = false;
+    if (clearGridStyles) this._clearHorizontalPacking(grid);
+  }
+
+  /** @param {HTMLElement} grid */
+  _clearHorizontalPacking(grid) {
+    grid.style.removeProperty('grid-auto-rows');
+    grid.style.removeProperty('row-gap');
+    grid.style.removeProperty('grid-auto-flow');
+    grid.style.removeProperty('grid-template-rows');
+    grid.style.removeProperty('grid-template-columns');
+    grid.style.removeProperty('align-content');
+  }
+
+  /**
+   * Re-packs the masonry grid when a card's height changes for a reason the layout
+   * pass cannot see: a thumbnail finishing loading (its natural aspect ratio is
+   * only known once decoded) or a card being expanded to show its metadata.
+   * Batched through rAF because a grid full of images fires this many times at once.
+   */
+  _scheduleRepack() {
+    if (this._packingRafId !== null) return;
+    this._packingRafId = requestAnimationFrame(() => {
+      this._packingRafId = null;
+      if (!this._packingActive) return;
+      const grid = this.app.$("cfobGalleryGrid");
+      if (!grid) return;
+      // Heights are measured while the spans are still applied, so clear them
+      // first and let the grid return to its natural sizing.
+      const horizontal = this._packingHorizontal;
+      this._clearPacking(grid, true);
+      this.applyRowFirstMasonryPacking(true, grid, horizontal);
+    });
   }
 }
