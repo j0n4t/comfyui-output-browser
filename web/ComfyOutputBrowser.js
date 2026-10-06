@@ -437,7 +437,25 @@ export default class ComfyOutputBrowser {
       } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
         if (!noModalOpen) return;
 
-        if (key === '/' && !e.ctrlKey) {
+        if (e.altKey && (key === '+' || key === '=' || e.code === 'NumpadAdd')) {
+          e.preventDefault(); e.stopPropagation();
+          const viewMode = this.settings.getGalleryViewMode();
+          if (viewMode === 'compact') {
+            this.settings.setCompactSizeOffset(this.settings.compactSizeOffset + 10);
+          } else {
+            this.settings.setGridSize(this.settings.gridSize + 10);
+          }
+        }
+        else if (e.altKey && (key === '-' || key === '_' || e.code === 'NumpadSubtract')) {
+          e.preventDefault(); e.stopPropagation();
+          const viewMode = this.settings.getGalleryViewMode();
+          if (viewMode === 'compact') {
+            this.settings.setCompactSizeOffset(this.settings.compactSizeOffset - 10);
+          } else {
+            this.settings.setGridSize(this.settings.gridSize - 10);
+          }
+        }
+        else if (key === '/' && !e.ctrlKey) {
           e.preventDefault(); e.stopPropagation(); this.$("cfobSearchInput").focus();
         }
         else if ((e.ctrlKey || e.metaKey) && key === 'a') {
