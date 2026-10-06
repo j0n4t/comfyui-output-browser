@@ -353,12 +353,13 @@ export default class ComfyOutputBrowser {
       if (e.key === 'Escape') {
         if (activeDialog) return;
         e.preventDefault();
-        if (isFullView && noModalOpen) {
+        if (!this.$("cfobSearchSuggestions").hidden) {
+          e.stopPropagation(); this.search.hideSearchSuggestions();
+        } else if (isFullView && noModalOpen) {
           e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
         } else if (this.isUiVisible) {
           e.stopPropagation();
-          if (target === searchInput && !this.$("cfobSearchSuggestions").hidden) this.search.hideSearchSuggestions();
-          else if (isEditing) target.blur();
+          if (isEditing) target.blur();
           else if (this.selectedImages.size > 0) this.selection.clearSelection();
           else this.hideWithTransition();
         }
@@ -396,8 +397,13 @@ export default class ComfyOutputBrowser {
           }
           searchInput.focus();
         }
-        else if (e.key === 'ArrowUp' && target.id === 'cfobFullViewImg') {
-          e.preventDefault(); e.stopPropagation(); searchInput.focus();
+        else if (e.key === 'ArrowUp') {
+          e.preventDefault(); e.stopPropagation();
+          this.fullView.setFullViewUIHidden(false);
+          searchInput.focus();
+        }
+        else if (e.key === 'ArrowDown') {
+          e.preventDefault(); e.stopPropagation(); this.fullView.toggleFullViewUI();
         }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
