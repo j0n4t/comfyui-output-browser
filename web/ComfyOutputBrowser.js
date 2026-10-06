@@ -398,7 +398,7 @@ export default class ComfyOutputBrowser {
         else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
         else if (!noModalOpen) return;
 
-        else if (key === 'f') { e.preventDefault(); e.stopPropagation(); this.fullView.applyFitMode("fit"); }
+        else if (key === 'f') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleFitMode(); }
         else if (key === 'm') { e.preventDefault(); e.stopPropagation(); this.fullView.moveFullViewImage(); }
         else if (key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
         else if (key === 'g') { e.preventDefault(); e.stopPropagation(); this.fullView.goToImageNumber(); }

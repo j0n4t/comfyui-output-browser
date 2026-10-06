@@ -153,6 +153,7 @@ export default class CFOB_FullView {
     this.fvStartX = 0;
     this.fvStartY = 0;
     this.fvHasDragged = false;
+    this.fvFitMode = "fit";
     this.currentImageIndex = 0;
     const savedSidebarWidth = Number(localStorage.getItem('cfob_full_view_sidebar_width'));
     const savedSidebarHeight = Number(localStorage.getItem('cfob_full_view_sidebar_height'));
@@ -465,6 +466,7 @@ export default class CFOB_FullView {
    * @param {'fit' | 'width' | 'height' | 'original'} mode
    */
   applyFitMode(mode) {
+    this.fvFitMode = mode;
     const img = /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg"));
     const main = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'));
     if (!img || !main || !img.naturalWidth) return;
@@ -504,6 +506,15 @@ export default class CFOB_FullView {
     this.updateFullViewTransform(true);
   }
 
+  /**
+   * Cycles through fit modes: fit -> width -> height -> original -> fit ...
+   */
+  cycleFitMode() {
+    const modes = ["fit", "width", "height", "original"];
+    const idx = modes.indexOf(this.fvFitMode);
+    // @ts-ignore
+    this.applyFitMode(modes[(idx + 1) % modes.length]);
+  }
   /** @param {number} value @param {number} min @param {number} max */
   clampSidebarSize(value, min, max) {
     return Math.max(min, Math.min(value, Math.max(min, max)));
@@ -762,13 +773,8 @@ export default class CFOB_FullView {
   }
 
   reapplyCurrentFitMode() {
-    // If zoom is 1 and pan is 0, default to keeping 'fit' mode active
-    if (this.fvZoom === 1 && this.fvPanX === 0 && this.fvPanY === 0) {
-      this.applyFitMode('fit');
-    } else {
-      // Otherwise, maintain current zoom/transform
-      this.updateFullViewTransform(true);
-    }
+    // @ts-ignore
+    this.applyFitMode(this.fvFitMode);
   }
 
   /** @param {number} dir */
