@@ -227,6 +227,6 @@ export const CFOB_QUERY_STYLES = /*css*/ `
   }
 
   @container cfob-app (max-width: 600px) {
-    #cfob-root .logo-group { display: none; }
+    #cfob-root .logo-group h1 { display: none; }
   }
 `;
