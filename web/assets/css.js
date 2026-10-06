@@ -220,7 +220,6 @@ export const CFOB_QUERY_STYLES = /*css*/ `
   @media (max-width: 768px) {
     #cfob-root .full-view-layout .btn { padding: 0.4em; }
     #cfob-root .full-view-layout .btn span { display: none; }
-    #cfob-root .full-view-actions { display: flex; justify-content: space-around; }
     #cfob-root .full-view-layout.sidebar-below .full-view-main { min-height: 15.625em; }
     #cfob-root .full-view-layout.sidebar-below .full-view-sidebar { min-width: 0; min-height: 0; }
     #cfob-root .full-view-layout.sidebar-side .full-view-sidebar { min-width: 0; min-height: 0; }

@@ -7,7 +7,7 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .field-value { color: var(--color-text-primary); word-break: break-word; white-space: pre-wrap; max-height: 7.5em; overflow-y: auto; font-family: var(--font-mono); font-size: 0.75em; flex: 1; }
   #cfob-root .field-value.empty { color: var(--color-text-disabled); font-style: italic; }
 
-  #cfob-root .icon-btn { background: transparent; color: var(--color-text-muted); border: none; padding: 0.1875em 0.3125em; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  #cfob-root .icon-btn { background: transparent; color: var(--color-text-muted); border: none; padding: 0.3em; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; }
   #cfob-root .icon-btn:hover { background: var(--color-border-dark); color: var(--color-text-inverse); }
 
   #cfob-root .nodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(20em, 1fr)); gap: 0.875em; align-items: start; }

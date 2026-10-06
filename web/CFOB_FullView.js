@@ -40,19 +40,22 @@ export const CFOB_FULL_VIEW_HTML = `
       <div class="full-view-sidebar" id="cfobFullViewSidebar">
         <div class="sidebar-header">
           <h4 id="cfobFullViewTitle">Filename.png</h4>
-          <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn2" title="Toggle sidebar" aria-label="Toggle sidebar">${ICONS.pane}</button>
-        </div>
-        <div class="sidebar-body" id="cfobFullViewFields"></div>
-        <div class="sidebar-footer">
-          <div class="full-view-actions" id="cfobFullViewActions">
-            <button class="btn btn-primary" id="cfobFVActionOpen">${ICONS.workflow}<span>Workflow</span></button>
-            <button class="btn" id="cfobFVActionInspect">${ICONS.inspect}<span>Inspect</span></button>
-            <button class="btn" id="cfobFVActionDownload">${ICONS.download}<span>Download</span></button>
-            <button class="btn" id="cfobFVActionRename">${ICONS.rename}<span>Rename</span></button>
-            <button class="btn" id="cfobFVActionMove">${ICONS.move}<span>Move</span></button>
-            <button class="btn btn-danger" id="cfobFVActionDelete">${ICONS.trash}<span>Delete</span></button>
+          <div class="sidebar-header-actions">
+            <div class="full-view-actions-more-wrap">
+              <div class="full-view-actions" id="cfobFullViewActions">
+                <button class="btn btn-primary" id="cfobFVActionOpen" title="Open workflow" aria-label="Open workflow">${ICONS.workflow}<span>Workflow</span></button>
+                <button class="btn" id="cfobFVActionInspect" title="Inspect metadata" aria-label="Inspect metadata">${ICONS.inspect}<span>Inspect</span></button>
+                <button class="btn" id="cfobFVActionDownload" title="Download" aria-label="Download">${ICONS.download}<span>Download</span></button>
+                <button class="btn" id="cfobFVActionRename" title="Rename" aria-label="Rename">${ICONS.rename}<span>Rename</span></button>
+                <button class="btn" id="cfobFVActionMove" title="Move" aria-label="Move">${ICONS.move}<span>Move</span></button>
+                <button class="btn btn-danger" id="cfobFVActionDelete" title="Delete" aria-label="Delete">${ICONS.trash}<span>Delete</span></button>
+              </div>
+              <button class="icon-btn full-view-actions-more-btn" id="cfobFullViewActionsMoreBtn" title="Image actions" aria-label="Image actions" aria-haspopup="true" aria-expanded="false">${ICONS.more}</button>
+            </div>
+            <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn2" title="Toggle sidebar" aria-label="Toggle sidebar">${ICONS.pane}</button>
           </div>
         </div>
+        <div class="sidebar-body" id="cfobFullViewFields"></div>
       </div>
     </div>
   </div>
@@ -93,8 +96,9 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-more-menu .text-btn { justify-content: flex-start; font-size: 0.75em; font-weight: 600; font-family: var(--font-mono, monospace); letter-spacing: 0.5px; }
   #cfob-root .full-view-more-divider { height: 1px; background: var(--color-border); margin: 0.15em 0; }
 
-  #cfob-root .full-view-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5em; width: 100%; }
-  #cfob-root .full-view-actions .btn { font-size: 0.6875em; padding: 0.375em 0.5em; min-width: 10em; justify-content: center; }
+  #cfob-root .full-view-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25em; }
+  #cfob-root .full-view-actions .btn { font-size: 0.6875em; padding: 0.3em; justify-content: center; }
+  #cfob-root .full-view-actions .btn span { display: none; }
 
   #cfob-root .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: white; border: none; padding: 1.25em 0.9375em; cursor: pointer; font-size: 1.5em; transition: 0.2s; z-index: 10; }
   #cfob-root .nav-btn:hover { background: rgba(0,0,0,0.9); }
@@ -104,7 +108,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-sidebar-resizer { flex: 0 0 7px; position: relative; cursor: col-resize; touch-action: none; z-index: 1; }
   #cfob-root .full-view-sidebar-resizer::after { content: ""; position: absolute; inset: 0 2px; background: var(--color-border); opacity: 0; transition: opacity 0.15s; }
   #cfob-root .full-view-sidebar-resizer:hover::after, #cfob-root .full-view-sidebar-resizer:focus-visible::after, #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar-resizer::after { opacity: 1; }
-  #cfob-root .full-view-sidebar { width: var(--full-view-sidebar-width, 360px); min-width: 0; flex: 0 0 auto; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; }
+  #cfob-root .full-view-sidebar { width: var(--full-view-sidebar-width, 360px); min-width: 0; flex: 0 0 auto; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; container: cfob-fv-sidebar / inline-size; }
   #cfob-root .full-view-sidebar-resizer.hidden { display: none; }
   #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar { transition: none; }
 
@@ -117,11 +121,20 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
 
   #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar, #cfob-root .full-view-layout.sidebar-hidden .full-view-sidebar-resizer { display: none; }
 
-  #cfob-root .sidebar-header, #cfob-root .sidebar-footer { padding: 0.4em; background: var(--color-bg-header); }
-  #cfob-root .sidebar-header { display: flex;
-    justify-content: space-between; border-bottom: 1px solid var(--color-border); }
-  #cfob-root .sidebar-header #cfobFullViewTitle { margin: 0; font-size: 0.875em; color: var(--color-text-inverse); text-overflow: ellipsis; overflow: hidden; }
-  #cfob-root .sidebar-footer { border-top: 1px solid var(--color-border); }
+  #cfob-root .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5em; padding: 0.4em; background: var(--color-bg-header); border-bottom: 1px solid var(--color-border); }
+  #cfob-root .sidebar-header #cfobFullViewTitle { margin: 0; min-width: 0; font-size: 0.875em; color: var(--color-text-inverse); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+  #cfob-root .sidebar-header-actions { display: flex; align-items: center; gap: 0.25em; flex: 0 0 auto; }
+  #cfob-root .full-view-actions-more-wrap { position: relative; display: flex; }
+  #cfob-root .full-view-actions-more-wrap .full-view-actions-more-btn { display: none; }
+  #cfob-root .full-view-actions-more-wrap.open .full-view-actions { display: flex; }
+
+  /* Collapse the image actions behind the more button when the pane itself is narrow. */
+  @container cfob-fv-sidebar (max-width: 320px) {
+    #cfob-root .full-view-actions-more-wrap .full-view-actions-more-btn { display: inline-flex; }
+    #cfob-root .full-view-actions-more-wrap .full-view-actions { display: none; position: absolute; top: calc(100% + 0.4em); right: 0; z-index: 20; width: max-content; padding: 0.4em; background: var(--color-bg-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 0.5em 1.5em rgba(0,0,0,0.45); }
+    #cfob-root .full-view-actions-more-wrap.open .full-view-actions { display: flex; }
+    #cfob-root .full-view-actions .btn { padding: 0.4em; }
+  }
   #cfob-root .sidebar-body { padding: 0.4em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
 
   #cfob-launcher-btn.floating { position: fixed; top: 0.2em; right: 3em; z-index: 9998; background: var(--color-bg-panel); color: var(--color-text-inverse); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 2em; height: 2em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); }
@@ -166,6 +179,8 @@ export default class CFOB_FullView {
     this.sidebarHeight = Number.isFinite(savedSidebarHeight) && savedSidebarHeight > 0 ? savedSidebarHeight : window.innerHeight / 2;
     /** @type {HTMLElement | null} */
     this.returnFocusElement = null;
+    /** @type {() => void} */
+    this.actionsMoreClose = () => { };
     /** @type {{element: HTMLElement, placeholder: Comment}[] | null} */
     this.browserControlPlaceholders = null;
   }
@@ -299,6 +314,28 @@ export default class CFOB_FullView {
     document.addEventListener('click', (e) => {
       const target = /** @type {Node} */ (e.target);
       if (!moreMenu.contains(target) && !moreBtn.contains(target)) closeMoreMenu();
+    });
+
+    // Sidebar image-actions popup (mobile: actions collapse behind a more button)
+    const actionsWrap = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-actions-more-wrap'));
+    const actionsMoreBtn = this.app.$("cfobFullViewActionsMoreBtn");
+    /** @param {boolean} open */
+    const setActionsMoreOpen = (open) => {
+      actionsWrap?.classList.toggle('open', open);
+      actionsMoreBtn.setAttribute('aria-expanded', String(open));
+    };
+    const closeActionsMore = () => setActionsMoreOpen(false);
+    this.actionsMoreClose = closeActionsMore;
+    actionsMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setActionsMoreOpen(!actionsWrap?.classList.contains('open'));
+    });
+    document.addEventListener('click', (e) => {
+      const target = /** @type {Node} */ (e.target);
+      if (!actionsWrap?.contains(target)) closeActionsMore();
+    });
+    this.app.$("cfobFullViewActions").addEventListener('click', (e) => {
+      if (e.target instanceof HTMLElement && e.target.closest('button')) closeActionsMore();
     });
 
     this.app.$("cfobCloseFullViewBtn").addEventListener('click', () => this.resetFullViewTransform());
