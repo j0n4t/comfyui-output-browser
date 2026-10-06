@@ -740,6 +740,24 @@ export default class CFOB_FullView {
       this.app.settings.setViewMode(this.app.settings.getGalleryViewMode());
     }
     /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = "";
+
+    // Focus the last viewed image in the grid
+    const img = this.app.filteredImages[this.currentImageIndex];
+    if (img) {
+      const idx = this.app.filteredImages.indexOf(img);
+      if (idx >= 0) {
+        const cards = this.app.gallery.getOrderedCards();
+        const card = idx < cards.length ? cards[idx] : null;
+        if (card) {
+          this.app.lastSelectedIdx = idx;
+          cards.forEach((c, i) => c.classList.toggle('focused', i === idx));
+          card.focus();
+          this.returnFocusElement = null;
+          return;
+        }
+      }
+    }
+
     const returnFocus = this.returnFocusElement;
     this.returnFocusElement = null;
     if (returnFocus?.isConnected && this.app.root?.contains(returnFocus)) returnFocus.focus();

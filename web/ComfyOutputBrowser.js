@@ -389,7 +389,12 @@ export default class ComfyOutputBrowser {
 
       if (isFullView && noModalOpen && !e.ctrlKey) {
         if (key === '/' && !e.altKey && !e.metaKey) {
-          e.preventDefault(); e.stopPropagation(); searchInput.focus();
+          e.preventDefault(); e.stopPropagation();
+          const layout = this.root?.querySelector('.full-view-layout');
+          if (layout?.classList.contains('ui-hidden')) {
+            this.fullView.setFullViewUIHidden(false);
+          }
+          searchInput.focus();
         }
         else if (e.key === 'ArrowUp' && target.id === 'cfobFullViewImg') {
           e.preventDefault(); e.stopPropagation(); searchInput.focus();
