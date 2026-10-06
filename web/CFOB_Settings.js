@@ -147,15 +147,6 @@ export const CFOB_SETTINGS_MODALS_HTML = `
           </div>
         </section>
         <section class="options-tab-panel" id="cfobOptionsLayout" role="tabpanel" aria-labelledby="cfobLayoutTab">
-         <div class="options-section">
-            <h4 class="options-section-title">Behavior</h4>
-            <div class="options-setting"><label for="cfobSortSelect">Sort By</label>
-              <select class="options-control" id="cfobSortSelect">
-                <option value="default">Server Order</option><option value="name_asc">Name (A-Z)</option><option value="name_desc">Name (Z-A)</option><option value="mtime_asc">Older First</option><option value="mtime_desc">Newer First</option>
-              </select>
-            </div>
-            <button class="options-setting options-toggle" id="cfobToggleHiddenBtn" type="button"><span>Hidden Folders</span><span class="options-toggle-status" id="cfobHiddenStatus"></span></button>
-          </div>
           <div class="options-section">
             <h4 class="options-section-title">Panel</h4>
             <div class="options-setting"><label for="cfobModeSelect">Position</label>
@@ -174,6 +165,15 @@ export const CFOB_SETTINGS_MODALS_HTML = `
             <p id="cfobPanelSizeHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">Width applies to left and right drawers; height applies to top and bottom drawers.</p>
             <button class="options-setting options-toggle" id="cfobToggleAutoHideBtn" type="button"><span>Auto-Hide Panel</span><span class="options-toggle-status" id="cfobAutoHideStatus"></span></button>
             <button class="options-setting options-toggle" id="cfobToggleConstrainFullViewBtn" type="button"><span>Constrain Full View to Panel</span><span class="options-toggle-status" id="cfobConstrainStatus"></span></button>
+          </div>
+          <div class="options-section">
+            <h4 class="options-section-title">Behavior</h4>
+            <div class="options-setting"><label for="cfobSortSelect">Sort By</label>
+              <select class="options-control" id="cfobSortSelect">
+                <option value="default">Server Order</option><option value="name_asc">Name (A-Z)</option><option value="name_desc">Name (Z-A)</option><option value="mtime_asc">Older First</option><option value="mtime_desc">Newer First</option>
+              </select>
+            </div>
+            <button class="options-setting options-toggle" id="cfobToggleHiddenBtn" type="button"><span>Hidden Folders</span><span class="options-toggle-status" id="cfobHiddenStatus"></span></button>
           </div>
         </section>
         <section class="options-tab-panel" id="cfobOptionsFolders" role="tabpanel" aria-labelledby="cfobFoldersTab">
