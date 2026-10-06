@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filterImages } from "../web/CFOB_Filter.js";
+import { filterImages } from "../../web/CFOB_Filter.js";
 
 const images = [
   {

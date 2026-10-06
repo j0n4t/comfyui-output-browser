@@ -7,6 +7,9 @@ export default class CFOB_Gallery {
     this.app = app;
     /** @type {CFOB_Image[]} */
     this.lastRenderedLoadedImages = [];
+    /** @type {string[]} Names as of the last render. A rename/move mutates img.name
+     * in place, so the object references above stay identical and cannot detect it. */
+    this.lastRenderedNames = [];
     /** @type {Map<string, HTMLElement>} */
     this.cardCache = new Map();
     /** @type {ResizeObserver | null} */
@@ -168,7 +171,8 @@ export default class CFOB_Gallery {
     });
 
     const sourceImagesChanged = this.lastRenderedLoadedImages.length !== this.app.loadedImages.length ||
-      this.lastRenderedLoadedImages.some((img, index) => img !== this.app.loadedImages[index]);
+      this.app.loadedImages.some((img, index) =>
+        img !== this.lastRenderedLoadedImages[index] || img.name !== this.lastRenderedNames[index]);
     const resultsChanged = previousFilteredImages.length !== this.app.filteredImages.length ||
       previousFilteredImages.some((img, index) => img !== this.app.filteredImages[index]);
     if (sourceImagesChanged || resultsChanged) this.renderGallery();
@@ -190,6 +194,7 @@ export default class CFOB_Gallery {
     const grid = this.app.$("cfobGalleryGrid");
     if (!grid) return;
     this.lastRenderedLoadedImages = this.app.loadedImages.slice();
+    this.lastRenderedNames = this.app.loadedImages.map(img => img.name);
 
     const activeElement = document.activeElement;
     const focusedCard = activeElement instanceof HTMLElement && grid.contains(activeElement)
@@ -225,14 +230,14 @@ export default class CFOB_Gallery {
       if (emptyState) emptyState.style.display = "none";
     }
 
-    // Clean up removed items from the cache if loaded images shrink (deleted from disk/refresh)
+    // Drop cached cards whose name is gone: deleted from disk/refresh, or renamed.
+    // A card bakes in the name, url and checkbox value at creation, so a renamed
+    // image needs a rebuilt card, not a reused one.
     const loadedNames = new Set(this.app.loadedImages.map(img => img.name));
-    if (this.cardCache.size > loadedNames.size) {
-      for (const [name, card] of this.cardCache.entries()) {
-        if (!loadedNames.has(name)) {
-          if (this.app.observer) this.app.observer.unobserve(card);
-          this.cardCache.delete(name);
-        }
+    for (const [name, card] of this.cardCache.entries()) {
+      if (!loadedNames.has(name)) {
+        if (this.app.observer) this.app.observer.unobserve(card);
+        this.cardCache.delete(name);
       }
     }
 
