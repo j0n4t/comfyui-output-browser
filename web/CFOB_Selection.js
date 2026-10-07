@@ -135,6 +135,7 @@ export default class CFOB_Selection {
       app.$("cfobActionOpen").style.display = isSingle ? 'inline-flex' : 'none';
       app.$("cfobActionRename").style.display = isSingle ? 'inline-flex' : 'none';
       app.$("cfobActionMove").style.display = 'inline-flex';
+      app.$("cfobActionSendChips").style.display = isSingle ? 'inline-flex' : 'none';
     } else {
       bar.classList.remove('show');
     }

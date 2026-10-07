@@ -176,12 +176,12 @@ export default class CFOB_ImageActions {
   async loadWorkflowImage(img) {
     const app = this.app;
     if (!img || !app.root) return;
-    
+
     // Check if running in standalone mode by verifying the global ComfyUI app context
     // @ts-ignore
     if (!window.app || typeof window.app.loadGraphData !== 'function') {
-        app.showToast("Load Workflow is disabled in standalone mode.");
-        return;
+      app.showToast("Load Workflow is disabled in standalone mode.");
+      return;
     }
 
     if (!img.isParsed) {
@@ -205,6 +205,105 @@ export default class CFOB_ImageActions {
     const filename = Array.from(app.selectedImages)[0];
     const img = app.loadedImages.find(i => i.name === filename);
     if (img) await this.loadWorkflowImage(img);
+  }
+
+  /**
+   * @param {{ label: string, paths: string } | null} fieldConfig
+   * @param {HTMLElement | null} anchorEl
+   * @param {string[] | null} images
+   */
+  async sendChipsToBasket(fieldConfig = null, anchorEl = null, images = null) {
+    const app = this.app;
+    const targetImages = images || Array.from(app.selectedImages);
+    if (targetImages.length !== 1) return;
+
+    if (!fieldConfig) {
+      const btn = anchorEl || app.$("cfobActionSendChips");
+      if (btn) this.showFieldPicker(btn, images);
+      return;
+    }
+
+    const chips = [];
+    for (const filename of targetImages) {
+      const img = app.loadedImages.find(i => i.name === filename);
+      if (!img) continue;
+
+      if (!img.isParsed) {
+        app.showToast("Loading metadata...");
+        await app.api.loadMetadata(img);
+      }
+
+      const chipsValue = app.resolveFieldValue(img, fieldConfig.paths);
+      if (chipsValue) {
+        const parsed = Array.isArray(chipsValue)
+          ? chipsValue
+          : String(chipsValue).split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+        chips.push(...parsed);
+      }
+    }
+
+    if (chips.length === 0) {
+      app.showToast("No chips found in selected value.");
+      return;
+    }
+
+    const pgNode = this._findPresetGalleryNode();
+    if (!pgNode) {
+      app.showToast("No Preset Gallery node found in the graph.");
+      return;
+    }
+
+    pgNode.dispatchEvent(new CustomEvent("preset-gallery:add-chips-to-new-tab", {
+      detail: { chips }
+    }));
+
+    app.showToast(`Sent ${chips.length} chip(s) to Preset Gallery.`);
+    app.selection.clearSelection();
+  }
+
+  /**
+   * Shows a popover menu to pick which custom field to use for chips.
+   * @param {HTMLElement} anchorEl
+   * @param {string[] | null} images
+   */
+  showFieldPicker(anchorEl, images = null) {
+    const app = this.app;
+    if (app.settings.activePopover) app.settings.activePopover.remove();
+
+    const rect = anchorEl.getBoundingClientRect();
+    const menu = document.createElement("div");
+    menu.className = "popover-menu";
+    menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+
+    let html = `<div class="popover-header">Send Chips From Field:</div>`;
+    app.settings.fieldConfigs.forEach((cfg, i) => {
+      html += `<button class="popover-item" data-idx="${i}"><span>${app.escapeHtml(cfg.label)}</span></button>`;
+    });
+
+    menu.innerHTML = html;
+    app.root?.appendChild(menu);
+
+    const menuHeight = menu.offsetHeight;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < menuHeight + 8) {
+      menu.style.top = `${Math.max(4, rect.top - menuHeight - 4)}px`;
+    } else {
+      menu.style.top = `${rect.bottom + 4}px`;
+    }
+    app.settings.activePopover = menu;
+
+    menu.querySelectorAll(".popover-item").forEach(b => {
+      b.addEventListener("click", () => {
+        const field = app.settings.fieldConfigs[/** @type {HTMLElement} */ (b).dataset.idx];
+        app.settings.activePopover?.remove();
+        app.settings.activePopover = null;
+        if (field) this.sendChipsToBasket(field, null, images);
+      });
+    });
+  }
+
+  _findPresetGalleryNode() {
+    return document.querySelector('.j0n4t-pg-basket-container');
   }
 
   /**

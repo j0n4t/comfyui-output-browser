@@ -48,6 +48,7 @@ export const CFOB_FULL_VIEW_HTML = `
                 <button class="btn" id="cfobFVActionDownload" title="Download" aria-label="Download">${ICONS.download}<span>Download</span></button>
                 <button class="btn" id="cfobFVActionRename" title="Rename" aria-label="Rename">${ICONS.rename}<span>Rename</span></button>
                 <button class="btn" id="cfobFVActionMove" title="Move" aria-label="Move">${ICONS.move}<span>Move</span></button>
+                <button class="btn" id="cfobFVActionSendChips" title="Send Chips to Preset Gallery" aria-label="Send Chips to Preset Gallery">${ICONS.basket}<span>Chips</span></button>
                 <button class="btn btn-danger" id="cfobFVActionDelete" title="Delete" aria-label="Delete">${ICONS.trash}<span>Delete</span></button>
               </div>
               <button class="icon-btn full-view-actions-more-btn" id="cfobFullViewActionsMoreBtn" title="Image actions" aria-label="Image actions" aria-haspopup="true" aria-expanded="false">${ICONS.more}</button>
@@ -494,6 +495,13 @@ export default class CFOB_FullView {
     });
     this.app.$("cfobFVActionRename").addEventListener('click', () => this.renameFullViewImage());
     this.app.$("cfobFVActionMove").addEventListener('click', () => this.moveFullViewImage());
+    this.app.$("cfobFVActionSendChips").addEventListener('click', (e) => {
+      e.stopPropagation();
+      const btn = /** @type {HTMLElement} */ (e.currentTarget);
+      const img = this.app.filteredImages[this.currentImageIndex];
+      const images = img ? [img.name] : null;
+      this.app.actions.sendChipsToBasket(null, btn, images);
+    });
     this.app.$("cfobFVActionDelete").addEventListener('click', () => this.deleteFullViewImage());
 
   }

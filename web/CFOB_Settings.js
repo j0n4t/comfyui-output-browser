@@ -277,7 +277,8 @@ export const CFOB_SETTINGS_MODALS_HTML = `
 `;
 
 export const DEFAULT_FIELDS = [
-  { label: "Positive Prompt", paths: "Positive Prompt.text, CLIPTextEncode.text, 6.inputs.text, Preset Gallery.evaluated_preset" },
+  { label: "Prompt", paths: "Positive Prompt.text, CLIPTextEncode.text, 6.inputs.text, Preset Gallery.evaluated_preset" },
+  { label: "Chips", paths: "PresetGalleryNode.preset_selection" },
   { label: "Negative Prompt", paths: "Negative Prompt.text, CLIPTextEncode[1].text, 7.inputs.text" },
   { label: "Seed", paths: "KSampler.seed, KSamplerAdvanced.seed, 3.inputs.seed" },
   { label: "Steps / CFG", paths: "KSampler.steps, KSamplerAdvanced.steps" },

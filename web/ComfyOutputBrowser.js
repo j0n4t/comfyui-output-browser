@@ -45,6 +45,7 @@ const BROWSER_HTML = `
   <button class="btn" id="cfobActionDownload">${ICONS.download}<span>Download</span></button>
   <button class="btn" id="cfobActionRename">${ICONS.rename}<span>Rename</span></button>
   <button class="btn" id="cfobActionMove">${ICONS.move}<span>Move</span></button>
+  <button class="btn" id="cfobActionSendChips">${ICONS.basket}<span>Send Chips</span></button>
   <button class="btn btn-danger" id="cfobActionDelete">${ICONS.trash}<span>Delete</span></button>
   <div style="width: 1px; height: 1.25em; background: var(--color-border);"></div>
   <button class="icon-btn" id="cfobActionClear" title="Clear Selection">${ICONS.close}</button>
@@ -325,6 +326,10 @@ export default class ComfyOutputBrowser {
     this.$("cfobActionDelete").addEventListener('click', () => this.actions.deleteSelected());
     this.$("cfobActionRename").addEventListener('click', () => this.actions.renameSelected());
     this.$("cfobActionMove").addEventListener('click', () => this.actions.moveSelected());
+    this.$("cfobActionSendChips").addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.actions.sendChipsToBasket(null, e.currentTarget);
+    });
     this.$("cfobActionDownload").addEventListener('click', () => this.actions.downloadSelected());
     this.$("cfobActionOpen").addEventListener('click', () => this.actions.loadWorkflowSelected());
     this.$("cfobActionInspect").addEventListener('click', () => this.actions.inspectSelected());
