@@ -443,7 +443,11 @@ export default class ComfyOutputBrowser {
       } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
         if (!noModalOpen) return;
 
-        if (e.altKey && (key === '+' || key === '=' || e.code === 'NumpadAdd')) {
+        if (e.shiftKey && key === 'f') {
+          e.preventDefault(); e.stopPropagation();
+          this.settings.cycleBrowserMode();
+        }
+        else if (e.altKey && (key === '+' || key === '=' || e.code === 'NumpadAdd')) {
           e.preventDefault(); e.stopPropagation();
           const viewMode = this.settings.getGalleryViewMode();
           if (viewMode === 'compact') {

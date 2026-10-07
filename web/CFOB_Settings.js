@@ -515,6 +515,12 @@ export default class COB_Settings {
     this.app.root?.classList.toggle('constrain-full-view', this.constrainFullView);
   }
 
+  cycleBrowserMode() {
+    const modes = ['full', 'right', 'left', 'down', 'up'];
+    const idx = modes.indexOf(this.browserMode);
+    this.setBrowserMode(modes[(idx + 1) % modes.length]);
+  }
+
   bindEvents() {
     this.modals.bindEvents();
     this.bindOptionsModal();
