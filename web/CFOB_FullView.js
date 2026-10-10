@@ -106,7 +106,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .prev-btn { left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; }
   #cfob-root .next-btn { right: 0; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 
-  #cfob-root .full-view-sidebar-resizer { flex: 0 0 7px; position: relative; cursor: col-resize; touch-action: none; z-index: 1; }
+  #cfob-root .full-view-sidebar-resizer { flex: 0 0 1px; position: relative; cursor: col-resize; touch-action: none; z-index: 1; }
   #cfob-root .full-view-sidebar-resizer::after { content: ""; position: absolute; inset: 0 2px; background: var(--color-border); opacity: 0; transition: opacity 0.15s; }
   #cfob-root .full-view-sidebar-resizer:hover::after, #cfob-root .full-view-sidebar-resizer:focus-visible::after, #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar-resizer::after { opacity: 1; }
   #cfob-root .full-view-sidebar { width: var(--full-view-sidebar-width, 360px); min-width: 0; flex: 0 0 auto; background: var(--color-bg-panel); border-left: 1px solid var(--color-border); display: flex; flex-direction: column; transition: all 0.3s; overflow: hidden; container: cfob-fv-sidebar / inline-size; }
