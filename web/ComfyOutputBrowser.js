@@ -197,6 +197,8 @@ export default class ComfyOutputBrowser {
 
   showWithTransition() {
     if (!this.root) return;
+    const launcher = document.getElementById("cfob-launcher-btn");
+    if (launcher) launcher.classList.add('side-bar-button-selected');
     this.fetchServerImages();
     clearTimeout(this.transitionTimer);
     this.root.style.display = 'flex';
@@ -211,8 +213,9 @@ export default class ComfyOutputBrowser {
 
   hideWithTransition() {
     if (!this.root) return;
+    const launcher = document.getElementById("cfob-launcher-btn");
+    if (launcher) launcher.classList.remove('side-bar-button-selected');
     if (this.root.contains(document.activeElement)) {
-      const launcher = document.getElementById("cfob-launcher-btn");
       if (launcher instanceof HTMLElement) launcher.focus();
       else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     }
@@ -236,42 +239,105 @@ export default class ComfyOutputBrowser {
   }
 
   injectLauncherButton() {
-    const updateButtonPlacement = (isAppMode = false) => {
+    let canvasContObserved = false;
+
+    const updateButtonPlacement = () => {
       let launcherBtn = document.getElementById("cfob-launcher-btn");
       if (!launcherBtn) {
         launcherBtn = document.createElement("button");
         launcherBtn.id = "cfob-launcher-btn";
-        launcherBtn.innerHTML = ICONS.logo;
         launcherBtn.title = "Browse Outputs";
+        launcherBtn.setAttribute("aria-label", "Browse Outputs");
         launcherBtn.onclick = () => this.toggleUi();
       }
-      if (isAppMode) {
-        launcherBtn.className = "floating";
-        document.body.appendChild(launcherBtn);
-      } else {
-        const comfyMenu = document.querySelector(".comfy-menu");
-        if (comfyMenu) {
-          launcherBtn.className = "bg-secondary-background border-none hover:bg-secondary-background-hover inline-flex items-center justify-center size-8";
-          launcherBtn.style.border = "4px";
-          // @ts-ignore
-          const standardMenuTarget = window.app?.menu?.actionsGroup?.element || window.app?.menu?.settingsGroup?.element || comfyMenu;
-          standardMenuTarget?.appendChild(launcherBtn);
-        } else {
-          launcherBtn.className = "floating";
-          document.body.appendChild(launcherBtn);
+
+      // Check if sidebar container is present (works in both Graph mode and App mode)
+      const sidebarTarget =
+        document.querySelector('[data-testid="sidebar-top-group"]') ||
+        document.querySelector('nav.side-tool-bar-container .sidebar-item-group') ||
+        document.querySelector('.side-tool-bar-container .sidebar-item-group') ||
+        document.querySelector('nav.side-tool-bar-container') ||
+        document.querySelector('.side-tool-bar-container');
+
+      if (sidebarTarget) {
+        launcherBtn.className = "side-bar-button cursor-pointer border-none bg-transparent text-muted-foreground hover:bg-secondary-background-hover py-2";
+        launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
+        launcherBtn.style.border = "";
+
+        if (!launcherBtn.querySelector('.side-bar-button-content')) {
+          launcherBtn.innerHTML = `
+            <div class="side-bar-button-content flex flex-col items-center gap-2 py-2">
+              <div class="sidebar-icon-wrapper relative">
+                <span class="side-bar-button-icon">${ICONS.logo}</span>
+              </div>
+              <span class="side-bar-button-label line-clamp-2 w-max max-w-[calc(var(--sidebar-width)-var(--sidebar-padding))] text-center text-2xs wrap-break-word whitespace-normal">Outputs</span>
+            </div>
+          `;
         }
+
+        const templatesBtn = sidebarTarget.querySelector('.templates-tab-button, [data-testid="templates-button"]');
+        const desiredNextSibling = templatesBtn || null;
+        if (launcherBtn.parentElement !== sidebarTarget || launcherBtn.nextElementSibling !== desiredNextSibling) {
+          if (templatesBtn) {
+            sidebarTarget.insertBefore(launcherBtn, templatesBtn);
+          } else {
+            sidebarTarget.appendChild(launcherBtn);
+          }
+        }
+        return;
+      }
+
+      // Fallback 1: Legacy Comfy menu
+      const comfyMenu = document.querySelector(".comfy-menu");
+      // @ts-ignore
+      const standardMenuTarget = window.app?.menu?.actionsGroup?.element || window.app?.menu?.settingsGroup?.element || comfyMenu;
+      if (standardMenuTarget) {
+        launcherBtn.className = "bg-secondary-background border-none hover:bg-secondary-background-hover inline-flex items-center justify-center size-8";
+        launcherBtn.style.border = "4px";
+        launcherBtn.innerHTML = ICONS.logo;
+        if (launcherBtn.parentElement !== standardMenuTarget) {
+          standardMenuTarget.appendChild(launcherBtn);
+        }
+        return;
+      }
+
+      // Fallback 2: Floating button
+      launcherBtn.className = "floating";
+      launcherBtn.style.border = "";
+      launcherBtn.innerHTML = ICONS.logo;
+      if (launcherBtn.parentElement !== document.body) {
+        document.body.appendChild(launcherBtn);
       }
     };
 
     updateButtonPlacement();
 
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let debounceTimer = null;
     const observer = new MutationObserver(() => {
-      const isAppMode = document.getElementById('graph-canvas-container')?.style.display === 'none';
-      updateButtonPlacement(isAppMode);
+      if (debounceTimer) return;
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        updateButtonPlacement();
+        if (!canvasContObserved) {
+          const canvasCont = document.getElementById('graph-canvas-container');
+          if (canvasCont) {
+            observer.observe(canvasCont, { attributes: true, attributeFilter: ['style', 'class'] });
+            canvasContObserved = true;
+          }
+        }
+      }, 50);
     });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
     const canvasCont = document.getElementById('graph-canvas-container');
     if (canvasCont) {
-      observer.observe(canvasCont, { attributes: true });
+      observer.observe(canvasCont, { attributes: true, attributeFilter: ['style', 'class'] });
+      canvasContObserved = true;
     }
   }
 
