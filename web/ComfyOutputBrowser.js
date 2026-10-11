@@ -239,7 +239,120 @@ export default class ComfyOutputBrowser {
   }
 
   injectLauncherButton() {
+    // Clean up previous observer to avoid accumulation
+    if (this._launcherObserver) {
+      this._launcherObserver.disconnect();
+      this._launcherObserver = null;
+    }
+
     let canvasContObserved = false;
+
+    const SIDEBAR_SELECTORS = [
+      '[data-testid="sidebar-top-group"]',
+      'nav.side-tool-bar-container .sidebar-item-group',
+      '.side-tool-bar-container .sidebar-item-group',
+      'nav.side-tool-bar-container',
+      '.side-tool-bar-container',
+    ];
+    const ACTION_BAR_SELECTORS = [
+      '[data-testid="action-bar-buttons"]',
+      '[data-testid="action-bar"]',
+      '.comfy-menu',
+    ];
+
+    const findSidebarTarget = () => {
+      for (const sel of SIDEBAR_SELECTORS) {
+        const el = document.querySelector(sel);
+        if (el) return el;
+      }
+      return null;
+    };
+
+    const findActionBarTarget = () => {
+      for (const sel of ACTION_BAR_SELECTORS) {
+        const el = document.querySelector(sel);
+        if (el) return el;
+      }
+      return null;
+    };
+
+    // In ComfyUI App mode the top bar exposes a login button (or the current-user
+    // button when signed in). Place the launcher next to it when available.
+    const LOGIN_BUTTON_SELECTOR = '[data-testid="login-button"], [data-testid="current-user-button"]';
+    const findLoginAnchor = () => document.querySelector(LOGIN_BUTTON_SELECTOR);
+
+    const SIDEBAR_CLASS = "side-bar-button cursor-pointer border-none bg-transparent text-muted-foreground hover:bg-secondary-background-hover py-2";
+    const ACTION_BAR_CLASS = "cfob-launcher-actionbar";
+    const SIDEBAR_HTML = `
+      <div class="side-bar-button-content flex flex-col items-center gap-2 py-2">
+        <div class="sidebar-icon-wrapper relative">
+          <span class="side-bar-button-icon">${ICONS.logo}</span>
+        </div>
+        <span class="side-bar-button-label line-clamp-2 w-max max-w-[calc(var(--sidebar-width)-var(--sidebar-padding))] text-center text-2xs wrap-break-word whitespace-normal">Outputs</span>
+      </div>
+    `;
+
+    const applyFloatingPosition = (btn) => {
+      const saved = localStorage.getItem('cfob_launcher_pos');
+      if (saved) {
+        try {
+          const pos = JSON.parse(saved);
+          btn.style.left = typeof pos.left === 'number' ? `${pos.left}px` : '';
+          btn.style.top = typeof pos.top === 'number' ? `${pos.top}px` : '';
+          btn.style.right = typeof pos.right === 'number' ? `${pos.right}px` : '';
+          btn.style.bottom = typeof pos.bottom === 'number' ? `${pos.bottom}px` : '';
+        } catch { /* ignore */ }
+      }
+    };
+
+    const setupFloatingDrag = (btn) => {
+      let startX, startY, startLeft, startTop, dragging = false, moved = false;
+
+      btn.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        dragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        // Capture the base position from the inline styles (unaffected by the
+        // hover transform), falling back to the measured rect.
+        const rect = btn.getBoundingClientRect();
+        startLeft = btn.style.left ? parseFloat(btn.style.left) : rect.left;
+        startTop = btn.style.top ? parseFloat(btn.style.top) : rect.top;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+        if (!moved) {
+          // First real move: pin the position so it becomes the drag origin.
+          moved = true;
+          btn.style.left = `${startLeft}px`;
+          btn.style.top = `${startTop}px`;
+          btn.style.right = '';
+          btn.style.bottom = '';
+          document.body.style.userSelect = 'none';
+        }
+        const newLeft = Math.max(0, Math.min(window.innerWidth - btn.offsetWidth, startLeft + dx));
+        const newTop = Math.max(0, Math.min(window.innerHeight - btn.offsetHeight, startTop + dy));
+        btn.style.left = `${newLeft}px`;
+        btn.style.top = `${newTop}px`;
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        document.body.style.userSelect = '';
+        if (moved) {
+          const rect = btn.getBoundingClientRect();
+          localStorage.setItem('cfob_launcher_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+          // Suppress the click that follows a drag so it doesn't toggle the panel
+          btn._cfobDragEndedAt = Date.now();
+        }
+      });
+    };
 
     const updateButtonPlacement = () => {
       let launcherBtn = document.getElementById("cfob-launcher-btn");
@@ -248,73 +361,85 @@ export default class ComfyOutputBrowser {
         launcherBtn.id = "cfob-launcher-btn";
         launcherBtn.title = "Browse Outputs";
         launcherBtn.setAttribute("aria-label", "Browse Outputs");
-        launcherBtn.onclick = () => this.toggleUi();
+        launcherBtn.onclick = () => {
+          // Ignore the click synthesized right after a drag ends
+          if (launcherBtn._cfobDragEndedAt && Date.now() - launcherBtn._cfobDragEndedAt < 300) return;
+          this.toggleUi();
+        };
       }
 
-      // Check if sidebar container is present (works in both Graph mode and App mode)
-      const sidebarTarget =
-        document.querySelector('[data-testid="sidebar-top-group"]') ||
-        document.querySelector('nav.side-tool-bar-container .sidebar-item-group') ||
-        document.querySelector('.side-tool-bar-container .sidebar-item-group') ||
-        document.querySelector('nav.side-tool-bar-container') ||
-        document.querySelector('.side-tool-bar-container');
+      const placement = this.settings.launcherPlacement;
 
-      if (sidebarTarget) {
-        launcherBtn.className = "side-bar-button cursor-pointer border-none bg-transparent text-muted-foreground hover:bg-secondary-background-hover py-2";
-        launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
-        launcherBtn.style.border = "";
-
-        if (!launcherBtn.querySelector('.side-bar-button-content')) {
-          launcherBtn.innerHTML = `
-            <div class="side-bar-button-content flex flex-col items-center gap-2 py-2">
-              <div class="sidebar-icon-wrapper relative">
-                <span class="side-bar-button-icon">${ICONS.logo}</span>
-              </div>
-              <span class="side-bar-button-label line-clamp-2 w-max max-w-[calc(var(--sidebar-width)-var(--sidebar-padding))] text-center text-2xs wrap-break-word whitespace-normal">Outputs</span>
-            </div>
-          `;
-        }
-
-        const templatesBtn = sidebarTarget.querySelector('.templates-tab-button, [data-testid="templates-button"]');
-        const desiredNextSibling = templatesBtn || null;
-        if (launcherBtn.parentElement !== sidebarTarget || launcherBtn.nextElementSibling !== desiredNextSibling) {
-          if (templatesBtn) {
-            sidebarTarget.insertBefore(launcherBtn, templatesBtn);
-          } else {
-            sidebarTarget.appendChild(launcherBtn);
+      if (placement === 'sidebar') {
+        const sidebarTarget = findSidebarTarget();
+        if (sidebarTarget) {
+          if (launcherBtn.className !== SIDEBAR_CLASS) launcherBtn.className = SIDEBAR_CLASS;
+          launcherBtn.style.border = "";
+          launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
+          if (!launcherBtn.querySelector('.side-bar-button-content')) {
+            launcherBtn.innerHTML = SIDEBAR_HTML;
           }
+          const templatesBtn = sidebarTarget.querySelector('.templates-tab-button, [data-testid="templates-button"]');
+          const desiredNextSibling = templatesBtn || null;
+          if (launcherBtn.parentElement !== sidebarTarget || launcherBtn.nextElementSibling !== desiredNextSibling) {
+            if (templatesBtn) {
+              sidebarTarget.insertBefore(launcherBtn, templatesBtn);
+            } else {
+              sidebarTarget.appendChild(launcherBtn);
+            }
+          }
+          return;
         }
-        return;
+        // Sidebar not available — fall through to floating
       }
 
-      // Fallback 1: Legacy Comfy menu
-      const comfyMenu = document.querySelector(".comfy-menu");
-      // @ts-ignore
-      const standardMenuTarget = window.app?.menu?.actionsGroup?.element || window.app?.menu?.settingsGroup?.element || comfyMenu;
-      if (standardMenuTarget) {
-        launcherBtn.className = "bg-secondary-background border-none hover:bg-secondary-background-hover inline-flex items-center justify-center size-8";
-        launcherBtn.style.border = "4px";
-        launcherBtn.innerHTML = ICONS.logo;
-        if (launcherBtn.parentElement !== standardMenuTarget) {
-          standardMenuTarget.appendChild(launcherBtn);
+      if (placement === 'action-bar') {
+        const loginAnchor = findLoginAnchor();
+        // @ts-ignore
+        const standardMenuTarget = window.app?.menu?.actionsGroup?.element || window.app?.menu?.settingsGroup?.element;
+        const actionBarTarget = loginAnchor ? loginAnchor.parentElement : (findActionBarTarget() || standardMenuTarget);
+        if (actionBarTarget) {
+          if (!launcherBtn.classList.contains('cfob-launcher-actionbar')) {
+            launcherBtn.className = ACTION_BAR_CLASS;
+          }
+          launcherBtn.style.border = "";
+          if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
+          launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
+          if (loginAnchor) {
+            // Sit immediately to the left of the login/current-user button.
+            if (launcherBtn.nextElementSibling !== loginAnchor) {
+              loginAnchor.parentElement.insertBefore(launcherBtn, loginAnchor);
+            }
+          } else if (launcherBtn.parentElement !== actionBarTarget) {
+            actionBarTarget.appendChild(launcherBtn);
+          }
+          return;
         }
-        return;
+        // Action bar not available — fall through to floating
       }
 
-      // Fallback 2: Floating button
-      launcherBtn.className = "floating";
+      // Floating placement (or fallback)
+      if (launcherBtn.className !== "floating") launcherBtn.className = "floating";
       launcherBtn.style.border = "";
-      launcherBtn.innerHTML = ICONS.logo;
+      if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
       if (launcherBtn.parentElement !== document.body) {
         document.body.appendChild(launcherBtn);
       }
+      applyFloatingPosition(launcherBtn);
     };
 
     updateButtonPlacement();
 
+    // Set up floating drag once (track via property to avoid re-adding listeners)
+    const launcherBtn = document.getElementById("cfob-launcher-btn");
+    if (launcherBtn && !launcherBtn._dragSetup) {
+      launcherBtn._dragSetup = true;
+      setupFloatingDrag(launcherBtn);
+    }
+
     /** @type {ReturnType<typeof setTimeout> | null} */
     let debounceTimer = null;
-    const observer = new MutationObserver(() => {
+    this._launcherObserver = new MutationObserver(() => {
       if (debounceTimer) return;
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
@@ -322,21 +447,21 @@ export default class ComfyOutputBrowser {
         if (!canvasContObserved) {
           const canvasCont = document.getElementById('graph-canvas-container');
           if (canvasCont) {
-            observer.observe(canvasCont, { attributes: true, attributeFilter: ['style', 'class'] });
+            this._launcherObserver?.observe(canvasCont, { attributes: true, attributeFilter: ['style', 'class'] });
             canvasContObserved = true;
           }
         }
       }, 50);
     });
 
-    observer.observe(document.body, {
+    this._launcherObserver.observe(document.body, {
       childList: true,
       subtree: true
     });
 
     const canvasCont = document.getElementById('graph-canvas-container');
     if (canvasCont) {
-      observer.observe(canvasCont, { attributes: true, attributeFilter: ['style', 'class'] });
+      this._launcherObserver.observe(canvasCont, { attributes: true, attributeFilter: ['style', 'class'] });
       canvasContObserved = true;
     }
   }

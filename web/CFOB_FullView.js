@@ -138,13 +138,6 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   }
   #cfob-root .sidebar-body { padding: 0.4em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
 
-  #cfob-launcher-btn.floating { position: fixed; top: 0.2em; right: 3em; z-index: 9998; background: var(--color-bg-panel); color: var(--color-text-inverse); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 2em; height: 2em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); }
-  #cfob-launcher-btn.floating:hover { background: var(--color-border); }
-  #cfob-launcher-btn.side-bar-button { width: 100%; display: flex; align-items: center; justify-content: center; padding: 0; }
-  #cfob-launcher-btn.side-bar-button .side-bar-button-icon { display: flex; align-items: center; justify-content: center; font-size: var(--sidebar-icon-size, 1.25rem); }
-  #cfob-launcher-btn.side-bar-button .side-bar-button-icon svg { width: var(--sidebar-icon-size, 1.25rem); height: var(--sidebar-icon-size, 1.25rem); }
-  .side-tool-bar-container.small-sidebar #cfob-launcher-btn .side-bar-button-label { display: none; }
-
   #cfob-root .full-view-layout.ui-hidden .full-view-top-bar,  #cfob-root .full-view-layout.ui-hidden .nav-btn { opacity: 0; pointer-events: none; }
   #cfob-root .full-view-layout .full-view-top-bar, #cfob-root .full-view-layout .nav-btn, #cfob-root .full-view-layout .full-view-sidebar { transition: opacity 0.2s ease, width 0.3s; }
 

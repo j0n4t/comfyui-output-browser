@@ -167,6 +167,16 @@ export const CFOB_SETTINGS_MODALS_HTML = `
             <button class="options-setting options-toggle" id="cfobToggleConstrainFullViewBtn" type="button"><span>Constrain Full View to Panel</span><span class="options-toggle-status" id="cfobConstrainStatus"></span></button>
           </div>
           <div class="options-section">
+            <h4 class="options-section-title">Launcher Button</h4>
+            <div class="options-setting"><label for="cfobLauncherPlacement">Placement</label>
+              <select class="options-control" id="cfobLauncherPlacement">
+                <option value="sidebar">Sidebar</option>
+                <option value="action-bar">Action Bar</option>
+                <option value="floating">Floating (draggable)</option>
+              </select>
+            </div>
+          </div>
+          <div class="options-section">
             <h4 class="options-section-title">Behavior</h4>
             <div class="options-setting"><label for="cfobSortSelect">Sort By</label>
               <select class="options-control" id="cfobSortSelect">
@@ -305,6 +315,7 @@ export default class COB_Settings {
     this.sidebarWidth = Number(localStorage.getItem('comfy_folder_browser_width') || 450);
     this.sidebarHeight = Number(localStorage.getItem('comfy_folder_browser_height') || 350);
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
+    this.launcherPlacement = localStorage.getItem('cfob_launcher_placement') || 'sidebar';
     this.gridSize = Number(localStorage.getItem('cfob_grid_size') || 380);
     this.masonryEnabled = localStorage.getItem('cfob_masonry_enabled') !== 'false';
     /** @type {'vertical' | 'horizontal'} */
@@ -516,6 +527,13 @@ export default class COB_Settings {
     this.app.root?.classList.toggle('constrain-full-view', this.constrainFullView);
   }
 
+  /** @param {'sidebar' | 'action-bar' | 'floating'} placement */
+  setLauncherPlacement(placement) {
+    this.launcherPlacement = placement;
+    localStorage.setItem('cfob_launcher_placement', placement);
+    this.app.injectLauncherButton();
+  }
+
   cycleBrowserMode() {
     const modes = ['full', 'right', 'left', 'down', 'up'];
     const idx = modes.indexOf(this.browserMode);
@@ -704,6 +722,7 @@ export default class COB_Settings {
       compactOffsetSlider.value = String(this.compactSizeOffset);
       this.app.$("cfobCompactOffsetVal").textContent = `${this.compactSizeOffset}px`;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobModeSelect")).value = this.browserMode;
+      /** @type {HTMLSelectElement} */ (this.app.$("cfobLauncherPlacement")).value = this.launcherPlacement;
       this.syncGridFillOrderControl();
       /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollDirectionSelect")).value = this.scrollDir;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobSortSelect")).value = this.currentSort;
@@ -753,6 +772,9 @@ export default class COB_Settings {
     this.app.$("cfobModeSelect").addEventListener('change', (event) => {
       this.setBrowserMode(/** @type {HTMLSelectElement} */(event.target).value);
       syncSizeControls();
+    });
+    this.app.$("cfobLauncherPlacement").addEventListener('change', (event) => {
+      this.setLauncherPlacement(/** @type {HTMLSelectElement} */(event.target).value);
     });
     this.app.$("cfobPanelWidthSlider").addEventListener('input', (event) => {
       this.setSidebarSize(Number(/** @type {HTMLInputElement} */(event.target).value), null);
