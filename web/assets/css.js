@@ -91,10 +91,13 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root *, #cfob-root *::before, #cfob-root *::after { box-sizing: border-box; }
 
   #cfob-root.mode-full { inset: 0; width: 100vw; height: 100vh; border: none; }
-  #cfob-root.mode-right { top: 0; right: 0; bottom: 0; height: 100vh; border-left: 1px solid var(--color-border); }
-  #cfob-root.mode-left { top: 0; left: 0; bottom: 0; height: 100vh; border-right: 1px solid var(--color-border); }
-  #cfob-root.mode-down { left: 0; right: 0; bottom: 0; width: 100vw; border-top: 1px solid var(--color-border); }
-  #cfob-root.mode-up { top: 0; left: 0; right: 0; width: 100vw; border-bottom: 1px solid var(--color-border); }
+  #cfob-root.mode-right { top: var(--cfob-offset-top, 0px); right: var(--cfob-offset-right, 0px); bottom: var(--cfob-offset-bottom, 0px); height: auto; border-left: 1px solid var(--color-border); }
+  #cfob-root.mode-left { top: var(--cfob-offset-top, 0px); left: var(--cfob-offset-left, 0px); bottom: var(--cfob-offset-bottom, 0px); height: auto; border-right: 1px solid var(--color-border); }
+  #cfob-root.mode-down { left: var(--cfob-offset-left, 0px); right: var(--cfob-offset-right, 0px); bottom: var(--cfob-offset-bottom, 0px); width: auto; border-top: 1px solid var(--color-border); }
+  #cfob-root.mode-up { top: var(--cfob-offset-top, 0px); left: var(--cfob-offset-left, 0px); right: var(--cfob-offset-right, 0px); width: auto; border-bottom: 1px solid var(--color-border); }
+
+  /* Detached look when the panel is offset from the ComfyUI borders. */
+  #cfob-root.panel-offset { border-radius: var(--radius-xl); border: 1px solid var(--color-border); box-shadow: 0 0.5em 1.5em rgba(0,0,0,0.5); }
 
   #cfob-root.cfob-hidden { opacity: 0; pointer-events: none; }
   #cfob-root.mode-full.cfob-hidden { transform: scale(0.95); }

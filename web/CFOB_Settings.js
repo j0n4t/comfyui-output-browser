@@ -163,6 +163,8 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <input type="range" class="options-slider" id="cfobPanelHeightSlider" min="200" step="10" aria-describedby="cfobPanelSizeHint">
             </div>
             <p id="cfobPanelSizeHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">Width applies to left and right drawers; height applies to top and bottom drawers.</p>
+            <button class="options-setting options-toggle" id="cfobTogglePanelOffsetsBtn" type="button"><span>Avoid ComfyUI Borders (Panel Offsets)</span><span class="options-toggle-status" id="cfobPanelOffsetsStatus"></span></button>
+            <p id="cfobPanelOffsetsHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">When on, drawers are inset from the sidebar and top bar so they don't cover ComfyUI controls.</p>
             <button class="options-setting options-toggle" id="cfobToggleAutoHideBtn" type="button"><span>Auto-Hide Panel</span><span class="options-toggle-status" id="cfobAutoHideStatus"></span></button>
             <button class="options-setting options-toggle" id="cfobToggleConstrainFullViewBtn" type="button"><span>Constrain Full View to Panel</span><span class="options-toggle-status" id="cfobConstrainStatus"></span></button>
           </div>
@@ -315,6 +317,7 @@ export default class COB_Settings {
     this.sidebarWidth = Number(localStorage.getItem('comfy_folder_browser_width') || 450);
     this.sidebarHeight = Number(localStorage.getItem('comfy_folder_browser_height') || 350);
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
+    this.panelOffsets = localStorage.getItem('cfob_panel_offsets') === 'true';
     this.launcherPlacement = localStorage.getItem('cfob_launcher_placement') || 'sidebar';
     this.gridSize = Number(localStorage.getItem('cfob_grid_size') || 380);
     this.masonryEnabled = localStorage.getItem('cfob_masonry_enabled') !== 'false';
@@ -508,8 +511,10 @@ export default class COB_Settings {
 
     if (mode === 'right' || mode === 'left') {
       this.app.root.style.width = `${this.sidebarWidth}px`;
+      this.app.updateSidebarSize(this.sidebarWidth, null);
     } else if (mode === 'up' || mode === 'down') {
       this.app.root.style.height = `${this.sidebarHeight}px`;
+      this.app.updateSidebarSize(null, this.sidebarHeight);
     }
   }
 
@@ -532,6 +537,58 @@ export default class COB_Settings {
     this.launcherPlacement = placement;
     localStorage.setItem('cfob_launcher_placement', placement);
     this.app.injectLauncherButton();
+  }
+
+  /**
+   * Inset the drawers so they don't cover ComfyUI's border chrome (sidebar, top bar).
+   * Offsets are measured from the live DOM so they track the actual UI.
+   * @param {boolean} enabled
+   */
+  setPanelOffsets(enabled) {
+    this.panelOffsets = Boolean(enabled);
+    localStorage.setItem('cfob_panel_offsets', String(this.panelOffsets));
+    if (!this.app.root) return;
+
+    // A small margin on every side so the panel reads as detached, on top of the
+    // measured ComfyUI chrome offsets.
+    const MARGIN = 8;
+    /** @type {Record<string, string>} */
+    const vars = {
+      '--cfob-offset-top': '0px',
+      '--cfob-offset-right': '0px',
+      '--cfob-offset-bottom': '0px',
+      '--cfob-offset-left': '0px',
+    };
+
+    this.app.root.classList.toggle('panel-offset', this.panelOffsets);
+
+    if (this.panelOffsets) {
+      const m = (/** @type {string} */ sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 ? r : null;
+      };
+
+      let left = MARGIN, top = MARGIN, right = MARGIN, bottom = MARGIN;
+
+      const sidebar = m('.side-tool-bar-container') || m('[data-testid="side-toolbar"]');
+      if (sidebar && sidebar.left <= 1) left += sidebar.right;
+
+      // The top bar is a floating strip near the top edge (top may be > 0); inset
+      // the panel below it whenever it occupies the top region of the viewport.
+      const topBar = m('[data-testid="top-menu-actionbars"]') || m('[data-testid="action-bar-card"]');
+      if (topBar && topBar.top < 100) top += topBar.bottom;
+
+      vars['--cfob-offset-left'] = `${Math.round(left)}px`;
+      vars['--cfob-offset-top'] = `${Math.round(top)}px`;
+      vars['--cfob-offset-right'] = `${Math.round(right)}px`;
+      vars['--cfob-offset-bottom'] = `${Math.round(bottom)}px`;
+    }
+
+    for (const [key, value] of Object.entries(vars)) {
+      this.app.root.style.setProperty(key, value);
+    }
   }
 
   cycleBrowserMode() {
@@ -728,6 +785,7 @@ export default class COB_Settings {
       /** @type {HTMLSelectElement} */ (this.app.$("cfobSortSelect")).value = this.currentSort;
       setStatus("cfobMasonryStatus", this.masonryEnabled);
       setStatus("cfobAutoHideStatus", this.autoHide);
+      setStatus("cfobPanelOffsetsStatus", this.panelOffsets);
       setStatus("cfobConstrainStatus", this.constrainFullView);
       setStatus("cfobHiddenStatus", this.showHiddenFolders, 'Shown', 'Hidden');
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobHiddenFoldersInput")).value = this.hiddenFolders.join("\n");
@@ -807,6 +865,11 @@ export default class COB_Settings {
       localStorage.setItem('comfy_folder_browser_auto_hide', String(this.autoHide));
       setStatus("cfobAutoHideStatus", this.autoHide);
       this.app.showToast(`Auto-hide ${this.autoHide ? 'enabled' : 'disabled'}`);
+    });
+    this.app.$("cfobTogglePanelOffsetsBtn").addEventListener('click', () => {
+      this.setPanelOffsets(!this.panelOffsets);
+      setStatus("cfobPanelOffsetsStatus", this.panelOffsets);
+      this.app.showToast(`Panel offsets ${this.panelOffsets ? 'enabled' : 'disabled'}`);
     });
     this.app.$("cfobToggleConstrainFullViewBtn").addEventListener('click', () => {
       this.setConstrainFullView(!this.constrainFullView);

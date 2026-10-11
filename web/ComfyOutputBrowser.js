@@ -152,6 +152,7 @@ export default class ComfyOutputBrowser {
     this.settings.setScrollDirection(this.settings.scrollDir);
     this.settings.setGridSize(this.settings.gridSize);
     this.settings.setCompactSizeOffset(this.settings.compactSizeOffset);
+    this.settings.setPanelOffsets(this.settings.panelOffsets);
     this.settings.setBrowserMode(this.settings.browserMode);
     this.settings.setConstrainFullView(this.settings.constrainFullView);
     this.observer = new IntersectionObserver((entries) => {
@@ -181,14 +182,18 @@ export default class ComfyOutputBrowser {
    */
   updateSidebarSize(width, height) {
     if (!this.root) return;
+    const offsetLeft = parseFloat(this.root.style.getPropertyValue('--cfob-offset-left')) || 0;
+    const offsetRight = parseFloat(this.root.style.getPropertyValue('--cfob-offset-right')) || 0;
+    const offsetTop = parseFloat(this.root.style.getPropertyValue('--cfob-offset-top')) || 0;
+    const offsetBottom = parseFloat(this.root.style.getPropertyValue('--cfob-offset-bottom')) || 0;
     if (width !== null) {
-      const maxWidth = Math.max(0, window.innerWidth - 100);
+      const maxWidth = Math.max(0, window.innerWidth - offsetLeft - offsetRight - 20);
       this.sidebarWidth = Math.min(Math.max(300, width), maxWidth);
       this.settings.sidebarWidth = this.sidebarWidth;
       this.root.style.width = `${this.sidebarWidth}px`;
     }
     if (height !== null) {
-      const maxHeight = Math.max(0, window.innerHeight - 100);
+      const maxHeight = Math.max(0, window.innerHeight - offsetTop - offsetBottom - 20);
       this.sidebarHeight = Math.min(Math.max(200, height), maxHeight);
       this.settings.sidebarHeight = this.sidebarHeight;
       this.root.style.height = `${this.sidebarHeight}px`;
@@ -444,6 +449,8 @@ export default class ComfyOutputBrowser {
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
         updateButtonPlacement();
+        // ComfyUI's chrome may mount after our init; recompute offsets when it appears.
+        if (this.settings.panelOffsets) this.settings.setPanelOffsets(true);
         if (!canvasContObserved) {
           const canvasCont = document.getElementById('graph-canvas-container');
           if (canvasCont) {
@@ -802,6 +809,11 @@ export default class ComfyOutputBrowser {
         localStorage.setItem('comfy_folder_browser_width', String(this.sidebarWidth || 250));
         localStorage.setItem('comfy_folder_browser_height', String(this.sidebarHeight || 200));
       }
+    });
+
+    // Keep panel offsets in sync with ComfyUI's chrome when the window resizes.
+    window.addEventListener('resize', () => {
+      if (this.settings.panelOffsets) this.settings.setPanelOffsets(true);
     });
 
     /** @type {number | undefined} */
