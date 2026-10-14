@@ -131,6 +131,12 @@ test("launcher button placement in sidebar (graph and app modes) and fallbacks",
     }
   };
 
+  // Mock window.getComputedStyle and getBoundingClientRect for visibility checks
+  const originalGetComputedStyle = globalThis.getComputedStyle;
+  const originalGetBoundingClientRect = MockElement.prototype.getBoundingClientRect;
+  globalThis.getComputedStyle = () => ({ display: 'block', visibility: 'visible', opacity: '1' });
+  MockElement.prototype.getBoundingClientRect = function() { return { width: 100, height: 40, top: 0, left: 0, right: 100, bottom: 40 }; };
+
   const ICONS = { logo: "<svg></svg>" };
 
   function simulateUpdateButtonPlacement(isUiVisible, doc) {
@@ -303,6 +309,10 @@ test("launcher button placement: action-bar mode", () => {
     if (selector.includes('[data-testid="action-bar"]')) return el.getAttribute('data-testid') === 'action-bar';
     if (selector.includes('[data-testid="login-button"]')) return el.getAttribute('data-testid') === 'login-button';
     if (selector.includes('[data-testid="current-user-button"]')) return el.getAttribute('data-testid') === 'current-user-button';
+    if (selector.includes('[aria-label="Take a tour of App Mode"]')) return el.getAttribute('aria-label') === 'Take a tour of App Mode';
+    if (selector.includes('[aria-label="More"]')) return el.getAttribute('aria-label') === 'More';
+    if (selector.includes('[data-testid="linear-mobile-workflows"]')) return el.getAttribute('data-testid') === 'linear-mobile-workflows';
+    if (selector.includes('[aria-label="Graph mode, workflow actions"]')) return el.getAttribute('aria-label') === 'Graph mode, workflow actions';
     if (selector.includes('.comfy-menu')) return el.className.split(/\s+/).includes('comfy-menu');
     return false;
   }
@@ -327,6 +337,12 @@ test("launcher button placement: action-bar mode", () => {
       return search(documentMock.body);
     }
   };
+
+  // Mock window.getComputedStyle and getBoundingClientRect for visibility checks
+  const originalGetComputedStyle = globalThis.getComputedStyle;
+  const originalGetBoundingClientRect = MockElement.prototype.getBoundingClientRect;
+  globalThis.getComputedStyle = () => ({ display: 'block', visibility: 'visible', opacity: '1' });
+  MockElement.prototype.getBoundingClientRect = function() { return { width: 100, height: 40, top: 0, left: 0, right: 100, bottom: 40 }; };
 
   const ICONS = { logo: "<svg></svg>" };
 
@@ -363,17 +379,31 @@ test("launcher button placement: action-bar mode", () => {
     }
 
     if (placement === 'action-bar') {
-      const loginAnchor = doc.querySelector('[data-testid="login-button"], [data-testid="current-user-button"]');
-      const actionBarTarget = loginAnchor ? loginAnchor.parentElement : doc.querySelector('[data-testid="action-bar-buttons"], [data-testid="action-bar"], .comfy-menu');
+      const isVisible = (el) => {
+        if (!el) return false;
+        const style = globalThis.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const loginEl = doc.querySelector('[data-testid="login-button"], [data-testid="current-user-button"]');
+      const loginAnchor = isVisible(loginEl) ? loginEl : null;
+      const tourEl = loginAnchor ? null : doc.querySelector('[aria-label="Take a tour of App Mode"]');
+      const tourAnchor = tourEl && isVisible(tourEl) ? tourEl : null;
+      const isAppMode = !!doc.querySelector('[data-testid="linear-mobile-workflows"]') || !!doc.querySelector('[aria-label="Graph mode, workflow actions"]');
+      const menuEl = (!loginAnchor && !tourAnchor && isAppMode && globalThis.innerWidth < 768) ? doc.querySelector('[aria-label="More"]') : null;
+      const menuAnchor = menuEl && isVisible(menuEl) ? menuEl : null;
+      const anchor = loginAnchor || tourAnchor || menuAnchor;
+      const actionBarTarget = anchor ? anchor.parentElement : doc.querySelector('[data-testid="action-bar-buttons"], [data-testid="action-bar"], .comfy-menu');
       if (actionBarTarget) {
         if (!launcherBtn.classList.contains('cfob-launcher-actionbar')) {
           launcherBtn.className = "cfob-launcher-actionbar";
         }
         launcherBtn.style.border = "";
         launcherBtn.innerHTML = ICONS.logo;
-        if (loginAnchor) {
-          if (launcherBtn.nextElementSibling !== loginAnchor) {
-            loginAnchor.parentElement.insertBefore(launcherBtn, loginAnchor);
+        if (anchor) {
+          if (launcherBtn.nextElementSibling !== anchor) {
+            anchor.parentElement.insertBefore(launcherBtn, anchor);
           }
         } else if (launcherBtn.parentElement !== actionBarTarget) {
           actionBarTarget.appendChild(launcherBtn);
@@ -426,13 +456,89 @@ test("launcher button placement: action-bar mode", () => {
   const userPlacedBtn = documentMock.getElementById("cfob-launcher-btn");
   assert.equal(userPlacedBtn.nextElementSibling, userBtn, "Button should sit before the current-user button when signed in");
 
-  // Action bar mode with no action bar container — falls back to floating
+  // Action bar mode with tour button as fallback anchor (no login button)
   documentMock.body.removeChild(userBar);
   documentMock.body.removeChild(actionBarSlot);
+  const tourBar = new MockElement("div");
+  tourBar.setAttribute("data-testid", "linear-workflow-info");
+  const tourBtn = new MockElement("button");
+  tourBtn.setAttribute("aria-label", "Take a tour of App Mode");
+  tourBar.appendChild(tourBtn);
+  documentMock.body.appendChild(tourBar);
+
   simulatePlacement('action-bar', documentMock);
-  const fallbackBtn = documentMock.getElementById("cfob-launcher-btn");
-  assert.equal(fallbackBtn.parentElement, documentMock.body, "Button should fallback to body when action-bar not found");
-  assert.equal(fallbackBtn.className, "floating", "Button should have floating class");
+  const tourPlacedBtn = documentMock.getElementById("cfob-launcher-btn");
+  assert.equal(tourPlacedBtn.parentElement, tourBar, "Button should join the tour button's container");
+  assert.equal(tourPlacedBtn.nextElementSibling, tourBtn, "Button should sit immediately before the tour button");
+
+  // Action bar mode with invisible login button — should fall back to tour button
+  documentMock.body.removeChild(tourBar);
+  const hiddenLoginBar = new MockElement("div");
+  hiddenLoginBar.setAttribute("data-testid", "integrated-tab-bar-actions");
+  const hiddenLoginBtn = new MockElement("button");
+  hiddenLoginBtn.setAttribute("data-testid", "login-button");
+  hiddenLoginBar.appendChild(hiddenLoginBtn);
+  const visibleTourBar = new MockElement("div");
+  visibleTourBar.setAttribute("data-testid", "linear-workflow-info");
+  const visibleTourBtn = new MockElement("button");
+  visibleTourBtn.setAttribute("aria-label", "Take a tour of App Mode");
+  visibleTourBar.appendChild(visibleTourBtn);
+  documentMock.body.appendChild(hiddenLoginBar);
+  documentMock.body.appendChild(visibleTourBar);
+
+  // Make login button invisible, tour button visible
+  globalThis.getComputedStyle = (el) => {
+    if (el === hiddenLoginBtn) return { display: 'none', visibility: 'visible', opacity: '1' };
+    return { display: 'block', visibility: 'visible', opacity: '1' };
+  };
+  simulatePlacement('action-bar', documentMock);
+  const hiddenLoginPlacedBtn = documentMock.getElementById("cfob-launcher-btn");
+  assert.equal(hiddenLoginPlacedBtn.parentElement, visibleTourBar, "Button should skip invisible login button and use tour button");
+  assert.equal(hiddenLoginPlacedBtn.nextElementSibling, visibleTourBtn, "Button should sit before the tour button when login is invisible");
+
+  // Action bar mode with invisible tour button — falls back to floating on desktop
+  documentMock.body.removeChild(hiddenLoginBar);
+  documentMock.body.removeChild(visibleTourBar);
+  const invisibleTourBar = new MockElement("div");
+  invisibleTourBar.setAttribute("data-testid", "linear-workflow-info");
+  const invisibleTourBtn = new MockElement("button");
+  invisibleTourBtn.setAttribute("aria-label", "Take a tour of App Mode");
+  invisibleTourBar.appendChild(invisibleTourBtn);
+  documentMock.body.appendChild(invisibleTourBar);
+  // Make tour button invisible
+  globalThis.getComputedStyle = (el) => {
+    if (el === invisibleTourBtn) return { display: 'none', visibility: 'visible', opacity: '1' };
+    return { display: 'block', visibility: 'visible', opacity: '1' };
+  };
+  simulatePlacement('action-bar', documentMock);
+  const invisibleTourPlacedBtn = documentMock.getElementById("cfob-launcher-btn");
+  assert.equal(invisibleTourPlacedBtn.parentElement, documentMock.body, "Button should fallback to body when tour button is invisible");
+  assert.equal(invisibleTourPlacedBtn.className, "floating", "Button should have floating class");
+
+  // Action bar mode on mobile (innerWidth < 768): "More" menu button fallback when login/tour unavailable
+  documentMock.body.removeChild(invisibleTourBar);
+  const originalInnerWidth = globalThis.innerWidth;
+  globalThis.innerWidth = 500;
+  const menuBar = new MockElement("div");
+  const mobileWfBtn = new MockElement("button");
+  mobileWfBtn.setAttribute("data-testid", "linear-mobile-workflows");
+  const graphModeBtn = new MockElement("button");
+  graphModeBtn.setAttribute("aria-label", "Graph mode, workflow actions");
+  const menuBtn = new MockElement("button");
+  menuBtn.setAttribute("aria-label", "More");
+  menuBar.appendChild(mobileWfBtn);
+  menuBar.appendChild(graphModeBtn);
+  menuBar.appendChild(menuBtn);
+  documentMock.body.appendChild(menuBar);
+  simulatePlacement('action-bar', documentMock);
+  const menuPlacedBtn = documentMock.getElementById("cfob-launcher-btn");
+  assert.equal(menuPlacedBtn.parentElement, menuBar, "Button should join the More button's container on mobile");
+  assert.equal(menuPlacedBtn.nextElementSibling, menuBtn, "Button should sit immediately before the More button on mobile");
+
+  // Restore mocks
+  globalThis.getComputedStyle = originalGetComputedStyle;
+  globalThis.innerWidth = originalInnerWidth;
+  MockElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
 });
 
 test("dragging the floating launcher does not toggle the panel", () => {

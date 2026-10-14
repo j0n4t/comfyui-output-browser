@@ -399,10 +399,25 @@ export default class ComfyOutputBrowser {
       }
 
       if (placement === 'action-bar') {
-        const loginAnchor = findLoginAnchor();
+        const isVisible = (el) => {
+          if (!el) return false;
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        };
+        const loginAnchor = isVisible(findLoginAnchor()) ? findLoginAnchor() : null;
+        const tourAnchor = loginAnchor ? null : (isVisible(document.querySelector('[aria-label="Take a tour of App Mode"]')) ? document.querySelector('[aria-label="Take a tour of App Mode"]') : null);
+        // In app mode on mobile, fall back to the "More" menu button when login/tour are unavailable
+        // Detect app mode by the presence of the mobile workflow selector or the "Graph mode" button
+        const isAppMode = !!document.querySelector('[data-testid="linear-mobile-workflows"]') || !!document.querySelector('[aria-label="Graph mode, workflow actions"]');
+        const menuAnchor = (!loginAnchor && !tourAnchor && isAppMode && window.innerWidth < 768)
+          ? (isVisible(document.querySelector('[aria-label="More"]')) ? document.querySelector('[aria-label="More"]') : null)
+          : null;
         // @ts-ignore
         const standardMenuTarget = window.app?.menu?.actionsGroup?.element || window.app?.menu?.settingsGroup?.element;
-        const actionBarTarget = loginAnchor ? loginAnchor.parentElement : (findActionBarTarget() || standardMenuTarget);
+        const anchor = loginAnchor || tourAnchor || menuAnchor;
+        const actionBarTarget = anchor ? anchor.parentElement : (findActionBarTarget() || standardMenuTarget);
         if (actionBarTarget) {
           if (!launcherBtn.classList.contains('cfob-launcher-actionbar')) {
             launcherBtn.className = ACTION_BAR_CLASS;
@@ -410,10 +425,10 @@ export default class ComfyOutputBrowser {
           launcherBtn.style.border = "";
           if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
           launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
-          if (loginAnchor) {
-            // Sit immediately to the left of the login/current-user button.
-            if (launcherBtn.nextElementSibling !== loginAnchor) {
-              loginAnchor.parentElement.insertBefore(launcherBtn, loginAnchor);
+          if (anchor) {
+            // Sit immediately to the left of the login/current-user button, tour button, or menu button.
+            if (launcherBtn.nextElementSibling !== anchor) {
+              anchor.parentElement.insertBefore(launcherBtn, anchor);
             }
           } else if (launcherBtn.parentElement !== actionBarTarget) {
             actionBarTarget.appendChild(launcherBtn);

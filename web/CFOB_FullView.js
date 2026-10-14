@@ -164,7 +164,11 @@ export default class CFOB_FullView {
     this.fvStartX = 0;
     this.fvStartY = 0;
     this.fvHasDragged = false;
-    this.fvFitMode = "fit";
+    const savedFitMode = localStorage.getItem('cfob_full_view_fit_mode');
+    this.fvFitMode = savedFitMode === 'fit' || savedFitMode === 'width' || savedFitMode === 'height' || savedFitMode === 'original'
+      ? savedFitMode
+      : 'fit';
+    const savedUIHidden = localStorage.getItem('cfob_full_view_ui_hidden') === 'true';
     this.currentImageIndex = 0;
     const savedSidebarWidth = Number(localStorage.getItem('cfob_full_view_sidebar_width'));
     const savedSidebarHeight = Number(localStorage.getItem('cfob_full_view_sidebar_height'));
@@ -509,6 +513,7 @@ export default class CFOB_FullView {
    */
   applyFitMode(mode) {
     this.fvFitMode = mode;
+    localStorage.setItem('cfob_full_view_fit_mode', mode);
     const img = /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg"));
     const main = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'));
     if (!img || !main || !img.naturalWidth) return;
@@ -760,13 +765,24 @@ export default class CFOB_FullView {
         : null;
     }
     this.app.settings.activateFullViewMode();
-    this.setFullViewUIHidden(false);
+    const savedUIHidden = localStorage.getItem('cfob_full_view_ui_hidden') === 'true';
+    this.setFullViewUIHidden(savedUIHidden);
     this.currentImageIndex = this.app.filteredImages.indexOf(img);
     this.updateFullViewUI();
     this.mountBrowserControls();
     modal.classList.add('active');
     this.app.root?.classList.add('full-view-active');
     this.applySidebarSize();
+    // Reapply the persisted fit mode
+    const imgElement = /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg"));
+    if (imgElement.complete && imgElement.naturalWidth) {
+      this.reapplyCurrentFitMode();
+    } else {
+      imgElement.onload = () => {
+        this.reapplyCurrentFitMode();
+        imgElement.onload = null;
+      };
+    }
     this.app.$("cfobFullViewImg").focus();
   }
 
@@ -774,6 +790,8 @@ export default class CFOB_FullView {
     const moreMenu = this.app.$("cfobFullViewMoreMenu");
     moreMenu?.classList.remove('open');
     this.app.$("cfobFullViewMoreBtn")?.setAttribute('aria-expanded', 'false');
+    const layout = this.app.root?.querySelector('.full-view-layout');
+    if (layout) localStorage.setItem('cfob_full_view_ui_hidden', String(layout.classList.contains('ui-hidden')));
     this.app.$("cfobFullViewModal").classList.remove('active');
     this.app.root?.classList.remove('full-view-active');
     this.restoreBrowserControls();
