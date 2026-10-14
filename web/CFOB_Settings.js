@@ -570,7 +570,8 @@ export default class COB_Settings {
         return r.width > 0 && r.height > 0 ? r : null;
       };
 
-      let left = MARGIN, top = MARGIN, right = MARGIN, bottom = MARGIN;
+      let left = MARGIN, top = MARGIN;
+      const right = MARGIN, bottom = MARGIN;
 
       const sidebar = m('.side-tool-bar-container') || m('[data-testid="side-toolbar"]');
       if (sidebar && sidebar.left <= 1) left += sidebar.right;
@@ -731,12 +732,12 @@ export default class COB_Settings {
       tab.addEventListener('click', () => activateTab(/** @type {HTMLElement} */(tab)));
       tab.addEventListener('keydown', (event) => {
         const keyEvent = /** @type {KeyboardEvent} */ (event);
-        let nextIndex = index;
-        if (keyEvent.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
-        else if (keyEvent.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
-        else if (keyEvent.key === 'Home') nextIndex = 0;
-        else if (keyEvent.key === 'End') nextIndex = tabs.length - 1;
-        else return;
+        const nextIndex =
+          keyEvent.key === 'ArrowRight' ? (index + 1) % tabs.length :
+          keyEvent.key === 'ArrowLeft' ? (index - 1 + tabs.length) % tabs.length :
+          keyEvent.key === 'Home' ? 0 :
+          keyEvent.key === 'End' ? tabs.length - 1 : null;
+        if (nextIndex === null) return;
         keyEvent.preventDefault();
         activateTab(/** @type {HTMLElement} */(tabs[nextIndex]), true);
       });
@@ -940,7 +941,7 @@ export default class COB_Settings {
       const thumbWrapper = this.app.$("cfobPromptThumbWrapper");
       const thumbImg = /** @type {HTMLImageElement} */ (this.app.$("cfobPromptThumbImg"));
 
-      let resolvedImgUrl = imageUrl;
+      const resolvedImgUrl = imageUrl;
       if (resolvedImgUrl) {
         thumbImg.src = resolvedImgUrl;
         thumbWrapper.classList.add('active');
@@ -1184,7 +1185,7 @@ export default class COB_Settings {
    * @param {any} img
    */
   renderInspectorJson(panel, value, source, img) {
-    const getPath = (/** @type {string[]} */ parentPath, /** @type {string} */ key, /** @type {any} */ propertyValue) => {
+    const getPath = (/** @type {string[]} */ parentPath, /** @type {string} */ key, /** @type {any} */ _propertyValue) => {
       if (source === 'prompt' && parentPath.length > 0 && img.prompt?.[parentPath[0]]) {
         const node = img.prompt[parentPath[0]];
         const nodeName = node?._meta?.title || node?.class_type || parentPath[0];
@@ -1297,7 +1298,7 @@ export default class COB_Settings {
         /**
          * @type {{ key: string; val: any; }[]}
          */
-        let w = [];
+        const w = [];
         if (node.widgets_values_named) Object.entries(node.widgets_values_named).forEach(([key, val]) => w.push({ key, val }));
         else if (node.widgets_values) node.widgets_values.forEach((/** @type {any} */ val, /** @type {any} */ i) => w.push({ key: `widget[${i}]`, val }));
 

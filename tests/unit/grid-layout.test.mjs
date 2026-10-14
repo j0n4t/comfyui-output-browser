@@ -17,10 +17,10 @@ test("grid fill order settings allow row-first in horizontal and vertical scroll
   localStorage.setItem("cfob_scroll_dir", "horizontal");
   localStorage.setItem("cfob_grid_fill_order", "row");
 
-  let masonryEnabled = localStorage.getItem("cfob_masonry_enabled") !== "false";
+  const masonryEnabled = localStorage.getItem("cfob_masonry_enabled") !== "false";
   let scrollDir = localStorage.getItem("cfob_scroll_dir") === "horizontal" ? "horizontal" : "vertical";
-  let savedGridFillOrder = localStorage.getItem("cfob_grid_fill_order");
-  let gridFillOrder = savedGridFillOrder === "column" ? "column" : "row";
+  const savedGridFillOrder = localStorage.getItem("cfob_grid_fill_order");
+  const gridFillOrder = savedGridFillOrder === "column" ? "column" : "row";
 
   assert.equal(masonryEnabled, true);
   assert.equal(scrollDir, "horizontal");

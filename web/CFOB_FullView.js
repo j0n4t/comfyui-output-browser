@@ -168,7 +168,6 @@ export default class CFOB_FullView {
     this.fvFitMode = savedFitMode === 'fit' || savedFitMode === 'width' || savedFitMode === 'height' || savedFitMode === 'original'
       ? savedFitMode
       : 'fit';
-    const savedUIHidden = localStorage.getItem('cfob_full_view_ui_hidden') === 'true';
     this.currentImageIndex = 0;
     const savedSidebarWidth = Number(localStorage.getItem('cfob_full_view_sidebar_width'));
     const savedSidebarHeight = Number(localStorage.getItem('cfob_full_view_sidebar_height'));
@@ -544,7 +543,6 @@ export default class CFOB_FullView {
 
     // Restore transforms prior to the next frame to prevent flashing
     img.style.transform = oldTransform;
-    // eslint-disable-next-line no-unused-expressions
     img.offsetHeight; // Force DOM reflow
     img.style.transition = oldTransition;
 

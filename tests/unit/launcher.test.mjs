@@ -132,8 +132,6 @@ test("launcher button placement in sidebar (graph and app modes) and fallbacks",
   };
 
   // Mock window.getComputedStyle and getBoundingClientRect for visibility checks
-  const originalGetComputedStyle = globalThis.getComputedStyle;
-  const originalGetBoundingClientRect = MockElement.prototype.getBoundingClientRect;
   globalThis.getComputedStyle = () => ({ display: 'block', visibility: 'visible', opacity: '1' });
   MockElement.prototype.getBoundingClientRect = function() { return { width: 100, height: 40, top: 0, left: 0, right: 100, bottom: 40 }; };
 

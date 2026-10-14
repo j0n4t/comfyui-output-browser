@@ -2,6 +2,13 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/unit/*.test.mjs\"",
-    "test:e2e": "node --test \"tests/e2e/*.test.mjs\""
+    "test:e2e": "node --test \"tests/e2e/*.test.mjs\"",
+    "lint": "eslint web/**/*.js tests/**/*.mjs",
+    "lint:fix": "eslint web/**/*.js tests/**/*.mjs --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0"
   }
 }

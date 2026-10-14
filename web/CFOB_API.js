@@ -31,14 +31,14 @@ export default class COB_API {
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => resolve(null);
       });
-    } catch (e) { return null; }
+    } catch { return null; }
   }
 
   /**
-    * @param {string} key
-    * @param {{ prompt: Record<string,any>; workflow: Record<string,any>; }} val
-    * @param {number} [mtime]
-    */
+   * @param {string} key
+   * @param {{ prompt: Record<string,any>; workflow: Record<string,any>; }} val
+   * @param {number} [mtime]
+   */
   async cacheSet(key, val, mtime = 0) {
     try {
       const db = await this.dbPromise;
@@ -48,7 +48,7 @@ export default class COB_API {
         // @ts-ignore
         tx.oncomplete = () => resolve();
       });
-    } catch (e) { }
+    } catch { /* ignore */ }
   }
 
   /** @param {string} key */
@@ -61,7 +61,7 @@ export default class COB_API {
         // @ts-ignore
         tx.oncomplete = () => resolve();
       });
-    } catch (e) { }
+    } catch { /* ignore */ }
   }
 
   /** @param {string} relPath */
@@ -192,7 +192,7 @@ export default class COB_API {
 
   /** @param {string} str */
   sanitizeJson(str) {
-    return str.replace(/(?<!["\w])\-?(?:NaN|Infinity)(?!["\w])/g, "null");
+    return str.replace(/(?<!["\w])-(?:NaN|Infinity)(?!["\w])/g, "null");
   }
 
   /** @param {ArrayBuffer} arrayBuffer */
@@ -214,8 +214,8 @@ export default class COB_API {
         while (bytes[i] !== 0) kw += String.fromCharCode(bytes[i++]);
         i++;
         const txt = new TextDecoder().decode(bytes.slice(i, offset + length));
-        if (kw === 'prompt') try { prompt = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
-        if (kw === 'workflow') try { workflow = JSON.parse(this.sanitizeJson(txt)); } catch (err) { }
+        if (kw === 'prompt') try { prompt = JSON.parse(this.sanitizeJson(txt)); } catch { /* ignore */ }
+        if (kw === 'workflow') try { workflow = JSON.parse(this.sanitizeJson(txt)); } catch { /* ignore */ }
       }
       offset += length + 4;
     }

@@ -29,7 +29,7 @@ export default class CFOB_Selection {
     if (!cards.length) return;
 
     const direction = e.key;
-    let currentIdx = Math.max(0, Math.min(app.lastSelectedIdx, cards.length - 1));
+    const currentIdx = Math.max(0, Math.min(app.lastSelectedIdx, cards.length - 1));
 
     const isMasonry = grid.classList.contains('masonry')
       && grid.classList.contains('grid-column-first')

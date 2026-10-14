@@ -227,7 +227,7 @@ async function connectCdp(wsUrl) {
   });
 
   /** @param {string} method @param {(params: any) => void} handler */
-  const on = (method, handler) => { listeners.set(method, handler); };
+  const _on = (method, handler) => { listeners.set(method, handler); };
 
   const { targetId } = await send("Target.createTarget", { url: "about:blank" });
   const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
