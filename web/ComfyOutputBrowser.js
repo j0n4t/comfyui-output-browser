@@ -690,14 +690,21 @@ export default class ComfyOutputBrowser {
           e.preventDefault(); e.stopPropagation(); this.selection.selectAllFiltered();
         }
         else if ((key === 'm' || key === 'r') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          if (key === 'm' ? this.selectedImages.size > 0 : this.selectedImages.size === 1) {
+          const focusedImage = this.filteredImages[this.lastSelectedIdx];
+          const hasSelection = key === 'm' ? this.selectedImages.size > 0 : this.selectedImages.size === 1;
+          if (hasSelection || focusedImage) {
+            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
             e.preventDefault(); e.stopPropagation();
             if (key === 'm') this.actions.moveSelected();
             else this.actions.renameSelected();
           }
         }
         else if (key === 'i' && !e.ctrlKey) {
-          if (this.selectedImages.size === 1) { e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected(); }
+          const focusedImage = this.filteredImages[this.lastSelectedIdx];
+          if (this.selectedImages.size === 1 || focusedImage) {
+            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
+            e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected();
+          }
         }
         else if (key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (!target.closest('button, a, [role="button"]')) {
@@ -741,10 +748,18 @@ export default class ComfyOutputBrowser {
           }
         }
         else if (e.key === 'Delete') {
-          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.actions.deleteSelected(); }
+          const focusedImage = this.filteredImages[this.lastSelectedIdx];
+          if (this.selectedImages.size > 0 || focusedImage) {
+            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
+            e.preventDefault(); e.stopPropagation(); this.actions.deleteSelected();
+          }
         }
         else if (key === 'd') {
-          if (this.selectedImages.size > 0) { e.preventDefault(); e.stopPropagation(); this.actions.downloadSelected(); }
+          const focusedImage = this.filteredImages[this.lastSelectedIdx];
+          if (this.selectedImages.size > 0 || focusedImage) {
+            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
+            e.preventDefault(); e.stopPropagation(); this.actions.downloadSelected();
+          }
         }
         else if (
           ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', 'home', 'end'].includes(key) &&
