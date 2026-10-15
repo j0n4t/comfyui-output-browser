@@ -1,3 +1,5 @@
+import PngMetadata from "./PngMetadata.js";
+
 export default class COB_API {
   /** @param {import("./ComfyOutputBrowser.js").default} app  */
   constructor(app) {
@@ -78,57 +80,12 @@ export default class COB_API {
   }
 
   /**
-   * @param {File} file 
-   * @param {string} targetSubfolder 
-   * @returns {Promise<CFOB_Image | null>}
-   */
-  async processPngFile(file, targetSubfolder = "") {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const meta = await this.parsePngBuffer(arrayBuffer);
-      if (!meta) return null;
-
-      const base64Data = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-      const filename = targetSubfolder ? `${targetSubfolder}/${file.name}` : file.name;
-      const res = await fetch("/comfyui-output-browser/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename, image_data: base64Data })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        const mtime = data.mtime || 0;
-        await this.cacheSet(data.name, { prompt: meta.prompt, workflow: meta.workflow }, mtime);
-
-        return {
-          name: data.name,
-          mtime: mtime,
-          url: this.getImageUrl(data.name) + (mtime ? `&t=${mtime}` : ''),
-          prompt: meta.prompt,
-          workflow: meta.workflow,
-          isParsed: true
-        };
-      } else {
-        console.error("Failed to save dropped file to server:", data.error);
-        return null;
-      }
-    } catch (err) {
-      console.error(`Failed reading local PNG file ${file.name}`, err);
-      return null;
-    }
-  }
-
-  /**
  * @param {CFOB_Image} img
  */
   async loadMetadata(img) {
     if (img.isParsed) return;
     if (img.isParsing) {
+      // eslint-disable-next-line no-await-in-loop
       while (img.isParsing) { await new Promise(r => setTimeout(r, 50)); }
       return;
     }
@@ -142,11 +99,12 @@ export default class COB_API {
         meta = await this.parsePngBuffer(buffer) || { prompt: null, workflow: null };
         await this.cacheSet(img.name, meta, img.mtime);
       }
-      img.prompt = meta.prompt;
-      img.workflow = meta.workflow;
+      img.prompt = meta.promptJson;
+      img.workflow = meta.workflowJson;
       img.isParsed = true;
       this.app.search.indexImageKeywords(img);
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.warn(`Failed to parse file: ${img.name}`, e);
       img.isParsed = true;
       this.app.search.indexImageKeywords(img);
@@ -198,27 +156,6 @@ export default class COB_API {
   /** @param {ArrayBuffer} arrayBuffer */
   async parsePngBuffer(arrayBuffer) {
     const bytes = new Uint8Array(arrayBuffer);
-    const view = new DataView(arrayBuffer);
-
-    if (view.getUint32(0) !== 0x89504e47) return null;
-
-    let offset = 8, prompt = null, workflow = null;
-    while (offset < bytes.length) {
-      const length = view.getUint32(offset);
-      offset += 4;
-      const type = String.fromCharCode(...bytes.slice(offset, offset + 4));
-      offset += 4;
-
-      if (type === 'tEXt') {
-        let kw = '', i = offset;
-        while (bytes[i] !== 0) kw += String.fromCharCode(bytes[i++]);
-        i++;
-        const txt = new TextDecoder().decode(bytes.slice(i, offset + length));
-        if (kw === 'prompt') try { prompt = JSON.parse(this.sanitizeJson(txt)); } catch { /* ignore */ }
-        if (kw === 'workflow') try { workflow = JSON.parse(this.sanitizeJson(txt)); } catch { /* ignore */ }
-      }
-      offset += length + 4;
-    }
-    return { prompt, workflow };
+    return PngMetadata.extract(bytes);
   }
 }
