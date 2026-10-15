@@ -116,3 +116,39 @@ test("returns all eligible images for an empty filter", () => {
     "animals/dog.png"
   ]);
 });
+
+test("blacklist excludes built-in keys from keyed search", () => {
+  assert.deepEqual(namesFor("name:blue", { searchBlacklist: ["name"] }), []);
+  assert.deepEqual(namesFor("prompt:\"blue sky\"", { searchBlacklist: ["prompt"] }), []);
+  assert.deepEqual(namesFor("workflow:ksampler", { searchBlacklist: ["workflow"] }), []);
+  assert.deepEqual(namesFor("path:animals", { searchBlacklist: ["path"] }), []);
+});
+
+test("blacklist excludes custom fields by exact path match", () => {
+  assert.deepEqual(namesFor("model:sdxl", { searchBlacklist: ["model"] }), []);
+  assert.deepEqual(namesFor("2:202", { searchBlacklist: ["seed"] }), []);
+});
+
+test("blacklist matching is case-insensitive for both keys and field paths", () => {
+  assert.deepEqual(namesFor("name:blue", { searchBlacklist: ["NAME"] }), []);
+  assert.deepEqual(namesFor("model:sdxl", { searchBlacklist: ["MODEL"] }), []);
+  assert.deepEqual(namesFor("2:202", { searchBlacklist: ["SEED"] }), []);
+});
+
+test("blacklist matches field paths as substrings", () => {
+  assert.deepEqual(namesFor("model:sdxl", { searchBlacklist: ["mod"] }), []);
+  assert.deepEqual(namesFor("2:202", { searchBlacklist: ["see"] }), []);
+});
+
+test("bare text search respects blacklist on built-in keys", () => {
+  // "blue sky" appears in cat-red's prompt; blacklisting prompt removes that match
+  assert.deepEqual(namesFor("blue sky", { searchBlacklist: ["prompt"] }), []);
+  // "red" appears in cat-red's name and prompt and dog's prompt; blacklisting both
+  // name and prompt leaves no match
+  assert.deepEqual(namesFor("red", { searchBlacklist: ["name", "prompt"] }), []);
+});
+
+test("blacklist does not affect unblacklisted fields", () => {
+  assert.deepEqual(namesFor("2:202", { searchBlacklist: ["model"] }), ["animals/cat-blue.png"]);
+  assert.deepEqual(namesFor("prompt:\"blue sky\"", { searchBlacklist: ["name"] }), ["animals/cat-red.png"]);
+});

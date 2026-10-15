@@ -215,6 +215,15 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn" type="button">Save Keywords</button>
             </div>
           </div>
+          <div class="options-section">
+            <h4 class="options-section-title">Search Blacklist</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Exclude content from search (one per line or comma-separated). Use a built-in key (<code>name</code>, <code>path</code>, <code>prompt</code>, <code>workflow</code>) to hide that whole target, or a node path from the metadata inspector to hide one property. Prompt and workflow paths are separate: <code>KSampler.inputs.seed</code> hides the API prompt value, <code>KSampler.seed</code> the workflow value, <code>KSampler.widget[0]</code> the positional workflow value. Add both if you want the widget hidden everywhere.</p>
+            <textarea id="cfobSearchBlacklistInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No blacklisted fields"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+              <button class="btn btn-danger" id="cfobResetSearchBlacklistBtn" type="button">Clear Blacklist</button>
+              <button class="btn btn-primary" id="cfobSaveSearchBlacklistBtn" type="button">Save Blacklist</button>
+            </div>
+          </div>
         </section>
         <section class="options-tab-panel" id="cfobOptionsFields" role="tabpanel" aria-labelledby="cfobFieldsTab">
           <div class="options-section">
@@ -310,6 +319,7 @@ export default class COB_Settings {
     this.ignoredAutocompleteKeywords = this.loadIgnoredAutocompleteKeywords();
     /** @type {{keyword: string, filter: string}[]} */
     this.filterShortcuts = this.loadFilterShortcuts();
+    this.searchBlacklist = this.loadSearchBlacklist();
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.browserMode = localStorage.getItem('comfy_folder_browser_mode') || 'full';
     this.fullViewMode = localStorage.getItem('comfy_folder_browser_view') === 'full';
@@ -392,9 +402,23 @@ export default class COB_Settings {
     localStorage.setItem('cfob_filter_shortcuts', JSON.stringify(shortcuts));
   }
 
+  /** @returns {string[]} */
+  loadSearchBlacklist() {
+    const saved = localStorage.getItem('cfob_search_blacklist');
+    if (!saved) return [];
+    const list = JSON.parse(saved);
+    return Array.isArray(list) ? list.filter(item => typeof item === 'string') : [];
+  }
+
+  /** @param {string[]} entries */
+  saveSearchBlacklist(entries) {
+    this.searchBlacklist = entries;
+    localStorage.setItem('cfob_search_blacklist', JSON.stringify(entries));
+  }
+
   /**
-  * @param {string | number} scale
-  */
+   * @param {string | number} scale
+   */
   setUiScale(scale) {
     this.uiScale = Math.max(0.7, Math.min(1.5, Number(scale) || 1.0));
     localStorage.setItem('cfob_ui_scale', String(this.uiScale));
@@ -680,6 +704,16 @@ export default class COB_Settings {
       this.app.search.updateSearchSuggestions(true);
       this.app.showToast("Saved ignored autocomplete keywords");
     });
+    this.app.$("cfobResetSearchBlacklistBtn").addEventListener('click', () => {
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchBlacklistInput")).value = "";
+    });
+    this.app.$("cfobSaveSearchBlacklistBtn").addEventListener('click', () => {
+      const val = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchBlacklistInput")).value;
+      const entries = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean))];
+      this.saveSearchBlacklist(entries);
+      this.app.gallery.filterGallery();
+      this.app.showToast("Saved search blacklist");
+    });
     this.app.$("cfobSaveFilterShortcutsBtn").addEventListener('click', () => {
       const text = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobFilterShortcutsInput")).value;
       /** @type {{keyword: string, filter: string}[]} */
@@ -791,6 +825,7 @@ export default class COB_Settings {
       setStatus("cfobHiddenStatus", this.showHiddenFolders, 'Shown', 'Hidden');
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobHiddenFoldersInput")).value = this.hiddenFolders.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value = this.ignoredAutocompleteKeywords.join("\n");
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchBlacklistInput")).value = this.searchBlacklist.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobFilterShortcutsInput")).value = this.filterShortcuts
         .map(shortcut => `${shortcut.keyword} | ${shortcut.filter}`).join("\n");
       this.renderConfigFields();
@@ -1179,6 +1214,74 @@ export default class COB_Settings {
   }
 
   /**
+   * Opens the popover menu to add a path to the search blacklist.
+   * @param {Event} e
+   * @param {string} safePath
+   */
+  openAddBlacklistMenu(e, safePath) {
+    e.stopPropagation();
+    if (this.activePopover) this.activePopover.remove();
+
+    const rect = /** @type {HTMLElement} */ (e.currentTarget)?.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'popover-menu';
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+
+    const path = String(safePath || '');
+    const encodedPath = encodeURIComponent(path);
+    const current = this.searchBlacklist.map(entry => entry.toLowerCase());
+    const isDuplicate = current.includes(path.toLowerCase());
+
+    let html = '<div class="popover-header">Blacklist Options:</div>';
+    if (isDuplicate) {
+      html += '<button class="popover-item blacklist-remove" data-path="' + encodedPath + '"><span>Remove from blacklist</span></button>';
+    } else {
+      html += '<button class="popover-item blacklist-add" data-path="' + encodedPath + '"><span>Add to blacklist</span></button>';
+    }
+    html += '<button class="popover-item blacklist-new" data-path="' + encodedPath + '"><span style="color: var(--link);">+ Blacklist custom value...</span></button>';
+
+    menu.innerHTML = html;
+    this.app.root?.appendChild(menu);
+    this.activePopover = menu;
+
+    const currentPath = path;
+
+    menu.querySelector('.blacklist-add')?.addEventListener('click', () => {
+      const entry = decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.blacklist-add'))?.dataset.path || '');
+      if (entry && !this.searchBlacklist.some(item => item.toLowerCase() === entry.toLowerCase())) {
+        this.saveSearchBlacklist([...this.searchBlacklist, entry]);
+        this.app.gallery.filterGallery();
+        this.app.showToast(`Added '${entry}' to search blacklist`);
+      }
+      this.activePopover?.remove(); this.activePopover = null;
+    });
+
+    menu.querySelector('.blacklist-remove')?.addEventListener('click', () => {
+      const entry = decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.blacklist-remove'))?.dataset.path || '');
+      this.saveSearchBlacklist(this.searchBlacklist.filter(item => item.toLowerCase() !== entry.toLowerCase()));
+      this.app.gallery.filterGallery();
+      this.app.showToast(`Removed '${entry}' from search blacklist`);
+      this.activePopover?.remove(); this.activePopover = null;
+    });
+
+    menu.querySelector('.blacklist-new')?.addEventListener('click', async () => {
+      const val = await this.customPrompt("Enter a path to blacklist (e.g. KSampler.seed):", currentPath);
+      if (val && val.trim()) {
+        const entry = val.trim();
+        if (this.searchBlacklist.some(item => item.toLowerCase() === entry.toLowerCase())) {
+          this.app.showToast(`'${entry}' is already blacklisted`);
+        } else {
+          this.saveSearchBlacklist([...this.searchBlacklist, entry]);
+          this.app.gallery.filterGallery();
+          this.app.showToast(`Added '${entry}' to search blacklist`);
+        }
+      }
+      this.activePopover?.remove(); this.activePopover = null;
+    });
+  }
+
+  /**
    * @param {HTMLElement} panel
    * @param {any} value
    * @param {'prompt' | 'workflow'} source
@@ -1245,6 +1348,7 @@ export default class COB_Settings {
       <div class="inspector-json-actions">
         <span class="inspector-json-selected-path"></span>
         <button class="btn btn-primary btn-xs inspector-json-add" type="button">Add node path to fields</button>
+        <button class="btn btn-xs inspector-json-blacklist" type="button">Add path to blacklist</button>
       </div>
       <pre>${renderValue(value, 0, [])}</pre>`;
 
@@ -1270,6 +1374,8 @@ export default class COB_Settings {
       });
     });
     addButton.addEventListener('click', event => this.openAddPathMenu(event, addButton.dataset.path || ''));
+    const blacklistButton = /** @type {HTMLElement} */ (panel.querySelector('.inspector-json-blacklist'));
+    blacklistButton.addEventListener('click', event => this.openAddBlacklistMenu(event, addButton.dataset.path || ''));
   }
 
   /** @param {number} idx */
@@ -1306,7 +1412,7 @@ export default class COB_Settings {
           w.forEach(({ key, val }) => {
             const pPath = encodeURIComponent(`${titleText}.${key}`);
             const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
-            html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+            html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button><button class="btn btn-xs field-blacklist" data-path="${pPath}">Blacklist</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
           });
         } else {
           html += `<i style="color:#666">No widgets</i>`;
@@ -1325,7 +1431,7 @@ export default class COB_Settings {
               html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span></div><span style="color: var(--link); font-style: italic; font-size: 11px;">➔ Connected to #${val[0]}</span></div>`;
             } else {
               const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
-              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">➕ Field</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button><button class="btn btn-xs field-blacklist" data-path="${pPath}">Blacklist</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
             }
           }
         } else {
@@ -1337,6 +1443,7 @@ export default class COB_Settings {
 
     grid.querySelectorAll('.cp-val').forEach(b => b.addEventListener('click', (e) => this.app.actions.copyValue(/** @type {HTMLElement} */(e.currentTarget), /** @type {HTMLElement} */(e.currentTarget).dataset.val)));
     grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, decodeURIComponent(/** @type {HTMLElement} */(e.currentTarget)?.dataset.path || ''))));
+    grid.querySelectorAll('.field-blacklist').forEach(b => b.addEventListener('click', (e) => this.openAddBlacklistMenu(e, decodeURIComponent(/** @type {HTMLElement} */(e.currentTarget)?.dataset.path || ''))));
 
     this.modals.open(inspectorModal, this.app.$("cfobCloseInspectorBtn"));
   }

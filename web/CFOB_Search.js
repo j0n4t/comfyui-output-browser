@@ -1,3 +1,5 @@
+import { maskImageMetadata } from "./CFOB_Filter.js";
+
 export default class CFOB_Search {
   /** @param {import("./ComfyOutputBrowser.js").default} app */
   constructor(app) {
@@ -16,7 +18,8 @@ export default class CFOB_Search {
   indexImageKeywords(img, refreshSuggestions = true) {
     this.removeImageKeywords(img.name, false);
     const keywords = new Set();
-    const values = [img.name, img.prompt, img.workflow];
+    const masked = maskImageMetadata(img, this.app.settings.searchBlacklist);
+    const values = [masked.name, masked.prompt, masked.workflow];
     while (values.length) {
       const value = values.pop();
       if (typeof value === 'string') {
