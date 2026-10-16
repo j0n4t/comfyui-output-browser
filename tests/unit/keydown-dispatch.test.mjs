@@ -1,0 +1,708 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+// Mock localStorage before importing the module (it reads from it at load time)
+const _storage = new Map();
+globalThis.localStorage = {
+  getItem: (k) => _storage.has(k) ? _storage.get(k) : null,
+  setItem: (k, v) => _storage.set(k, String(v)),
+  removeItem: (k) => _storage.delete(k),
+  clear: () => _storage.clear(),
+};
+
+// Mock window before importing the module (it creates an instance at load time)
+globalThis.window = globalThis;
+globalThis.addEventListener = () => {};
+globalThis.matchMedia = () => ({ matches: false });
+globalThis.innerWidth = 1024;
+globalThis.innerHeight = 768;
+// Avoid the app.js import chain (which pulls in indexedDB and other browser APIs)
+globalThis.CFOB_STANDALONE = true;
+// Mock indexedDB to prevent async errors from module side effects
+globalThis.indexedDB = {
+  open: () => ({
+    onupgradeneeded: null,
+    onsuccess: null,
+    onerror: null,
+    onblocked: null,
+    result: {
+      createObjectStore: () => ({ createIndex: () => {} }),
+      transaction: () => ({ objectStore: () => ({ put: () => {}, get: () => ({ success: true }) }) }),
+    },
+  }),
+};
+globalThis.document = {
+  createElement: () => ({ style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {} }, setAttribute: () => {}, appendChild: () => {} }),
+  body: { appendChild: () => {} },
+  getElementById: () => null,
+  addEventListener: () => {},
+  activeElement: null,
+};
+
+const { default: ComfyOutputBrowser } = await import("../../web/ComfyOutputBrowser.js");
+
+/**
+ * Test that handleDocumentKeydown routes keys to the correct domain handler
+ * based on context (search focused, full view active, gallery visible, etc.)
+ */
+
+function createMockApp(overrides = {}) {
+  const calls = [];
+
+  const searchInput = {
+    tagName: 'INPUT',
+    type: 'text',
+    focus: () => calls.push('searchInput.focus'),
+    blur: () => calls.push('searchInput.blur'),
+  };
+
+  const searchSuggestions = {
+    hidden: true,
+  };
+
+  const fullViewModal = {
+    classList: {
+      contains: (cls) => cls === 'active' && (overrides.isFullView ?? false),
+    },
+  };
+
+  const root = {
+    contains: (el) => el === searchInput || (overrides.focusIsInside ?? true),
+    classList: {
+      contains: (cls) => cls === 'cfob-hidden' && (overrides.isHidden ?? false),
+    },
+    querySelector: () => null,
+    style: {},
+  };
+
+  const app = {
+    root,
+    isUiVisible: overrides.isUiVisible ?? true,
+    isFullView: overrides.isFullView ?? false,
+    selectedImages: new Set(),
+    filteredImages: overrides.filteredImages ?? [{ name: 'test.png', url: 'test.png', prompt: null, workflow: null, isParsed: true }],
+    loadedImages: [{ name: 'test.png', url: 'test.png', prompt: null, workflow: null, isParsed: true }],
+    lastSelectedIdx: 0,
+    selectionAnchorIdx: -1,
+    settings: {
+      fullViewMode: overrides.fullViewMode ?? false,
+      modals: {
+        getActive: () => overrides.activeDialog ?? null,
+      },
+      setViewMode: () => calls.push('settings.setViewMode'),
+      cycleBrowserMode: () => calls.push('settings.cycleBrowserMode'),
+      setConstrainFullView: () => calls.push('settings.setConstrainFullView'),
+      getGalleryViewMode: () => 'grid',
+      setCompactSizeOffset: () => calls.push('settings.setCompactSizeOffset'),
+      setGridSize: () => calls.push('settings.setGridSize'),
+    },
+    search: {
+      hideSearchSuggestions: () => calls.push('search.hideSearchSuggestions'),
+    },
+    fullView: {
+      closeFullView: () => calls.push('fullView.closeFullView'),
+      toggleFullViewUI: () => calls.push('fullView.toggleFullViewUI'),
+      navigateImage: (dir) => calls.push(`fullView.navigateImage(${dir})`),
+      setFullViewUIHidden: () => calls.push('fullView.setFullViewUIHidden'),
+      cycleFitMode: () => calls.push('fullView.cycleFitMode'),
+      moveFullViewImage: () => calls.push('fullView.moveFullViewImage'),
+      renameFullViewImage: () => calls.push('fullView.renameFullViewImage'),
+      goToImageNumber: () => calls.push('fullView.goToImageNumber'),
+      deleteFullViewImage: () => calls.push('fullView.deleteFullViewImage'),
+      cycleSidebarMode: () => calls.push('fullView.cycleSidebarMode'),
+      setFullViewZoom: () => calls.push('fullView.setFullViewZoom'),
+      resetFullViewTransform: () => calls.push('fullView.resetFullViewTransform'),
+      openFullView: () => calls.push('fullView.openFullView'),
+      fvZoom: 1,
+    },
+    selection: {
+      clearSelection: () => calls.push('selection.clearSelection'),
+      selectAllFiltered: () => calls.push('selection.selectAllFiltered'),
+      handleGridNavigation: () => calls.push('selection.handleGridNavigation'),
+      updateCardStyles: () => calls.push('selection.updateCardStyles'),
+      updateActionBar: () => calls.push('selection.updateActionBar'),
+    },
+    actions: {
+      moveSelected: () => calls.push('actions.moveSelected'),
+      renameSelected: () => calls.push('actions.renameSelected'),
+      inspectSelected: () => calls.push('actions.inspectSelected'),
+      deleteSelected: () => calls.push('actions.deleteSelected'),
+      downloadSelected: () => calls.push('actions.downloadSelected'),
+    },
+    gallery: {
+      getOrderedCards: () => [],
+    },
+    fetchServerImages: () => calls.push('fetchServerImages'),
+    handleFieldCopyKey: () => calls.push('handleFieldCopyKey'),
+    focusFirstGridItem: () => calls.push('focusFirstGridItem'),
+    hideWithTransition: () => calls.push('hideWithTransition'),
+    $: (id) => {
+      if (id === 'cfobSearchInput') return searchInput;
+      if (id === 'cfobSearchSuggestions') return searchSuggestions;
+      if (id === 'cfobFullViewModal') return fullViewModal;
+      if (id === 'cfobFullViewImg') return { focus: () => calls.push('cfobFullViewImg.focus') };
+      if (id === 'cfobGalleryGrid') return { classList: { contains: () => false } };
+      if (id === 'cfobConstrainStatus') return { textContent: '' };
+      if (id === 'cfobFVActionInspect') return { click: () => calls.push('cfobFVActionInspect.click') };
+      if (id === 'cfobFVActionDownload') return { click: () => calls.push('cfobFVActionDownload.click') };
+      return null;
+    },
+  };
+
+  return { app, calls, searchInput, searchSuggestions };
+}
+
+function createKeyEvent(key, opts = {}) {
+  return {
+    key,
+    ctrlKey: opts.ctrlKey ?? false,
+    shiftKey: opts.shiftKey ?? false,
+    altKey: opts.altKey ?? false,
+    metaKey: opts.metaKey ?? false,
+    code: opts.code ?? '',
+    target: opts.target ?? null,
+    preventDefault: () => {},
+    stopPropagation: () => {},
+  };
+}
+
+test("Escape on search input moves focus to grid", () => {
+  const { app, calls, searchInput } = createMockApp();
+
+  // Simulate: search input is focused, user presses Escape
+  globalThis.document.activeElement = searchInput;
+  const keyEvent = createKeyEvent('Escape', { target: searchInput });
+
+  // Call the handler directly
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  // Assert: search suggestions hidden, focus moved to grid
+  assert.ok(calls.includes('search.hideSearchSuggestions'), "search suggestions should be hidden");
+  assert.ok(calls.includes('focusFirstGridItem'), "focus should move to grid");
+  assert.ok(!calls.includes('hideWithTransition'), "panel should NOT be hidden");
+});
+
+test("full-view keys route to fullView when full view is active", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  // Simulate: full view is active, user presses 'f' (cycle fit mode)
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('f');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.cycleFitMode'), "fullView.cycleFitMode should be called");
+  assert.ok(!calls.includes('actions.inspectSelected'), "gallery 'i' handler should NOT be called");
+});
+
+test("gallery keys route to selection/actions when gallery is visible", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  // Simulate: gallery visible, user presses 'ctrl+a' (select all)
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('a', { ctrlKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('selection.selectAllFiltered'), "selection.selectAllFiltered should be called");
+});
+
+test("gallery 'm' key routes to actions.moveSelected", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('m', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('actions.moveSelected'), "actions.moveSelected should be called");
+});
+
+test("gallery 'd' key routes to actions.downloadSelected", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('d', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('actions.downloadSelected'), "actions.downloadSelected should be called");
+});
+
+test("gallery 'Delete' key routes to actions.deleteSelected", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('Delete', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('actions.deleteSelected'), "actions.deleteSelected should be called");
+});
+
+test("gallery '/' key focuses search input", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('/');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("gallery 'shift+f' routes to settings.cycleBrowserMode", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('f', { shiftKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('settings.cycleBrowserMode'), "settings.cycleBrowserMode should be called");
+});
+
+test("gallery arrow keys route to selection.handleGridNavigation", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('ArrowDown', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('selection.handleGridNavigation'), "selection.handleGridNavigation should be called");
+});
+
+test("panel-level ctrl+shift+s routes to fetchServerImages", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('s', { ctrlKey: true, shiftKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fetchServerImages'), "fetchServerImages should be called");
+});
+
+test("panel-level ctrl+1 routes to settings.setViewMode", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('1', { ctrlKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('settings.setViewMode'), "settings.setViewMode should be called");
+});
+
+test("Escape in full view routes to fullView.closeFullView", () => {
+  const { app, calls } = createMockApp({ isFullView: true, isUiVisible: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('Escape');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.closeFullView'), "fullView.closeFullView should be called");
+});
+
+test("Escape with selection clears selection", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+  app.selectedImages.add('test.png');
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('Escape');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('selection.clearSelection'), "selection.clearSelection should be called");
+  assert.ok(!calls.includes('hideWithTransition'), "panel should NOT be hidden when selection exists");
+});
+
+test("Escape with no selection hides panel", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('Escape');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('hideWithTransition'), "hideWithTransition should be called");
+});
+
+test("full-view ArrowLeft routes to fullView.navigateImage(-1)", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('ArrowLeft');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.navigateImage(-1)'), "fullView.navigateImage(-1) should be called");
+});
+
+test("full-view ArrowRight routes to fullView.navigateImage(1)", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('ArrowRight');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.navigateImage(1)'), "fullView.navigateImage(1) should be called");
+});
+
+test("full-view 't' routes to fullView.cycleSidebarMode", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('t');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.cycleSidebarMode'), "fullView.cycleSidebarMode should be called");
+});
+
+test("full-view '0' routes to fullView.resetFullViewTransform", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('0');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.resetFullViewTransform'), "fullView.resetFullViewTransform should be called");
+});
+
+test("full-view 'g' routes to fullView.goToImageNumber", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('g');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.goToImageNumber'), "fullView.goToImageNumber should be called");
+});
+
+test("full-view 'r' routes to fullView.renameFullViewImage", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('r');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.renameFullViewImage'), "fullView.renameFullViewImage should be called");
+});
+
+test("full-view 'm' routes to fullView.moveFullViewImage", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('m');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.moveFullViewImage'), "fullView.moveFullViewImage should be called");
+});
+
+test("full-view 'Delete' routes to fullView.deleteFullViewImage", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('Delete');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.deleteFullViewImage'), "fullView.deleteFullViewImage should be called");
+});
+
+test("full-view 'd' routes to cfobFVActionDownload.click", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('d');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('cfobFVActionDownload.click'), "cfobFVActionDownload.click should be called");
+});
+
+test("full-view 'i' routes to cfobFVActionInspect.click", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('i');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('cfobFVActionInspect.click'), "cfobFVActionInspect.click should be called");
+});
+
+test("full-view 'shift+f' routes to settings.setConstrainFullView", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('f', { shiftKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('settings.setConstrainFullView'), "settings.setConstrainFullView should be called");
+});
+
+test("full-view '/' focuses search input", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('/');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("full-view ArrowUp focuses search input", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('ArrowUp');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("full-view ArrowDown routes to fullView.toggleFullViewUI", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('ArrowDown');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.toggleFullViewUI'), "fullView.toggleFullViewUI should be called");
+});
+
+test("full-view '+' routes to fullView.setFullViewZoom", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('+');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.setFullViewZoom'), "fullView.setFullViewZoom should be called");
+});
+
+test("full-view '-' routes to fullView.setFullViewZoom", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('-');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.setFullViewZoom'), "fullView.setFullViewZoom should be called");
+});
+
+test("gallery 'i' routes to actions.inspectSelected", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('i', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('actions.inspectSelected'), "actions.inspectSelected should be called");
+});
+
+test("gallery 'r' routes to actions.renameSelected", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('r', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('actions.renameSelected'), "actions.renameSelected should be called");
+});
+
+test("gallery 'alt++' routes to settings.setGridSize", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('+', { altKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('settings.setGridSize'), "settings.setGridSize should be called");
+});
+
+test("gallery 'alt--' routes to settings.setGridSize", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('-', { altKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('settings.setGridSize'), "settings.setGridSize should be called");
+});
+
+test("number keys route to handleFieldCopyKey", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('1');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('handleFieldCopyKey'), "handleFieldCopyKey should be called");
+});
+
+test("keys are ignored when focus is outside the panel", () => {
+  const { app, calls } = createMockApp({ focusIsInside: false });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('f');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.equal(calls.length, 0, "no handlers should be called when focus is outside");
+});
+
+test("keys are ignored when editing (isEditing)", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const editingInput = { tagName: 'INPUT', type: 'text', isContentEditable: false };
+  globalThis.document.activeElement = editingInput;
+  const keyEvent = createKeyEvent('f', { target: editingInput });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(!calls.includes('settings.cycleBrowserMode'), "shift+f should NOT route to cycleBrowserMode when editing");
+});
+
+test("modal open blocks gallery shortcuts", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false, activeDialog: {} });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('a', { ctrlKey: true });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(!calls.includes('selection.selectAllFiltered'), "gallery shortcuts should be blocked when modal is open");
+});
+
+test("Escape with modal open does nothing (modal handles it)", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false, activeDialog: {} });
+
+  globalThis.document.activeElement = null;
+  const keyEvent = createKeyEvent('Escape');
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(!calls.includes('hideWithTransition'), "Escape should NOT hide panel when modal is open");
+  assert.ok(!calls.includes('selection.clearSelection'), "Escape should NOT clear selection when modal is open");
+});
+
+test("Escape with search suggestions open hides suggestions", () => {
+  const { app, calls, searchInput, searchSuggestions } = createMockApp();
+  searchSuggestions.hidden = false;
+  globalThis.document.activeElement = searchInput;
+  const keyEvent = createKeyEvent('Escape', { target: searchInput });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('search.hideSearchSuggestions'), "search suggestions should be hidden");
+  assert.ok(!calls.includes('focusFirstGridItem'), "focus should NOT move to grid when suggestions were open");
+});
+
+test("Escape when editing blurs the input", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const editingInput = { tagName: 'INPUT', type: 'text', isContentEditable: false, blur: () => calls.push('target.blur') };
+  globalThis.document.activeElement = editingInput;
+  const keyEvent = createKeyEvent('Escape', { target: editingInput });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('target.blur'), "target.blur should be called when editing");
+  assert.ok(!calls.includes('hideWithTransition'), "panel should NOT be hidden when editing");
+});
+
+test("full-view space routes to fullView.toggleFullViewUI", () => {
+  const { app, calls } = createMockApp({ isFullView: true });
+
+  const mockTarget = { closest: () => null };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent(' ', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.toggleFullViewUI'), "fullView.toggleFullViewUI should be called");
+});
+
+test("gallery space routes to fullView.openFullView", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent(' ', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('fullView.openFullView'), "fullView.openFullView should be called");
+});
+
+test("gallery enter toggles selection", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('Enter', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('selection.updateCardStyles'), "selection.updateCardStyles should be called");
+  assert.ok(calls.includes('selection.updateActionBar'), "selection.updateActionBar should be called");
+});
+
+test("gallery ArrowUp with no selection focuses search", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
+  app.lastSelectedIdx = -1;
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('ArrowUp', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("gallery ArrowUp on first row focuses search", () => {
+  const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false, lastSelectedIdx: 0 });
+
+  // Mock the grid to report first row
+  app.$ = ((orig) => (id) => {
+    if (id === 'cfobGalleryGrid') return { classList: { contains: () => true } };
+    return orig(id);
+  })(app.$);
+  app.gallery.getOrderedCards = () => [{ offsetTop: 0, getBoundingClientRect: () => ({ top: 0, height: 100 }) }];
+
+  const mockTarget = { closest: () => null, matches: () => false };
+  globalThis.document.activeElement = mockTarget;
+  const keyEvent = createKeyEvent('ArrowUp', { target: mockTarget });
+
+  ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
+
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called on first row");
+});

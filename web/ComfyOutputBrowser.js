@@ -715,6 +715,264 @@ export default class ComfyOutputBrowser {
     this.finishElementPicker(false);
   }
 
+  /**
+   * @param {KeyboardEvent} e
+   */
+  handleDocumentKeydown(e) {
+    const focusIsInside = this.root?.contains(document.activeElement) || false;
+    if (!focusIsInside) return;
+
+    const activeDialog = this.settings.modals.getActive();
+    const isFullView = this.$("cfobFullViewModal").classList.contains('active');
+
+    const target = /** @type {HTMLElement} */ (e.target);
+    const isEditing = target && (
+      (target.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(/** @type {HTMLInputElement} */(target).type)) ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable
+    );
+
+    const noModalOpen = !activeDialog;
+    const key = e.key.toLowerCase();
+    const searchInput = this.$("cfobSearchInput");
+
+    if (e.key === 'Escape') {
+      if (activeDialog) return;
+      e.preventDefault();
+      if (!this.$("cfobSearchSuggestions").hidden) {
+        e.stopPropagation(); this.search.hideSearchSuggestions();
+      } else if (document.activeElement === searchInput) {
+        e.stopPropagation();
+        this.search.hideSearchSuggestions();
+        if (this.settings.fullViewMode) {
+          this.$("cfobFullViewImg")?.focus();
+        } else {
+          this.focusFirstGridItem();
+        }
+      } else if (isFullView && noModalOpen) {
+        e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
+      } else if (this.isUiVisible) {
+        e.stopPropagation();
+        if (isEditing) target.blur();
+        else if (this.selectedImages.size > 0) this.selection.clearSelection();
+        else this.hideWithTransition();
+      }
+      return;
+    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 's') {
+      e.preventDefault(); e.stopPropagation(); this.fetchServerImages();
+    }
+
+    if (!activeDialog && (e.ctrlKey || e.metaKey) && !e.altKey && /^[1-4]$/.test(e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      /** @type {Record<string, string>} */
+      const viewModes = { '1': 'compact', '2': 'grid', '3': 'list', '4': 'full' };
+      this.settings.setViewMode(viewModes[e.key]);
+      return;
+    }
+
+    if (isEditing) return;
+
+    if (noModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey && key >= '1' && key <= '9') {
+      if (isFullView || (this.isUiVisible && !this.root?.classList.contains('cfob-hidden'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleFieldCopyKey(key);
+        return;
+      }
+    }
+
+    if (isFullView && noModalOpen && !e.ctrlKey) {
+      if (key === '/' && !e.altKey && !e.metaKey) {
+        e.preventDefault(); e.stopPropagation();
+        const layout = this.root?.querySelector('.full-view-layout');
+        if (layout?.classList.contains('ui-hidden')) {
+          this.fullView.setFullViewUIHidden(false);
+        }
+        searchInput.focus();
+      }
+      else if (e.key === 'ArrowUp') {
+        e.preventDefault(); e.stopPropagation();
+        this.fullView.setFullViewUIHidden(false);
+        searchInput.focus();
+      }
+      else if (e.key === 'ArrowDown') {
+        e.preventDefault(); e.stopPropagation(); this.fullView.toggleFullViewUI();
+      }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
+      else if (!noModalOpen) return;
+
+      else if (e.shiftKey && key === 'f') {
+        e.preventDefault(); e.stopPropagation();
+        this.settings.setConstrainFullView(!this.settings.constrainFullView);
+        const status = this.$("cfobConstrainStatus");
+        if (status) status.textContent = this.settings.constrainFullView ? "On" : "Off";
+      }
+      else if (key === 'f') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleFitMode(); }
+      else if (key === 'm') { e.preventDefault(); e.stopPropagation(); this.fullView.moveFullViewImage(); }
+      else if (key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
+      else if (key === 'g') { e.preventDefault(); e.stopPropagation(); this.fullView.goToImageNumber(); }
+      else if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionInspect").click(); }
+      else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
+      else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
+      else if (key === ' ') {
+        if (target.closest('button, a, [role="button"]')) return;
+        e.preventDefault(); e.stopPropagation();
+        this.fullView.toggleFullViewUI();
+      }
+      else if (key === 't') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleSidebarMode(); }
+      else if (key === '+' || key === '=' || e.code === 'NumpadAdd') {
+        e.preventDefault(); e.stopPropagation();
+        this.fullView.setFullViewZoom(this.fullView.fvZoom * 1.1);
+      }
+      else if (key === '-' || key === '_' || e.code === 'NumpadSubtract') {
+        e.preventDefault(); e.stopPropagation();
+        this.fullView.setFullViewZoom(this.fullView.fvZoom / 1.1);
+      }
+      else if (key === '0') {
+        e.preventDefault(); e.stopPropagation();
+        this.fullView.resetFullViewTransform();
+      }
+    } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
+      if (!noModalOpen) return;
+
+      if (e.shiftKey && key === 'f') {
+        e.preventDefault(); e.stopPropagation();
+        this.settings.cycleBrowserMode();
+      }
+      else if (e.altKey && (key === '+' || key === '=' || e.code === 'NumpadAdd')) {
+        e.preventDefault(); e.stopPropagation();
+        const viewMode = this.settings.getGalleryViewMode();
+        if (viewMode === 'compact') {
+          this.settings.setCompactSizeOffset(this.settings.compactSizeOffset + 10);
+        } else {
+          this.settings.setGridSize(this.settings.gridSize + 10);
+        }
+      }
+      else if (e.altKey && (key === '-' || key === '_' || e.code === 'NumpadSubtract')) {
+        e.preventDefault(); e.stopPropagation();
+        const viewMode = this.settings.getGalleryViewMode();
+        if (viewMode === 'compact') {
+          this.settings.setCompactSizeOffset(this.settings.compactSizeOffset - 10);
+        } else {
+          this.settings.setGridSize(this.settings.gridSize - 10);
+        }
+      }
+      else if (key === '/' && !e.ctrlKey) {
+        e.preventDefault(); e.stopPropagation(); this.$("cfobSearchInput").focus();
+      }
+      else if ((e.ctrlKey || e.metaKey) && key === 'a') {
+        e.preventDefault(); e.stopPropagation(); this.selection.selectAllFiltered();
+      }
+      else if ((key === 'm' || key === 'r') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const focusedImage = this.filteredImages[this.lastSelectedIdx];
+        const hasSelection = key === 'm' ? this.selectedImages.size > 0 : this.selectedImages.size === 1;
+        if (hasSelection || focusedImage) {
+          if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
+          e.preventDefault(); e.stopPropagation();
+          if (key === 'm') this.actions.moveSelected();
+          else this.actions.renameSelected();
+        }
+      }
+      else if (key === 'i' && !e.ctrlKey) {
+        const focusedImage = this.filteredImages[this.lastSelectedIdx];
+        if (this.selectedImages.size === 1 || focusedImage) {
+          if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
+          e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected();
+        }
+      }
+      else if (key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!target.closest('button, a, [role="button"]')) {
+          const focusedImage = this.filteredImages[this.lastSelectedIdx];
+          if (focusedImage || this.selectedImages.size === 1) {
+            e.preventDefault(); e.stopPropagation();
+            const img = focusedImage || this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
+            if (img) this.fullView.openFullView(img);
+          }
+        }
+      }
+      else if (key === 'enter' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!e.altKey && !target.closest('button, a, [role="button"]')) {
+          const checkboxName = target.matches('.card-checkbox')
+            ? /** @type {HTMLInputElement} */ (target).value
+            : null;
+          const focusedIndex = checkboxName
+            ? this.filteredImages.findIndex(img => img.name === checkboxName)
+            : this.lastSelectedIdx >= 0 && this.lastSelectedIdx < this.filteredImages.length
+              ? this.lastSelectedIdx
+              : this.selectedImages.size === 1
+                ? this.filteredImages.findIndex(img => img.name === Array.from(this.selectedImages)[0])
+                : -1;
+          const targetImg = this.filteredImages[focusedIndex];
+          if (!targetImg) return;
+
+          e.preventDefault(); e.stopPropagation();
+          this.lastSelectedIdx = focusedIndex;
+          if (this.selectedImages.has(targetImg.name)) {
+            this.selectedImages.delete(targetImg.name);
+          } else {
+            this.selectedImages.add(targetImg.name);
+          }
+          this.selectionAnchorIdx = focusedIndex;
+
+          const targetCard = this.gallery.getOrderedCards()[focusedIndex];
+          const checkbox = targetCard?.querySelector('.card-checkbox');
+          if (checkbox) /** @type {HTMLInputElement} */ (checkbox).checked = this.selectedImages.has(targetImg.name);
+          this.selection.updateCardStyles();
+          this.selection.updateActionBar();
+        }
+      }
+      else if (e.key === 'Delete') {
+        const focusedImage = this.filteredImages[this.lastSelectedIdx];
+        if (this.selectedImages.size > 0 || focusedImage) {
+          if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
+          e.preventDefault(); e.stopPropagation(); this.actions.deleteSelected();
+        }
+      }
+      else if (key === 'd') {
+        const focusedImage = this.filteredImages[this.lastSelectedIdx];
+        if (this.selectedImages.size > 0 || focusedImage) {
+          if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
+          e.preventDefault(); e.stopPropagation(); this.actions.downloadSelected();
+        }
+      }
+      else if (
+        ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', 'home', 'end'].includes(key) &&
+        !target.closest('button, a, [role="button"]')
+      ) {
+        if (e.key === 'ArrowUp' && this.lastSelectedIdx < 0) {
+          e.preventDefault(); e.stopPropagation();
+          searchInput.focus();
+          return;
+        }
+        if (e.key === 'ArrowUp' && this.lastSelectedIdx >= 0) {
+          const grid = this.$("cfobGalleryGrid");
+          const cards = this.gallery.getOrderedCards();
+          const currentCard = cards[this.lastSelectedIdx];
+          const isMasonry = grid.classList.contains('masonry')
+            && grid.classList.contains('grid-column-first')
+            && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
+          const isFirstRow = isMasonry && currentCard
+            ? !cards.some((card) => {
+              const candidate = card;
+              return candidate !== currentCard
+                && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2
+                < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;
+            })
+            : Boolean(cards[0] && currentCard && currentCard.offsetTop <= cards[0].offsetTop);
+          if (isFirstRow) {
+            e.preventDefault(); e.stopPropagation();
+            searchInput.focus();
+            return;
+          }
+        }
+        e.preventDefault(); e.stopPropagation(); this.selection.handleGridNavigation(e);
+      }
+    }
+  }
+
   bindEvents() {
     this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.hideWithTransition());
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
@@ -776,260 +1034,7 @@ export default class ComfyOutputBrowser {
 
     this.settings.bindEvents();
 
-    document.addEventListener('keydown', (e) => {
-      const focusIsInside = this.root?.contains(document.activeElement) || false;
-      if (!focusIsInside) return;
-
-      const activeDialog = this.settings.modals.getActive();
-      const isFullView = this.$("cfobFullViewModal").classList.contains('active');
-
-      const target = /** @type {HTMLElement} */ (e.target);
-      const isEditing = target && (
-        (target.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(/** @type {HTMLInputElement} */(target).type)) ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable
-      );
-
-      const noModalOpen = !activeDialog;
-      const key = e.key.toLowerCase();
-      const searchInput = this.$("cfobSearchInput");
-
-      if (e.key === 'Escape') {
-        if (activeDialog) return;
-        e.preventDefault();
-        if (!this.$("cfobSearchSuggestions").hidden) {
-          e.stopPropagation(); this.search.hideSearchSuggestions();
-        } else if (document.activeElement === searchInput) {
-          e.stopPropagation();
-          this.search.hideSearchSuggestions();
-          if (this.settings.fullViewMode) {
-            this.$("cfobFullViewImg")?.focus();
-          } else {
-            this.focusFirstGridItem();
-          }
-        } else if (isFullView && noModalOpen) {
-          e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
-        } else if (this.isUiVisible) {
-          e.stopPropagation();
-          if (isEditing) target.blur();
-          else if (this.selectedImages.size > 0) this.selection.clearSelection();
-          else this.hideWithTransition();
-        }
-        return;
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 's') {
-        e.preventDefault(); e.stopPropagation(); this.fetchServerImages();
-      }
-
-      if (!activeDialog && (e.ctrlKey || e.metaKey) && !e.altKey && /^[1-4]$/.test(e.key)) {
-        e.preventDefault();
-        e.stopPropagation();
-        /** @type {Record<string, string>} */
-        const viewModes = { '1': 'compact', '2': 'grid', '3': 'list', '4': 'full' };
-        this.settings.setViewMode(viewModes[e.key]);
-        return;
-      }
-
-      if (isEditing) return;
-
-      if (noModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey && key >= '1' && key <= '9') {
-        if (isFullView || (this.isUiVisible && !this.root?.classList.contains('cfob-hidden'))) {
-          e.preventDefault();
-          e.stopPropagation();
-          this.handleFieldCopyKey(key);
-          return;
-        }
-      }
-
-      if (isFullView && noModalOpen && !e.ctrlKey) {
-        if (key === '/' && !e.altKey && !e.metaKey) {
-          e.preventDefault(); e.stopPropagation();
-          const layout = this.root?.querySelector('.full-view-layout');
-          if (layout?.classList.contains('ui-hidden')) {
-            this.fullView.setFullViewUIHidden(false);
-          }
-          searchInput.focus();
-        }
-        else if (e.key === 'ArrowUp') {
-          e.preventDefault(); e.stopPropagation();
-          this.fullView.setFullViewUIHidden(false);
-          searchInput.focus();
-        }
-        else if (e.key === 'ArrowDown') {
-          e.preventDefault(); e.stopPropagation(); this.fullView.toggleFullViewUI();
-        }
-        else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
-        else if (!noModalOpen) return;
-
-        else if (e.shiftKey && key === 'f') {
-          e.preventDefault(); e.stopPropagation();
-          this.settings.setConstrainFullView(!this.settings.constrainFullView);
-          const status = this.$("cfobConstrainStatus");
-          if (status) status.textContent = this.settings.constrainFullView ? "On" : "Off";
-        }
-        else if (key === 'f') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleFitMode(); }
-        else if (key === 'm') { e.preventDefault(); e.stopPropagation(); this.fullView.moveFullViewImage(); }
-        else if (key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
-        else if (key === 'g') { e.preventDefault(); e.stopPropagation(); this.fullView.goToImageNumber(); }
-        else if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionInspect").click(); }
-        else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
-        else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
-        else if (key === ' ') {
-          if (target.closest('button, a, [role="button"]')) return;
-          e.preventDefault(); e.stopPropagation();
-          this.fullView.toggleFullViewUI();
-        }
-        else if (key === 't') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleSidebarMode(); }
-        else if (key === '+' || key === '=' || e.code === 'NumpadAdd') {
-          e.preventDefault(); e.stopPropagation();
-          this.fullView.setFullViewZoom(this.fullView.fvZoom * 1.1);
-        }
-        else if (key === '-' || key === '_' || e.code === 'NumpadSubtract') {
-          e.preventDefault(); e.stopPropagation();
-          this.fullView.setFullViewZoom(this.fullView.fvZoom / 1.1);
-        }
-        else if (key === '0') {
-          e.preventDefault(); e.stopPropagation();
-          this.fullView.resetFullViewTransform();
-        }
-      } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
-        if (!noModalOpen) return;
-
-        if (e.shiftKey && key === 'f') {
-          e.preventDefault(); e.stopPropagation();
-          this.settings.cycleBrowserMode();
-        }
-        else if (e.altKey && (key === '+' || key === '=' || e.code === 'NumpadAdd')) {
-          e.preventDefault(); e.stopPropagation();
-          const viewMode = this.settings.getGalleryViewMode();
-          if (viewMode === 'compact') {
-            this.settings.setCompactSizeOffset(this.settings.compactSizeOffset + 10);
-          } else {
-            this.settings.setGridSize(this.settings.gridSize + 10);
-          }
-        }
-        else if (e.altKey && (key === '-' || key === '_' || e.code === 'NumpadSubtract')) {
-          e.preventDefault(); e.stopPropagation();
-          const viewMode = this.settings.getGalleryViewMode();
-          if (viewMode === 'compact') {
-            this.settings.setCompactSizeOffset(this.settings.compactSizeOffset - 10);
-          } else {
-            this.settings.setGridSize(this.settings.gridSize - 10);
-          }
-        }
-        else if (key === '/' && !e.ctrlKey) {
-          e.preventDefault(); e.stopPropagation(); this.$("cfobSearchInput").focus();
-        }
-        else if ((e.ctrlKey || e.metaKey) && key === 'a') {
-          e.preventDefault(); e.stopPropagation(); this.selection.selectAllFiltered();
-        }
-        else if ((key === 'm' || key === 'r') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          const focusedImage = this.filteredImages[this.lastSelectedIdx];
-          const hasSelection = key === 'm' ? this.selectedImages.size > 0 : this.selectedImages.size === 1;
-          if (hasSelection || focusedImage) {
-            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
-            e.preventDefault(); e.stopPropagation();
-            if (key === 'm') this.actions.moveSelected();
-            else this.actions.renameSelected();
-          }
-        }
-        else if (key === 'i' && !e.ctrlKey) {
-          const focusedImage = this.filteredImages[this.lastSelectedIdx];
-          if (this.selectedImages.size === 1 || focusedImage) {
-            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
-            e.preventDefault(); e.stopPropagation(); this.actions.inspectSelected();
-          }
-        }
-        else if (key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          if (!target.closest('button, a, [role="button"]')) {
-            const focusedImage = this.filteredImages[this.lastSelectedIdx];
-            if (focusedImage || this.selectedImages.size === 1) {
-              e.preventDefault(); e.stopPropagation();
-              const img = focusedImage || this.loadedImages.find(i => i.name === Array.from(this.selectedImages)[0]);
-              if (img) this.fullView.openFullView(img);
-            }
-          }
-        }
-        else if (key === 'enter' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          if (!e.altKey && !target.closest('button, a, [role="button"]')) {
-            const checkboxName = target.matches('.card-checkbox')
-              ? /** @type {HTMLInputElement} */ (target).value
-              : null;
-            const focusedIndex = checkboxName
-              ? this.filteredImages.findIndex(img => img.name === checkboxName)
-              : this.lastSelectedIdx >= 0 && this.lastSelectedIdx < this.filteredImages.length
-                ? this.lastSelectedIdx
-                : this.selectedImages.size === 1
-                  ? this.filteredImages.findIndex(img => img.name === Array.from(this.selectedImages)[0])
-                  : -1;
-            const targetImg = this.filteredImages[focusedIndex];
-            if (!targetImg) return;
-
-            e.preventDefault(); e.stopPropagation();
-            this.lastSelectedIdx = focusedIndex;
-            if (this.selectedImages.has(targetImg.name)) {
-              this.selectedImages.delete(targetImg.name);
-            } else {
-              this.selectedImages.add(targetImg.name);
-            }
-            this.selectionAnchorIdx = focusedIndex;
-
-            const targetCard = this.gallery.getOrderedCards()[focusedIndex];
-            const checkbox = targetCard?.querySelector('.card-checkbox');
-            if (checkbox) /** @type {HTMLInputElement} */ (checkbox).checked = this.selectedImages.has(targetImg.name);
-            this.selection.updateCardStyles();
-            this.selection.updateActionBar();
-          }
-        }
-        else if (e.key === 'Delete') {
-          const focusedImage = this.filteredImages[this.lastSelectedIdx];
-          if (this.selectedImages.size > 0 || focusedImage) {
-            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
-            e.preventDefault(); e.stopPropagation(); this.actions.deleteSelected();
-          }
-        }
-        else if (key === 'd') {
-          const focusedImage = this.filteredImages[this.lastSelectedIdx];
-          if (this.selectedImages.size > 0 || focusedImage) {
-            if (!this.selectedImages.size && focusedImage) this.selectedImages.add(focusedImage.name);
-            e.preventDefault(); e.stopPropagation(); this.actions.downloadSelected();
-          }
-        }
-        else if (
-          ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', 'home', 'end'].includes(key) &&
-          !target.closest('button, a, [role="button"]')
-        ) {
-          if (e.key === 'ArrowUp' && this.lastSelectedIdx < 0) {
-            e.preventDefault(); e.stopPropagation();
-            searchInput.focus();
-            return;
-          }
-          if (e.key === 'ArrowUp' && this.lastSelectedIdx >= 0) {
-            const grid = this.$("cfobGalleryGrid");
-            const cards = this.gallery.getOrderedCards();
-            const currentCard = cards[this.lastSelectedIdx];
-            const isMasonry = grid.classList.contains('masonry')
-              && grid.classList.contains('grid-column-first')
-              && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
-            const isFirstRow = isMasonry && currentCard
-              ? !cards.some((card) => {
-                const candidate = card;
-                return candidate !== currentCard
-                  && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2
-                  < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;
-              })
-              : Boolean(cards[0] && currentCard && currentCard.offsetTop <= cards[0].offsetTop);
-            if (isFirstRow) {
-              e.preventDefault(); e.stopPropagation();
-              searchInput.focus();
-              return;
-            }
-          }
-          e.preventDefault(); e.stopPropagation(); this.selection.handleGridNavigation(e);
-        }
-      }
-    }, { capture: true });
+    document.addEventListener('keydown', (e) => this.handleDocumentKeydown(e), { capture: true });
 
     const resizer = this.$("cfob-resizer");
     let isResizing = false;
