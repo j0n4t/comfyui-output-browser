@@ -457,6 +457,29 @@ export default class ComfyOutputBrowser {
       setupFloatingDrag(launcherBtn);
     }
 
+    // Keep the floating launcher inside the viewport when the window resizes
+    const clampFloatingToViewport = (btn) => {
+      if (!btn || btn.className !== "floating") return;
+      const rect = btn.getBoundingClientRect();
+      const maxLeft = Math.max(0, window.innerWidth - rect.width);
+      const maxTop = Math.max(0, window.innerHeight - rect.height);
+      const currentLeft = btn.style.left ? parseFloat(btn.style.left) : rect.left;
+      const currentTop = btn.style.top ? parseFloat(btn.style.top) : rect.top;
+      const clampedLeft = Math.min(Math.max(0, currentLeft), maxLeft);
+      const clampedTop = Math.min(Math.max(0, currentTop), maxTop);
+      if (clampedLeft !== currentLeft) btn.style.left = `${clampedLeft}px`;
+      if (clampedTop !== currentTop) btn.style.top = `${clampedTop}px`;
+      // Persist the clamped position so it survives subsequent placement updates
+      const finalLeft = clampedLeft || 0;
+      const finalTop = clampedTop || 0;
+      localStorage.setItem('cfob_launcher_pos', JSON.stringify({ left: finalLeft, top: finalTop }));
+    };
+
+    window.addEventListener('resize', () => {
+      const btn = document.getElementById("cfob-launcher-btn");
+      if (btn) clampFloatingToViewport(btn);
+    });
+
     /** @type {ReturnType<typeof setTimeout> | null} */
     let debounceTimer = null;
     this._launcherObserver = new MutationObserver(() => {

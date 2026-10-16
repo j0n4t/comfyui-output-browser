@@ -539,6 +539,71 @@ test("launcher button placement: action-bar mode", () => {
   MockElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
 });
 
+test("floating launcher stays inside the viewport when window resizes", () => {
+  // Simulate the clampFloatingToViewport logic from the production code
+  const clampFloatingToViewport = (btn) => {
+    if (!btn || btn.className !== "floating") return;
+    const rect = btn.getBoundingClientRect();
+    const maxLeft = Math.max(0, window.innerWidth - rect.width);
+    const maxTop = Math.max(0, window.innerHeight - rect.height);
+    const currentLeft = btn.style.left ? parseFloat(btn.style.left) : rect.left;
+    const currentTop = btn.style.top ? parseFloat(btn.style.top) : rect.top;
+    const clampedLeft = Math.min(Math.max(0, currentLeft), maxLeft);
+    const clampedTop = Math.min(Math.max(0, currentTop), maxTop);
+    if (clampedLeft !== currentLeft) btn.style.left = `${clampedLeft}px`;
+    if (clampedTop !== currentTop) btn.style.top = `${clampedTop}px`;
+  };
+
+  // Mock window (not available in Node test env)
+  const originalWindow = globalThis.window;
+  const originalInnerWidth = globalThis.innerWidth;
+  const originalInnerHeight = globalThis.innerHeight;
+  globalThis.window = globalThis;
+
+  // 1. Launcher dragged to bottom-right, then window shrinks — should clamp
+  globalThis.innerWidth = 800;
+  globalThis.innerHeight = 600;
+  const btn = {
+    className: "floating",
+    style: { left: "760px", top: "560px" },
+    getBoundingClientRect: () => ({ width: 48, height: 48, left: 760, top: 560, right: 808, bottom: 608 }),
+  };
+  // Shrink window
+  globalThis.innerWidth = 600;
+  globalThis.innerHeight = 400;
+  clampFloatingToViewport(btn);
+  // maxLeft = 600 - 48 = 552, maxTop = 400 - 48 = 352
+  assert.equal(btn.style.left, "552px", "Launcher should be clamped to viewport width");
+  assert.equal(btn.style.top, "352px", "Launcher should be clamped to viewport height");
+
+  // 2. Launcher at origin — no change needed
+  globalThis.innerWidth = 1024;
+  globalThis.innerHeight = 768;
+  const btn2 = {
+    className: "floating",
+    style: { left: "10px", top: "10px" },
+    getBoundingClientRect: () => ({ width: 48, height: 48, left: 10, top: 10, right: 58, bottom: 58 }),
+  };
+  clampFloatingToViewport(btn2);
+  assert.equal(btn2.style.left, "10px", "Launcher at origin should not move horizontally");
+  assert.equal(btn2.style.top, "10px", "Launcher at origin should not move vertically");
+
+  // 3. Non-floating launcher should be ignored
+  const btn3 = {
+    className: "side-bar-button",
+    style: { left: "760px", top: "560px" },
+    getBoundingClientRect: () => ({ width: 100, height: 40, left: 760, top: 560, right: 860, bottom: 600 }),
+  };
+  clampFloatingToViewport(btn3);
+  assert.equal(btn3.style.left, "760px", "Non-floating launcher should not be clamped");
+  assert.equal(btn3.style.top, "560px", "Non-floating launcher should not be clamped");
+
+  // Restore
+  globalThis.window = originalWindow;
+  globalThis.innerWidth = originalInnerWidth;
+  globalThis.innerHeight = originalInnerHeight;
+});
+
 test("dragging the floating launcher does not toggle the panel", () => {
   // Mirror of the onclick guard: a click within 300ms of a drag end is ignored.
   const makeButton = (toggle) => {
