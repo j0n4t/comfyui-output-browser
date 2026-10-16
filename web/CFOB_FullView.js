@@ -657,6 +657,7 @@ export default class CFOB_FullView {
         this.app.showToast(data.error || "Rename failed.");
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       this.app.showToast("Rename request failed.");
     }
@@ -706,6 +707,7 @@ export default class CFOB_FullView {
       }
       this.app.showToast(`Moved to ${moved.new_name}`);
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       this.app.showToast("Move request failed.");
     }
@@ -748,6 +750,7 @@ export default class CFOB_FullView {
         }
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       this.app.showToast("Failed to delete/trash image.");
     }

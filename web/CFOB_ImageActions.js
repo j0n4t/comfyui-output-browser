@@ -19,6 +19,7 @@ export default class CFOB_ImageActions {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        // eslint-disable-next-line no-await-in-loop
         await new Promise(r => setTimeout(r, 250));
       }
     }
@@ -54,6 +55,7 @@ export default class CFOB_ImageActions {
 
         for (const file of removed) {
           app.search.removeImageKeywords(file);
+          // eslint-disable-next-line no-await-in-loop
           await app.api.cacheDelete(file);
         }
 
@@ -67,6 +69,7 @@ export default class CFOB_ImageActions {
         }
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       app.showToast("Failed to delete/trash images.");
     }
@@ -109,6 +112,7 @@ export default class CFOB_ImageActions {
         app.showToast(data.error || "Rename failed.");
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       app.showToast("Rename request failed.");
     }
@@ -139,9 +143,12 @@ export default class CFOB_ImageActions {
           img.mtime = moved.mtime || img.mtime;
           img.url = app.api.getImageUrl(moved.new_name) + (img.mtime ? `&t=${img.mtime}` : '');
           app.search.indexImageKeywords(img);
+          // eslint-disable-next-line no-await-in-loop
           const meta = await app.api.cacheGet(moved.old_name);
           if (meta) {
+            // eslint-disable-next-line no-await-in-loop
             await app.api.cacheSet(moved.new_name, meta, img.mtime);
+            // eslint-disable-next-line no-await-in-loop
             await app.api.cacheDelete(moved.old_name);
           }
         }
@@ -149,6 +156,7 @@ export default class CFOB_ImageActions {
         app.gallery.filterGallery();
         if (data.errors && data.errors.length > 0) {
           app.showToast(`Moved ${data.moved.length}, but ${data.errors.length} failed.`);
+          // eslint-disable-next-line no-console
           console.warn("Move errors:", data.errors);
         } else {
           app.showToast(`Moved ${data.moved.length} item(s) to ${destFolder || "root"}`);
@@ -157,6 +165,7 @@ export default class CFOB_ImageActions {
         app.showToast(data.error || "Move failed.");
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
       app.showToast("Move request failed.");
     }
@@ -230,6 +239,7 @@ export default class CFOB_ImageActions {
 
       if (!img.isParsed) {
         app.showToast("Loading metadata...");
+        // eslint-disable-next-line no-await-in-loop
         await app.api.loadMetadata(img);
       }
 

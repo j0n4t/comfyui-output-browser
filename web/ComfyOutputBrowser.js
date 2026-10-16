@@ -1064,6 +1064,7 @@ export default class ComfyOutputBrowser {
       this.$("cfobEmptyStateTitle").innerText = "Connection Error";
       this.$("cfobEmptyStateDesc").innerText = "Failed to load outputs from server.";
       this.$("cfobEmptyState").style.display = "block";
+      // eslint-disable-next-line no-console
       console.error("Output Browser Error:", err);
     } finally {
       this.serverImageFetchCount--;
@@ -1211,6 +1212,7 @@ const browser = new ComfyOutputBrowser();
 
 // @ts-ignore Check the flag we injected via __init__.py to prevent the 404 network request
 if (window.CFOB_STANDALONE) {
+  // eslint-disable-next-line no-console
   console.log("Running Output Browser in standalone mode.");
   window.addEventListener('DOMContentLoaded', () => {
     browser.init();
@@ -1250,6 +1252,7 @@ if (window.CFOB_STANDALONE) {
       }
     });
   }).catch((err) => {
+    // eslint-disable-next-line no-console
     console.error("Failed to load ComfyUI context:", err);
   });
 }

@@ -126,11 +126,14 @@ export async function waitForServer(url, timeoutMs = 30000) {
   let lastErr = null;
   while (Date.now() < deadline) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       const res = await fetch(url);
+      // eslint-disable-next-line no-await-in-loop
       if (res.ok) return await res.json();
     } catch (e) {
       lastErr = e;
     }
+    // eslint-disable-next-line no-await-in-loop
     await delay(200);
   }
   throw new Error(`Server at ${url} never became ready: ${lastErr}`);
@@ -165,12 +168,16 @@ export async function launchChrome(chromePath, { port }) {
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+       
       if (res.ok) {
+        // eslint-disable-next-line no-await-in-loop
         wsUrl = (await res.json()).webSocketDebuggerUrl;
         break;
       }
     } catch { /* not up yet */ }
+    // eslint-disable-next-line no-await-in-loop
     await delay(200);
   }
   if (!wsUrl) throw new Error(`Chromium never exposed CDP on port ${port}.\n${output}`);
@@ -290,8 +297,10 @@ export async function waitUntil(evaluate, expression, label, timeoutMs = 15000) 
   const deadline = Date.now() + timeoutMs;
   let last;
   while (Date.now() < deadline) {
+    // eslint-disable-next-line no-await-in-loop
     last = await evaluate(expression);
     if (last) return last;
+    // eslint-disable-next-line no-await-in-loop
     await delay(100);
   }
   throw new Error(`Timed out waiting for ${label} (last value: ${JSON.stringify(last)})`);
