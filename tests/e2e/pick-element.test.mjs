@@ -27,6 +27,7 @@ import {
   makeOutputDir,
   removeOutputDir,
   startServer,
+  sweepStaleProfileDirs,
   waitForServer,
   waitUntil,
 } from "./helpers.mjs";
@@ -63,6 +64,9 @@ const centreOfJs = sel => `(() => {
 
 const chromePath = findChrome();
 const pythonPath = findPython();
+
+// Sweep profile/fixture dirs from any run that died uncatchably before this one.
+sweepStaleProfileDirs();
 
 test("pick element: hides the UI, then OK hooks the launcher and Cancel restores it", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
   const serverPort = 8200 + (process.pid % 300);

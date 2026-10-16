@@ -26,6 +26,7 @@ import {
   makeOutputDir,
   removeOutputDir,
   startServer,
+  sweepStaleProfileDirs,
   waitForServer,
   waitUntil,
 } from "./helpers.mjs";
@@ -64,6 +65,9 @@ const selectCardJs = name => `(() => {
 
 const chromePath = findChrome();
 const pythonPath = findPython();
+
+// Sweep profile/fixture dirs from any run that died uncatchably before this one.
+sweepStaleProfileDirs();
 
 test("moving and renaming an image updates its card in place, with no reload", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
   // Ports derived from the pid so concurrent runs do not collide.

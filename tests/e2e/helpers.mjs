@@ -1,13 +1,132 @@
 // E2E-only helpers: the unit suite must stay runnable with zero dependencies,
 // so nothing here may be imported from tests/unit.
-import { spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { deflateSync } from "node:zlib";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "..", "..");
+
+/**
+ * Cleanups to run if the process is killed before its `after` hooks run.
+ *
+ * A SIGINT/SIGTERM (Ctrl-C, an outer timeout) ends Node immediately, skipping
+ * teardown — so the browser tree and its profile directory leak. These run on
+ * the way out, then the process exits with the conventional 130.
+ * @type {Set<() => Promise<void>>}
+ */
+const cleanups = new Set();
+let signalHandlersInstalled = false;
+
+/** @param {() => Promise<void>} fn @returns {() => void} unregister */
+function registerCleanup(fn) {
+  if (!signalHandlersInstalled) {
+    signalHandlersInstalled = true;
+    for (const signal of ["SIGINT", "SIGTERM"]) {
+      process.on(signal, () => {
+        void (async () => {
+          for (const cleanup of cleanups) {
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              await cleanup();
+            } catch { /* best effort on the way out */ }
+          }
+          process.exit(130);
+        })();
+      });
+    }
+  }
+  cleanups.add(fn);
+  return () => { cleanups.delete(fn); };
+}
+
+/**
+ * Kills a process and everything it spawned.
+ *
+ * `proc.kill()` only signals the process itself. Chromium forks a whole tree
+ * (renderer, gpu, crashpad-handler), and on Windows the children outlive their
+ * parent — they keep handles open on the profile directory, so the subsequent
+ * `rmSync` fails with EPERM and leaks tens of MB per run. `taskkill /T /F` takes
+ * the tree; elsewhere a process-group kill does.
+ * @param {import("node:child_process").ChildProcess} proc
+ */
+export function killTree(proc) {
+  if (!proc || proc.pid === undefined || (proc.exitCode !== null || proc.signalCode !== null)) return;
+  if (process.platform === "win32") {
+    try {
+      execFileSync("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore" });
+      return;
+    } catch { /* fall through to the plain kill */ }
+  }
+  try { proc.kill("SIGKILL"); } catch { /* already gone */ }
+}
+
+/**
+ * Removes a directory, tolerating the Windows "still held" case.
+ *
+ * Chromium releases its handles a moment after the process dies, so an
+ * immediate delete can fail with EPERM/EBUSY. Retrying beats both a bare throw
+ * (which masks a green run) and an instant give-up (which leaks the profile).
+ * @param {string} dir
+ */
+export function removeDirWithRetry(dir) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return true;
+    } catch {
+      // Busy-wait briefly; this runs at most a few hundred ms in practice.
+      const until = Date.now() + 200;
+      while (Date.now() < until) { /* spin */ }
+    }
+  }
+  return false;
+}
+
+/**
+ * Removes profile/fixture dirs left behind by runs that died abnormally.
+ *
+ * The signal handler below only covers a catchable SIGINT/SIGTERM. On Windows an
+ * external kill (Task Manager, `Stop-Process -Force`, an outer timeout) is
+ * `TerminateProcess` — not catchable — so no in-process handler can ever run,
+ * and those runs always leak. Sweeping at startup is what makes the leak
+ * self-healing regardless of how the previous run died.
+ *
+ * A dir is stale only if no live process references it, so a concurrent run's
+ * dirs are left alone.
+ */
+export function sweepStaleProfileDirs() {
+  if (process.platform !== "win32") return 0;
+  const temp = tmpdir();
+  /** @type {string[]} */
+  let entries;
+  try {
+    entries = readdirSync(temp).filter(name => name.startsWith("cfob-chrome-") || name.startsWith("cfob-e2e-"));
+  } catch {
+    return 0;
+  }
+  if (!entries.length) return 0;
+
+  // One query for every process command line, rather than one per dir.
+  let commandLines;
+  try {
+    commandLines = execFileSync("powershell", [
+      "-NoProfile", "-Command",
+      "(Get-CimInstance Win32_Process | Select-Object -ExpandProperty CommandLine) -join \"`n\"",
+    ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 20000 });
+  } catch {
+    return 0; // Cannot tell what is live; leave everything alone.
+  }
+
+  let removed = 0;
+  for (const name of entries) {
+    if (commandLines.includes(name)) continue; // A live process owns it.
+    if (removeDirWithRetry(join(temp, name))) removed++;
+  }
+  return removed;
+}
 
 /** Absolute paths tried in order for a Chromium binary. */
 const CHROME_CANDIDATES = [
@@ -87,7 +206,7 @@ export function makeOutputDir(layout) {
 
 /** @param {string} root */
 export function removeOutputDir(root) {
-  rmSync(root, { recursive: true, force: true, maxRetries: 5 });
+  removeDirWithRetry(root);
 }
 
 /**
@@ -107,16 +226,21 @@ export function startServer({ outputDir, port, python }) {
   let output = "";
   proc.stdout.on("data", d => { output += d; });
   proc.stderr.on("data", d => { output += d; });
+  /** @type {(() => void) | null} */
+  let unregisterCleanup = registerCleanup(stopServer);
+  async function stopServer() {
+    unregisterCleanup?.();
+    unregisterCleanup = null;
+    if (proc.exitCode !== null || proc.signalCode !== null) return;
+    const ended = new Promise(r => proc.once("exit", r));
+    proc.kill();
+    await Promise.race([ended, new Promise(r => setTimeout(r, 5000))]);
+    killTree(proc);
+  }
   return {
     proc,
     get output() { return output; },
-    async stop() {
-      if (proc.exitCode !== null || proc.signalCode !== null) return;
-      const ended = new Promise(r => proc.once("exit", r));
-      proc.kill();
-      await Promise.race([ended, new Promise(r => setTimeout(r, 5000))]);
-      if (proc.exitCode === null && proc.signalCode === null) proc.kill("SIGKILL");
-    },
+    stop: stopServer,
   };
 }
 
@@ -164,6 +288,24 @@ export async function launchChrome(chromePath, { port }) {
   proc.stdout.on("data", d => { output += d; });
   proc.stderr.on("data", d => { output += d; });
 
+  /** @type {Awaited<ReturnType<typeof connectCdp>> | null} */
+  let session = null;
+
+  /** Stops this browser and removes its profile. Idempotent. */
+  const stop = async () => {
+    unregisterCleanup();
+    // Ask nicely first so Chromium flushes and closes its own handles, then take
+    // the whole tree in case it did not.
+    try { await session?.send("Browser.close"); } catch { /* already gone */ }
+    await delay(300);
+    killTree(proc);
+    removeDirWithRetry(userDataDir);
+  };
+
+  // A killed run (Ctrl-C, an outer timeout) never reaches t.after, so without
+  // this the browser tree and its profile outlive the test process.
+  const unregisterCleanup = registerCleanup(stop);
+
   let wsUrl = null;
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
@@ -180,19 +322,14 @@ export async function launchChrome(chromePath, { port }) {
     // eslint-disable-next-line no-await-in-loop
     await delay(200);
   }
-  if (!wsUrl) throw new Error(`Chromium never exposed CDP on port ${port}.\n${output}`);
+  if (!wsUrl) {
+    // Remove the profile on the failure path too, or each failed launch leaks one.
+    await stop();
+    throw new Error(`Chromium never exposed CDP on port ${port}.\n${output}`);
+  }
 
-  const session = await connectCdp(wsUrl);
-  return {
-    proc,
-    ...session,
-    async stop() {
-      try { await session.send("Browser.close"); } catch { /* already gone */ }
-      await delay(300);
-      if (proc.exitCode === null && proc.signalCode === null) proc.kill();
-      rmSync(userDataDir, { recursive: true, force: true, maxRetries: 5 });
-    },
-  };
+  session = await connectCdp(wsUrl);
+  return { proc, ...session, stop };
 }
 
 /**
