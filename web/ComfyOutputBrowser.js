@@ -1442,6 +1442,11 @@ if (window.CFOB_STANDALONE) {
       name: "Comfy.OutputBrowser",
       commands: [
         {
+          id: "OutputBrowser.Toggle",
+          label: "Output Browser: Toggle",
+          function: () => { browser.toggleUi(); },
+        },
+        {
           id: "OutputBrowser.FocusSearch",
           label: "Output Browser: Focus Search",
           function: () => { browser.showWithTransition(); },
@@ -1450,7 +1455,7 @@ if (window.CFOB_STANDALONE) {
       keybindings: [
         {
           combo: { key: "?", ctrl: true, shift: true },
-          commandId: "OutputBrowser.FocusSearch"
+          commandId: "OutputBrowser.Toggle"
         }
       ],
       async setup() {
