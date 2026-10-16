@@ -125,6 +125,10 @@ function createMockApp(overrides = {}) {
       handleGridNavigation: () => calls.push('selection.handleGridNavigation'),
       updateCardStyles: () => calls.push('selection.updateCardStyles'),
       updateActionBar: () => calls.push('selection.updateActionBar'),
+      handleKeydown(e) {
+        calls.push('selection.handleKeydown');
+        return true;
+      },
     },
     actions: {
       moveSelected: () => calls.push('actions.moveSelected'),
@@ -199,7 +203,7 @@ test("full-view keys delegate to fullView.handleKeydown when full view is active
   assert.ok(!calls.includes('actions.inspectSelected'), "gallery 'i' handler should NOT be called");
 });
 
-test("gallery keys route to selection/actions when gallery is visible", () => {
+test("gallery keys delegate to selection.handleKeydown when gallery is visible", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   // Simulate: gallery visible, user presses 'ctrl+a' (select all)
@@ -208,10 +212,10 @@ test("gallery keys route to selection/actions when gallery is visible", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('selection.selectAllFiltered'), "selection.selectAllFiltered should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery 'm' key routes to actions.moveSelected", () => {
+test("gallery 'm' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -220,10 +224,10 @@ test("gallery 'm' key routes to actions.moveSelected", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('actions.moveSelected'), "actions.moveSelected should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery 'd' key routes to actions.downloadSelected", () => {
+test("gallery 'd' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -232,10 +236,10 @@ test("gallery 'd' key routes to actions.downloadSelected", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('actions.downloadSelected'), "actions.downloadSelected should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery 'Delete' key routes to actions.deleteSelected", () => {
+test("gallery 'Delete' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -244,10 +248,10 @@ test("gallery 'Delete' key routes to actions.deleteSelected", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('actions.deleteSelected'), "actions.deleteSelected should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery '/' key focuses search input", () => {
+test("gallery '/' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   globalThis.document.activeElement = null;
@@ -255,10 +259,10 @@ test("gallery '/' key focuses search input", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery 'shift+f' routes to settings.cycleBrowserMode", () => {
+test("gallery 'shift+f' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   globalThis.document.activeElement = null;
@@ -266,10 +270,10 @@ test("gallery 'shift+f' routes to settings.cycleBrowserMode", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('settings.cycleBrowserMode'), "settings.cycleBrowserMode should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery arrow keys route to selection.handleGridNavigation", () => {
+test("gallery arrow keys delegate to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -278,7 +282,7 @@ test("gallery arrow keys route to selection.handleGridNavigation", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('selection.handleGridNavigation'), "selection.handleGridNavigation should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
 test("panel-level ctrl+shift+s routes to fetchServerImages", () => {
@@ -514,7 +518,7 @@ test("full-view '-' delegates to fullView.handleKeydown", () => {
   assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("gallery 'i' routes to actions.inspectSelected", () => {
+test("gallery 'i' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -523,10 +527,10 @@ test("gallery 'i' routes to actions.inspectSelected", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('actions.inspectSelected'), "actions.inspectSelected should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery 'r' routes to actions.renameSelected", () => {
+test("gallery 'r' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -535,10 +539,10 @@ test("gallery 'r' routes to actions.renameSelected", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('actions.renameSelected'), "actions.renameSelected should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery 'alt++' routes to settings.setGridSize", () => {
+test("gallery 'alt++' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   globalThis.document.activeElement = null;
@@ -546,10 +550,10 @@ test("gallery 'alt++' routes to settings.setGridSize", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('settings.setGridSize'), "settings.setGridSize should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery 'alt--' routes to settings.setGridSize", () => {
+test("gallery 'alt--' delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   globalThis.document.activeElement = null;
@@ -557,7 +561,7 @@ test("gallery 'alt--' routes to settings.setGridSize", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('settings.setGridSize'), "settings.setGridSize should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
 test("number keys route to handleFieldCopyKey", () => {
@@ -654,7 +658,7 @@ test("full-view space delegates to fullView.handleKeydown", () => {
   assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("gallery space routes to fullView.openFullView", () => {
+test("gallery space delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -663,10 +667,10 @@ test("gallery space routes to fullView.openFullView", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.openFullView'), "fullView.openFullView should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery enter toggles selection", () => {
+test("gallery enter delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
 
   const mockTarget = { closest: () => null, matches: () => false };
@@ -675,11 +679,10 @@ test("gallery enter toggles selection", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('selection.updateCardStyles'), "selection.updateCardStyles should be called");
-  assert.ok(calls.includes('selection.updateActionBar'), "selection.updateActionBar should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery ArrowUp with no selection focuses search", () => {
+test("gallery ArrowUp delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false });
   app.lastSelectedIdx = -1;
 
@@ -689,10 +692,10 @@ test("gallery ArrowUp with no selection focuses search", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
-test("gallery ArrowUp on first row focuses search", () => {
+test("gallery ArrowUp on first row delegates to selection.handleKeydown", () => {
   const { app, calls } = createMockApp({ isUiVisible: true, isFullView: false, lastSelectedIdx: 0 });
 
   // Mock the grid to report first row
@@ -708,7 +711,7 @@ test("gallery ArrowUp on first row focuses search", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called on first row");
+  assert.ok(calls.includes('selection.handleKeydown'), "selection.handleKeydown should be called");
 });
 
 // --- Real CFOB_FullView.handleKeydown tests ---
@@ -905,4 +908,185 @@ test("real CFOB_FullView.handleKeydown: modal open blocks shortcuts", () => {
   const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
   assert.ok(!handled, "should return false when modal is open");
   assert.ok(!calls.includes('cycleFitMode'), "cycleFitMode should NOT be called when modal is open");
+});
+
+// --- Real CFOB_Selection.handleKeydown tests ---
+
+const { default: CFOB_Selection } = await import("../../web/CFOB_Selection.js");
+
+function createMockSelection() {
+  const calls = [];
+  const searchInput = { focus: () => calls.push('searchInput.focus') };
+  const app = {
+    filteredImages: [{ name: 'test.png', url: 'test.png', prompt: null, workflow: null, isParsed: true }],
+    loadedImages: [{ name: 'test.png', url: 'test.png', prompt: null, workflow: null, isParsed: true }],
+    selectedImages: new Set(),
+    lastSelectedIdx: 0,
+    selectionAnchorIdx: -1,
+    settings: {
+      modals: { getActive: () => null },
+      cycleBrowserMode: () => calls.push('settings.cycleBrowserMode'),
+      getGalleryViewMode: () => 'grid',
+      compactSizeOffset: 0,
+      gridSize: 100,
+      setCompactSizeOffset: () => calls.push('settings.setCompactSizeOffset'),
+      setGridSize: () => calls.push('settings.setGridSize'),
+    },
+    selection: {
+      selectAllFiltered: () => calls.push('selection.selectAllFiltered'),
+      handleGridNavigation: () => calls.push('selection.handleGridNavigation'),
+      updateCardStyles: () => calls.push('selection.updateCardStyles'),
+      updateActionBar: () => calls.push('selection.updateActionBar'),
+    },
+    actions: {
+      moveSelected: () => calls.push('actions.moveSelected'),
+      renameSelected: () => calls.push('actions.renameSelected'),
+      inspectSelected: () => calls.push('actions.inspectSelected'),
+      deleteSelected: () => calls.push('actions.deleteSelected'),
+      downloadSelected: () => calls.push('actions.downloadSelected'),
+    },
+    fullView: {
+      openFullView: () => calls.push('fullView.openFullView'),
+    },
+    gallery: {
+      getOrderedCards: () => [],
+    },
+    $: (id) => {
+      if (id === 'cfobSearchInput') return searchInput;
+      if (id === 'cfobGalleryGrid') return { classList: { contains: () => false } };
+      return null;
+    },
+  };
+  const sel = { app };
+  return { sel, calls };
+}
+
+test("real CFOB_Selection.handleKeydown: 'ctrl+a' routes to selectAllFiltered", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('a', { ctrlKey: true });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('selection.selectAllFiltered'), "selection.selectAllFiltered should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'shift+f' routes to cycleBrowserMode", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('f', { shiftKey: true });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('settings.cycleBrowserMode'), "settings.cycleBrowserMode should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: '/' focuses search input", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('/');
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'm' routes to moveSelected", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('m', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('actions.moveSelected'), "actions.moveSelected should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'r' routes to renameSelected", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('r', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('actions.renameSelected'), "actions.renameSelected should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'i' routes to inspectSelected", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('i', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('actions.inspectSelected'), "actions.inspectSelected should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'd' routes to downloadSelected", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('d', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('actions.downloadSelected'), "actions.downloadSelected should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'Delete' routes to deleteSelected", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('Delete', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('actions.deleteSelected'), "actions.deleteSelected should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: space routes to openFullView", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent(' ', { target: { closest: () => null } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('fullView.openFullView'), "fullView.openFullView should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: enter toggles selection", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('Enter', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('selection.updateCardStyles'), "selection.updateCardStyles should be called");
+  assert.ok(calls.includes('selection.updateActionBar'), "selection.updateActionBar should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: ArrowDown routes to handleGridNavigation", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('ArrowDown', { target: { closest: () => null } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('selection.handleGridNavigation'), "selection.handleGridNavigation should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: ArrowUp with no selection focuses search", () => {
+  const { sel, calls } = createMockSelection();
+  sel.app.lastSelectedIdx = -1;
+  const e = createKeyEvent('ArrowUp', { target: { closest: () => null } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'alt++' routes to setGridSize", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('+', { altKey: true });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('settings.setGridSize'), "settings.setGridSize should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'alt--' routes to setGridSize", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('-', { altKey: true });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('settings.setGridSize'), "settings.setGridSize should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: unknown key returns false", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('z', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(!handled, "should return false for unknown key");
+});
+
+test("real CFOB_Selection.handleKeydown: modal open blocks shortcuts", () => {
+  const { sel, calls } = createMockSelection();
+  sel.app.settings.modals.getActive = () => ({});
+  const e = createKeyEvent('a', { ctrlKey: true });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(!handled, "should return false when modal is open");
+  assert.ok(!calls.includes('selection.selectAllFiltered'), "selection.selectAllFiltered should NOT be called when modal is open");
 });

@@ -4,6 +4,171 @@ export default class CFOB_Selection {
     this.app = app;
   }
 
+  /**
+   * Handle keyboard shortcuts for the gallery.
+   * @param {KeyboardEvent} e
+   * @returns {boolean} true if the key was handled
+   */
+  handleKeydown(e) {
+    const app = this.app;
+    const key = e.key.toLowerCase();
+    const target = /** @type {HTMLElement} */ (e.target);
+    const noModalOpen = !app.settings.modals.getActive();
+    if (!noModalOpen) return false;
+
+    if (e.shiftKey && key === 'f') {
+      e.preventDefault(); e.stopPropagation();
+      app.settings.cycleBrowserMode();
+      return true;
+    }
+    if (e.altKey && (key === '+' || key === '=' || e.code === 'NumpadAdd')) {
+      e.preventDefault(); e.stopPropagation();
+      const viewMode = app.settings.getGalleryViewMode();
+      if (viewMode === 'compact') {
+        app.settings.setCompactSizeOffset(app.settings.compactSizeOffset + 10);
+      } else {
+        app.settings.setGridSize(app.settings.gridSize + 10);
+      }
+      return true;
+    }
+    if (e.altKey && (key === '-' || key === '_' || e.code === 'NumpadSubtract')) {
+      e.preventDefault(); e.stopPropagation();
+      const viewMode = app.settings.getGalleryViewMode();
+      if (viewMode === 'compact') {
+        app.settings.setCompactSizeOffset(app.settings.compactSizeOffset - 10);
+      } else {
+        app.settings.setGridSize(app.settings.gridSize - 10);
+      }
+      return true;
+    }
+    if (key === '/' && !e.ctrlKey) {
+      e.preventDefault(); e.stopPropagation();
+      app.$("cfobSearchInput").focus();
+      return true;
+    }
+    if ((e.ctrlKey || e.metaKey) && key === 'a') {
+      e.preventDefault(); e.stopPropagation();
+      app.selection.selectAllFiltered();
+      return true;
+    }
+    if ((key === 'm' || key === 'r') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const focusedImage = app.filteredImages[app.lastSelectedIdx];
+      const hasSelection = key === 'm' ? app.selectedImages.size > 0 : app.selectedImages.size === 1;
+      if (hasSelection || focusedImage) {
+        if (!app.selectedImages.size && focusedImage) app.selectedImages.add(focusedImage.name);
+        e.preventDefault(); e.stopPropagation();
+        if (key === 'm') app.actions.moveSelected();
+        else app.actions.renameSelected();
+        return true;
+      }
+    }
+    if (key === 'i' && !e.ctrlKey) {
+      const focusedImage = app.filteredImages[app.lastSelectedIdx];
+      if (app.selectedImages.size === 1 || focusedImage) {
+        if (!app.selectedImages.size && focusedImage) app.selectedImages.add(focusedImage.name);
+        e.preventDefault(); e.stopPropagation();
+        app.actions.inspectSelected();
+        return true;
+      }
+    }
+    if (key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (!target.closest('button, a, [role="button"]')) {
+        const focusedImage = app.filteredImages[app.lastSelectedIdx];
+        if (focusedImage || app.selectedImages.size === 1) {
+          e.preventDefault(); e.stopPropagation();
+          const img = focusedImage || app.loadedImages.find(i => i.name === Array.from(app.selectedImages)[0]);
+          if (img) app.fullView.openFullView(img);
+          return true;
+        }
+      }
+    }
+    if (key === 'enter' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (!e.altKey && !target.closest('button, a, [role="button"]')) {
+        const checkboxName = target.matches('.card-checkbox')
+          ? /** @type {HTMLInputElement} */ (target).value
+          : null;
+        const focusedIndex = checkboxName
+          ? app.filteredImages.findIndex(img => img.name === checkboxName)
+          : app.lastSelectedIdx >= 0 && app.lastSelectedIdx < app.filteredImages.length
+            ? app.lastSelectedIdx
+            : app.selectedImages.size === 1
+              ? app.filteredImages.findIndex(img => img.name === Array.from(app.selectedImages)[0])
+              : -1;
+        const targetImg = app.filteredImages[focusedIndex];
+        if (!targetImg) return false;
+
+        e.preventDefault(); e.stopPropagation();
+        app.lastSelectedIdx = focusedIndex;
+        if (app.selectedImages.has(targetImg.name)) {
+          app.selectedImages.delete(targetImg.name);
+        } else {
+          app.selectedImages.add(targetImg.name);
+        }
+        app.selectionAnchorIdx = focusedIndex;
+
+        const targetCard = app.gallery.getOrderedCards()[focusedIndex];
+        const checkbox = targetCard?.querySelector('.card-checkbox');
+        if (checkbox) /** @type {HTMLInputElement} */ (checkbox).checked = app.selectedImages.has(targetImg.name);
+        app.selection.updateCardStyles();
+        app.selection.updateActionBar();
+        return true;
+      }
+    }
+    if (e.key === 'Delete') {
+      const focusedImage = app.filteredImages[app.lastSelectedIdx];
+      if (app.selectedImages.size > 0 || focusedImage) {
+        if (!app.selectedImages.size && focusedImage) app.selectedImages.add(focusedImage.name);
+        e.preventDefault(); e.stopPropagation();
+        app.actions.deleteSelected();
+        return true;
+      }
+    }
+    if (key === 'd') {
+      const focusedImage = app.filteredImages[app.lastSelectedIdx];
+      if (app.selectedImages.size > 0 || focusedImage) {
+        if (!app.selectedImages.size && focusedImage) app.selectedImages.add(focusedImage.name);
+        e.preventDefault(); e.stopPropagation();
+        app.actions.downloadSelected();
+        return true;
+      }
+    }
+    if (
+      ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', 'home', 'end'].includes(key) &&
+      !target.closest('button, a, [role="button"]')
+    ) {
+      if (e.key === 'ArrowUp' && app.lastSelectedIdx < 0) {
+        e.preventDefault(); e.stopPropagation();
+        app.$("cfobSearchInput").focus();
+        return true;
+      }
+      if (e.key === 'ArrowUp' && app.lastSelectedIdx >= 0) {
+        const grid = app.$("cfobGalleryGrid");
+        const cards = app.gallery.getOrderedCards();
+        const currentCard = cards[app.lastSelectedIdx];
+        const isMasonry = grid.classList.contains('masonry')
+          && grid.classList.contains('grid-column-first')
+          && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
+        const isFirstRow = isMasonry && currentCard
+          ? !cards.some((card) => {
+            const candidate = card;
+            return candidate !== currentCard
+              && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2
+              < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;
+          })
+          : Boolean(cards[0] && currentCard && currentCard.offsetTop <= cards[0].offsetTop);
+        if (isFirstRow) {
+          e.preventDefault(); e.stopPropagation();
+          app.$("cfobSearchInput").focus();
+          return true;
+        }
+      }
+      e.preventDefault(); e.stopPropagation();
+      app.selection.handleGridNavigation(e);
+      return true;
+    }
+    return false;
+  }
+
   focusFirstGridItem() {
     const app = this.app;
     if (!app.filteredImages.length) return;
