@@ -784,57 +784,7 @@ export default class ComfyOutputBrowser {
     }
 
     if (isFullView && noModalOpen && !e.ctrlKey) {
-      if (key === '/' && !e.altKey && !e.metaKey) {
-        e.preventDefault(); e.stopPropagation();
-        const layout = this.root?.querySelector('.full-view-layout');
-        if (layout?.classList.contains('ui-hidden')) {
-          this.fullView.setFullViewUIHidden(false);
-        }
-        searchInput.focus();
-      }
-      else if (e.key === 'ArrowUp') {
-        e.preventDefault(); e.stopPropagation();
-        this.fullView.setFullViewUIHidden(false);
-        searchInput.focus();
-      }
-      else if (e.key === 'ArrowDown') {
-        e.preventDefault(); e.stopPropagation(); this.fullView.toggleFullViewUI();
-      }
-      else if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(-1); }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.fullView.navigateImage(1); }
-      else if (!noModalOpen) return;
-
-      else if (e.shiftKey && key === 'f') {
-        e.preventDefault(); e.stopPropagation();
-        this.settings.setConstrainFullView(!this.settings.constrainFullView);
-        const status = this.$("cfobConstrainStatus");
-        if (status) status.textContent = this.settings.constrainFullView ? "On" : "Off";
-      }
-      else if (key === 'f') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleFitMode(); }
-      else if (key === 'm') { e.preventDefault(); e.stopPropagation(); this.fullView.moveFullViewImage(); }
-      else if (key === 'r') { e.preventDefault(); e.stopPropagation(); this.fullView.renameFullViewImage(); }
-      else if (key === 'g') { e.preventDefault(); e.stopPropagation(); this.fullView.goToImageNumber(); }
-      else if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionInspect").click(); }
-      else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.fullView.deleteFullViewImage(); }
-      else if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.$("cfobFVActionDownload").click(); }
-      else if (key === ' ') {
-        if (target.closest('button, a, [role="button"]')) return;
-        e.preventDefault(); e.stopPropagation();
-        this.fullView.toggleFullViewUI();
-      }
-      else if (key === 't') { e.preventDefault(); e.stopPropagation(); this.fullView.cycleSidebarMode(); }
-      else if (key === '+' || key === '=' || e.code === 'NumpadAdd') {
-        e.preventDefault(); e.stopPropagation();
-        this.fullView.setFullViewZoom(this.fullView.fvZoom * 1.1);
-      }
-      else if (key === '-' || key === '_' || e.code === 'NumpadSubtract') {
-        e.preventDefault(); e.stopPropagation();
-        this.fullView.setFullViewZoom(this.fullView.fvZoom / 1.1);
-      }
-      else if (key === '0') {
-        e.preventDefault(); e.stopPropagation();
-        this.fullView.resetFullViewTransform();
-      }
+      this.fullView.handleKeydown(e);
     } else if (this.isUiVisible && !this.root?.classList.contains('cfob-hidden')) {
       if (!noModalOpen) return;
 

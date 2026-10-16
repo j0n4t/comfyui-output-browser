@@ -114,6 +114,10 @@ function createMockApp(overrides = {}) {
       resetFullViewTransform: () => calls.push('fullView.resetFullViewTransform'),
       openFullView: () => calls.push('fullView.openFullView'),
       fvZoom: 1,
+      handleKeydown(e) {
+        calls.push('fullView.handleKeydown');
+        return true;
+      },
     },
     selection: {
       clearSelection: () => calls.push('selection.clearSelection'),
@@ -182,7 +186,7 @@ test("Escape on search input moves focus to grid", () => {
   assert.ok(!calls.includes('hideWithTransition'), "panel should NOT be hidden");
 });
 
-test("full-view keys route to fullView when full view is active", () => {
+test("full-view keys delegate to fullView.handleKeydown when full view is active", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   // Simulate: full view is active, user presses 'f' (cycle fit mode)
@@ -191,7 +195,7 @@ test("full-view keys route to fullView when full view is active", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.cycleFitMode'), "fullView.cycleFitMode should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
   assert.ok(!calls.includes('actions.inspectSelected'), "gallery 'i' handler should NOT be called");
 });
 
@@ -334,7 +338,7 @@ test("Escape with no selection hides panel", () => {
   assert.ok(calls.includes('hideWithTransition'), "hideWithTransition should be called");
 });
 
-test("full-view ArrowLeft routes to fullView.navigateImage(-1)", () => {
+test("full-view ArrowLeft delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -342,10 +346,10 @@ test("full-view ArrowLeft routes to fullView.navigateImage(-1)", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.navigateImage(-1)'), "fullView.navigateImage(-1) should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view ArrowRight routes to fullView.navigateImage(1)", () => {
+test("full-view ArrowRight delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -353,10 +357,10 @@ test("full-view ArrowRight routes to fullView.navigateImage(1)", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.navigateImage(1)'), "fullView.navigateImage(1) should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 't' routes to fullView.cycleSidebarMode", () => {
+test("full-view 't' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -364,10 +368,10 @@ test("full-view 't' routes to fullView.cycleSidebarMode", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.cycleSidebarMode'), "fullView.cycleSidebarMode should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view '0' routes to fullView.resetFullViewTransform", () => {
+test("full-view '0' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -375,10 +379,10 @@ test("full-view '0' routes to fullView.resetFullViewTransform", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.resetFullViewTransform'), "fullView.resetFullViewTransform should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 'g' routes to fullView.goToImageNumber", () => {
+test("full-view 'g' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -386,10 +390,10 @@ test("full-view 'g' routes to fullView.goToImageNumber", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.goToImageNumber'), "fullView.goToImageNumber should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 'r' routes to fullView.renameFullViewImage", () => {
+test("full-view 'r' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -397,10 +401,10 @@ test("full-view 'r' routes to fullView.renameFullViewImage", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.renameFullViewImage'), "fullView.renameFullViewImage should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 'm' routes to fullView.moveFullViewImage", () => {
+test("full-view 'm' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -408,10 +412,10 @@ test("full-view 'm' routes to fullView.moveFullViewImage", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.moveFullViewImage'), "fullView.moveFullViewImage should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 'Delete' routes to fullView.deleteFullViewImage", () => {
+test("full-view 'Delete' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -419,10 +423,10 @@ test("full-view 'Delete' routes to fullView.deleteFullViewImage", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.deleteFullViewImage'), "fullView.deleteFullViewImage should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 'd' routes to cfobFVActionDownload.click", () => {
+test("full-view 'd' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -430,10 +434,10 @@ test("full-view 'd' routes to cfobFVActionDownload.click", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('cfobFVActionDownload.click'), "cfobFVActionDownload.click should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 'i' routes to cfobFVActionInspect.click", () => {
+test("full-view 'i' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -441,10 +445,10 @@ test("full-view 'i' routes to cfobFVActionInspect.click", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('cfobFVActionInspect.click'), "cfobFVActionInspect.click should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view 'shift+f' routes to settings.setConstrainFullView", () => {
+test("full-view 'shift+f' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -452,10 +456,10 @@ test("full-view 'shift+f' routes to settings.setConstrainFullView", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('settings.setConstrainFullView'), "settings.setConstrainFullView should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view '/' focuses search input", () => {
+test("full-view '/' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -463,10 +467,10 @@ test("full-view '/' focuses search input", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view ArrowUp focuses search input", () => {
+test("full-view ArrowUp delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -474,10 +478,10 @@ test("full-view ArrowUp focuses search input", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view ArrowDown routes to fullView.toggleFullViewUI", () => {
+test("full-view ArrowDown delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -485,10 +489,10 @@ test("full-view ArrowDown routes to fullView.toggleFullViewUI", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.toggleFullViewUI'), "fullView.toggleFullViewUI should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view '+' routes to fullView.setFullViewZoom", () => {
+test("full-view '+' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -496,10 +500,10 @@ test("full-view '+' routes to fullView.setFullViewZoom", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.setFullViewZoom'), "fullView.setFullViewZoom should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
-test("full-view '-' routes to fullView.setFullViewZoom", () => {
+test("full-view '-' delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   globalThis.document.activeElement = null;
@@ -507,7 +511,7 @@ test("full-view '-' routes to fullView.setFullViewZoom", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.setFullViewZoom'), "fullView.setFullViewZoom should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
 test("gallery 'i' routes to actions.inspectSelected", () => {
@@ -638,7 +642,7 @@ test("Escape when editing blurs the input", () => {
   assert.ok(!calls.includes('hideWithTransition'), "panel should NOT be hidden when editing");
 });
 
-test("full-view space routes to fullView.toggleFullViewUI", () => {
+test("full-view space delegates to fullView.handleKeydown", () => {
   const { app, calls } = createMockApp({ isFullView: true });
 
   const mockTarget = { closest: () => null };
@@ -647,7 +651,7 @@ test("full-view space routes to fullView.toggleFullViewUI", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('fullView.toggleFullViewUI'), "fullView.toggleFullViewUI should be called");
+  assert.ok(calls.includes('fullView.handleKeydown'), "fullView.handleKeydown should be called");
 });
 
 test("gallery space routes to fullView.openFullView", () => {
@@ -705,4 +709,200 @@ test("gallery ArrowUp on first row focuses search", () => {
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
   assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called on first row");
+});
+
+// --- Real CFOB_FullView.handleKeydown tests ---
+
+const { default: CFOB_FullView } = await import("../../web/CFOB_FullView.js");
+
+function createMockFullView() {
+  const calls = [];
+  const searchInput = { focus: () => calls.push('searchInput.focus') };
+  const app = {
+    root: { querySelector: () => null },
+    settings: { modals: { getActive: () => null }, constrainFullView: false, setConstrainFullView: () => calls.push('settings.setConstrainFullView') },
+    $: (id) => {
+      if (id === 'cfobSearchInput') return searchInput;
+      if (id === 'cfobConstrainStatus') return { textContent: '' };
+      if (id === 'cfobFVActionInspect') return { click: () => calls.push('cfobFVActionInspect.click') };
+      if (id === 'cfobFVActionDownload') return { click: () => calls.push('cfobFVActionDownload.click') };
+      return null;
+    },
+  };
+  const fv = {
+    app,
+    fvZoom: 1,
+    setFullViewUIHidden: () => calls.push('setFullViewUIHidden'),
+    toggleFullViewUI: () => calls.push('toggleFullViewUI'),
+    navigateImage: (dir) => calls.push(`navigateImage(${dir})`),
+    cycleFitMode: () => calls.push('cycleFitMode'),
+    moveFullViewImage: () => calls.push('moveFullViewImage'),
+    renameFullViewImage: () => calls.push('renameFullViewImage'),
+    goToImageNumber: () => calls.push('goToImageNumber'),
+    deleteFullViewImage: () => calls.push('deleteFullViewImage'),
+    cycleSidebarMode: () => calls.push('cycleSidebarMode'),
+    setFullViewZoom: () => calls.push('setFullViewZoom'),
+    resetFullViewTransform: () => calls.push('resetFullViewTransform'),
+  };
+  return { fv, calls };
+}
+
+test("real CFOB_FullView.handleKeydown: 'f' routes to cycleFitMode", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('f');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('cycleFitMode'), "cycleFitMode should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: ArrowLeft routes to navigateImage(-1)", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('ArrowLeft');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('navigateImage(-1)'), "navigateImage(-1) should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: '/' focuses search input", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('/');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 'shift+f' routes to setConstrainFullView", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('f', { shiftKey: true });
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('settings.setConstrainFullView'), "settings.setConstrainFullView should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: '0' routes to resetFullViewTransform", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('0');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('resetFullViewTransform'), "resetFullViewTransform should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 'g' routes to goToImageNumber", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('g');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('goToImageNumber'), "goToImageNumber should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 'r' routes to renameFullViewImage", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('r');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('renameFullViewImage'), "renameFullViewImage should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 'm' routes to moveFullViewImage", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('m');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('moveFullViewImage'), "moveFullViewImage should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 'Delete' routes to deleteFullViewImage", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('Delete');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('deleteFullViewImage'), "deleteFullViewImage should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 'd' routes to cfobFVActionDownload.click", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('d');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('cfobFVActionDownload.click'), "cfobFVActionDownload.click should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 'i' routes to cfobFVActionInspect.click", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('i');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('cfobFVActionInspect.click'), "cfobFVActionInspect.click should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: 't' routes to cycleSidebarMode", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('t');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('cycleSidebarMode'), "cycleSidebarMode should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: '+' routes to setFullViewZoom", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('+');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('setFullViewZoom'), "setFullViewZoom should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: '-' routes to setFullViewZoom", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('-');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('setFullViewZoom'), "setFullViewZoom should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: ArrowUp focuses search input", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('ArrowUp');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: ArrowDown routes to toggleFullViewUI", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('ArrowDown');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('toggleFullViewUI'), "toggleFullViewUI should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: space routes to toggleFullViewUI", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent(' ', { target: { closest: () => null } });
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('toggleFullViewUI'), "toggleFullViewUI should be called");
+});
+
+test("real CFOB_FullView.handleKeydown: space on button returns false", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent(' ', { target: { closest: () => ({}) } });
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(!handled, "should return false when space is on a button");
+  assert.ok(!calls.includes('toggleFullViewUI'), "toggleFullViewUI should NOT be called");
+});
+
+test("real CFOB_FullView.handleKeydown: unknown key returns false", () => {
+  const { fv, calls } = createMockFullView();
+  const e = createKeyEvent('z');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(!handled, "should return false for unknown key");
+});
+
+test("real CFOB_FullView.handleKeydown: modal open blocks shortcuts", () => {
+  const { fv, calls } = createMockFullView();
+  fv.app.settings.modals.getActive = () => ({});
+  const e = createKeyEvent('f');
+  const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
+  assert.ok(!handled, "should return false when modal is open");
+  assert.ok(!calls.includes('cycleFitMode'), "cycleFitMode should NOT be called when modal is open");
 });

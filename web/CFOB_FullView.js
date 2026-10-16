@@ -186,6 +186,80 @@ export default class CFOB_FullView {
     this.browserControlPlaceholders = null;
   }
 
+  /**
+   * Handle keyboard shortcuts for the full-view modal.
+   * @param {KeyboardEvent} e
+   * @returns {boolean} true if the key was handled
+   */
+  handleKeydown(e) {
+    const key = e.key.toLowerCase();
+    const target = /** @type {HTMLElement} */ (e.target);
+    const searchInput = this.app.$("cfobSearchInput");
+    const noModalOpen = !this.app.settings.modals.getActive();
+
+    if (key === '/' && !e.altKey && !e.metaKey) {
+      e.preventDefault(); e.stopPropagation();
+      const layout = this.app.root?.querySelector('.full-view-layout');
+      if (layout?.classList.contains('ui-hidden')) {
+        this.setFullViewUIHidden(false);
+      }
+      searchInput.focus();
+      return true;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault(); e.stopPropagation();
+      this.setFullViewUIHidden(false);
+      searchInput.focus();
+      return true;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault(); e.stopPropagation();
+      this.toggleFullViewUI();
+      return true;
+    }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); this.navigateImage(-1); return true; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); this.navigateImage(1); return true; }
+    if (!noModalOpen) return false;
+
+    if (e.shiftKey && key === 'f') {
+      e.preventDefault(); e.stopPropagation();
+      this.app.settings.setConstrainFullView(!this.app.settings.constrainFullView);
+      const status = this.app.$("cfobConstrainStatus");
+      if (status) status.textContent = this.app.settings.constrainFullView ? "On" : "Off";
+      return true;
+    }
+    if (key === 'f') { e.preventDefault(); e.stopPropagation(); this.cycleFitMode(); return true; }
+    if (key === 'm') { e.preventDefault(); e.stopPropagation(); this.moveFullViewImage(); return true; }
+    if (key === 'r') { e.preventDefault(); e.stopPropagation(); this.renameFullViewImage(); return true; }
+    if (key === 'g') { e.preventDefault(); e.stopPropagation(); this.goToImageNumber(); return true; }
+    if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.app.$("cfobFVActionInspect").click(); return true; }
+    if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.deleteFullViewImage(); return true; }
+    if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.app.$("cfobFVActionDownload").click(); return true; }
+    if (key === ' ') {
+      if (target.closest('button, a, [role="button"]')) return false;
+      e.preventDefault(); e.stopPropagation();
+      this.toggleFullViewUI();
+      return true;
+    }
+    if (key === 't') { e.preventDefault(); e.stopPropagation(); this.cycleSidebarMode(); return true; }
+    if (key === '+' || key === '=' || e.code === 'NumpadAdd') {
+      e.preventDefault(); e.stopPropagation();
+      this.setFullViewZoom(this.fvZoom * 1.1);
+      return true;
+    }
+    if (key === '-' || key === '_' || e.code === 'NumpadSubtract') {
+      e.preventDefault(); e.stopPropagation();
+      this.setFullViewZoom(this.fvZoom / 1.1);
+      return true;
+    }
+    if (key === '0') {
+      e.preventDefault(); e.stopPropagation();
+      this.resetFullViewTransform();
+      return true;
+    }
+    return false;
+  }
+
   bindEvents() {
     this.app.$("cfobFullViewFields").addEventListener('click', (e) => {
       /** @type {HTMLElement | null} */
