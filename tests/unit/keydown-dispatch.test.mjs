@@ -98,6 +98,16 @@ function createMockApp(overrides = {}) {
     },
     search: {
       hideSearchSuggestions: () => calls.push('search.hideSearchSuggestions'),
+      handleKeydown(e) {
+        calls.push('search.handleKeydown');
+        // Simulate real behavior: only handle Escape when search input is focused or suggestions are open
+        if (e.key === 'Escape') {
+          const suggestions = app.$("cfobSearchSuggestions");
+          if (!suggestions.hidden) return true;
+          if (document.activeElement === app.$("cfobSearchInput")) return true;
+        }
+        return false;
+      },
     },
     fullView: {
       closeFullView: () => calls.push('fullView.closeFullView'),
@@ -174,7 +184,7 @@ function createKeyEvent(key, opts = {}) {
   };
 }
 
-test("Escape on search input moves focus to grid", () => {
+test("Escape on search input delegates to search.handleKeydown", () => {
   const { app, calls, searchInput } = createMockApp();
 
   // Simulate: search input is focused, user presses Escape
@@ -184,9 +194,8 @@ test("Escape on search input moves focus to grid", () => {
   // Call the handler directly
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  // Assert: search suggestions hidden, focus moved to grid
-  assert.ok(calls.includes('search.hideSearchSuggestions'), "search suggestions should be hidden");
-  assert.ok(calls.includes('focusFirstGridItem'), "focus should move to grid");
+  // Assert: search.handleKeydown was called
+  assert.ok(calls.includes('search.handleKeydown'), "search.handleKeydown should be called");
   assert.ok(!calls.includes('hideWithTransition'), "panel should NOT be hidden");
 });
 
@@ -621,7 +630,7 @@ test("Escape with modal open does nothing (modal handles it)", () => {
   assert.ok(!calls.includes('selection.clearSelection'), "Escape should NOT clear selection when modal is open");
 });
 
-test("Escape with search suggestions open hides suggestions", () => {
+test("Escape with search suggestions open delegates to search.handleKeydown", () => {
   const { app, calls, searchInput, searchSuggestions } = createMockApp();
   searchSuggestions.hidden = false;
   globalThis.document.activeElement = searchInput;
@@ -629,8 +638,8 @@ test("Escape with search suggestions open hides suggestions", () => {
 
   ComfyOutputBrowser.prototype.handleDocumentKeydown.call(app, keyEvent);
 
-  assert.ok(calls.includes('search.hideSearchSuggestions'), "search suggestions should be hidden");
-  assert.ok(!calls.includes('focusFirstGridItem'), "focus should NOT move to grid when suggestions were open");
+  assert.ok(calls.includes('search.handleKeydown'), "search.handleKeydown should be called");
+  assert.ok(!calls.includes('hideWithTransition'), "panel should NOT be hidden");
 });
 
 test("Escape when editing blurs the input", () => {
@@ -1089,4 +1098,73 @@ test("real CFOB_Selection.handleKeydown: modal open blocks shortcuts", () => {
   const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
   assert.ok(!handled, "should return false when modal is open");
   assert.ok(!calls.includes('selection.selectAllFiltered'), "selection.selectAllFiltered should NOT be called when modal is open");
+});
+
+// --- Real CFOB_Search.handleKeydown tests ---
+
+const { default: CFOB_Search } = await import("../../web/CFOB_Search.js");
+
+function createMockSearch() {
+  const calls = [];
+  const searchInput = { focus: () => calls.push('searchInput.focus') };
+  const searchSuggestions = { hidden: true };
+  const app = {
+    settings: { fullViewMode: false },
+    focusFirstGridItem: () => calls.push('focusFirstGridItem'),
+    $: (id) => {
+      if (id === 'cfobSearchInput') return searchInput;
+      if (id === 'cfobSearchSuggestions') return searchSuggestions;
+      if (id === 'cfobFullViewImg') return { focus: () => calls.push('cfobFullViewImg.focus') };
+      return null;
+    },
+  };
+  const search = {
+    app,
+    hideSearchSuggestions: () => calls.push('search.hideSearchSuggestions'),
+  };
+  return { search, calls, searchInput, searchSuggestions };
+}
+
+test("real CFOB_Search.handleKeydown: Escape with suggestions open hides suggestions", () => {
+  const { search, calls, searchSuggestions } = createMockSearch();
+  searchSuggestions.hidden = false;
+  const e = createKeyEvent('Escape');
+  const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('search.hideSearchSuggestions'), "search.hideSearchSuggestions should be called");
+});
+
+test("real CFOB_Search.handleKeydown: Escape on search input moves focus to grid", () => {
+  const { search, calls, searchInput } = createMockSearch();
+  globalThis.document.activeElement = searchInput;
+  const e = createKeyEvent('Escape');
+  const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('search.hideSearchSuggestions'), "search.hideSearchSuggestions should be called");
+  assert.ok(calls.includes('focusFirstGridItem'), "focusFirstGridItem should be called");
+});
+
+test("real CFOB_Search.handleKeydown: Escape on search input in full-view mode focuses full-view image", () => {
+  const { search, calls, searchInput } = createMockSearch();
+  search.app.settings.fullViewMode = true;
+  globalThis.document.activeElement = searchInput;
+  const e = createKeyEvent('Escape');
+  const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('cfobFullViewImg.focus'), "cfobFullViewImg.focus should be called");
+});
+
+test("real CFOB_Search.handleKeydown: Escape when not on search input returns false", () => {
+  const { search, calls } = createMockSearch();
+  globalThis.document.activeElement = null;
+  const e = createKeyEvent('Escape');
+  const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
+  assert.ok(!handled, "should return false when not on search input");
+});
+
+test("real CFOB_Search.handleKeydown: non-Escape key returns false", () => {
+  const { search, calls } = createMockSearch();
+  const e = createKeyEvent('f');
+  const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
+  assert.ok(!handled, "should return false for non-Escape key");
 });

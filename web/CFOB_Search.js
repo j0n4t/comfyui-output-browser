@@ -72,6 +72,36 @@ export default class CFOB_Search {
     }
   }
 
+  /**
+   * Handle keyboard shortcuts for the search input when it is focused.
+   * @param {KeyboardEvent} e
+   * @returns {boolean} true if the key was handled
+   */
+  handleKeydown(e) {
+    if (e.key === 'Escape') {
+      const suggestions = this.app.$("cfobSearchSuggestions");
+      if (!suggestions.hidden) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideSearchSuggestions();
+        return true;
+      }
+      const input = this.app.$("cfobSearchInput");
+      if (document.activeElement === input) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideSearchSuggestions();
+        if (this.app.settings.fullViewMode) {
+          this.app.$("cfobFullViewImg")?.focus();
+        } else {
+          this.app.focusFirstGridItem();
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** @param {KeyboardEvent} e */
   handleSearchKeydown(e) {
     const input = /** @type {HTMLInputElement} */ (this.app.$("cfobSearchInput"));
