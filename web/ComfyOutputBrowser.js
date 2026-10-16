@@ -800,6 +800,14 @@ export default class ComfyOutputBrowser {
         e.preventDefault();
         if (!this.$("cfobSearchSuggestions").hidden) {
           e.stopPropagation(); this.search.hideSearchSuggestions();
+        } else if (document.activeElement === searchInput) {
+          e.stopPropagation();
+          this.search.hideSearchSuggestions();
+          if (this.settings.fullViewMode) {
+            this.$("cfobFullViewImg")?.focus();
+          } else {
+            this.focusFirstGridItem();
+          }
         } else if (isFullView && noModalOpen) {
           e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
         } else if (this.isUiVisible) {
