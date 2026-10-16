@@ -15,6 +15,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Space`** to toggle the focused image's selection.
 - **File Management:** Instantly send unwanted outputs to the trash (`Delete`), download files locally (`D`), rename a selected image (`R`), or move selected images to an existing or newly created folder (`M`).
 - **Launcher Placement:** Under **Options → Launcher Button → Placement**, choose where the button that opens this panel lives: **Sidebar**, **Action Bar**, **Floating (draggable)**, or **Pick Element**. With **Pick Element**, the browser UI hides so you can click any element on the ComfyUI page; the launcher then appears as a sibling immediately before that element. A dashed preview shows the exact spot — click the same element again to flip the launcher to the other side of it — then **OK** commits it, and **Cancel** (or `Esc`) restores your previous placement. These settings are hidden in standalone mode, which has no launcher button.
+- **Panel Offsets:** Enable **Options → Panel Offsets** to inset the browser panel so it doesn't overlap ComfyUI's sidebar or top bar. The offsets are measured automatically from the live UI.
 
 ### 2. Full-Screen View & Zoom
 
@@ -28,6 +29,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 
 - **Quick-Copy Fields:** Press any number key from **`1` to `9**` while viewing an image (in grid or full-screen mode) to instantly copy the 1st through 9th metadata field values to your clipboard.
 - **Inspector:** Press **`I`** to open a detailed metadata inspector popup.
+- **Blacklist:** Hide specific metadata fields from search results under **Options → Folders & Search → Blacklist**. Enter paths like `Node.inputs.seed` to exclude matching values from search. This is useful for keeping sensitive or noisy metadata out of your search index.
 
 Use **Options → Sort By** to order images by server order, filename, modification time (**Older First** or **Newer First**).
 
