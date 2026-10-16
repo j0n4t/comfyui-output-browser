@@ -14,6 +14,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 - **Search Navigation:** Type in the search bar and press **`Enter`** or **`Tab`** to complete the selected suggestion (or the first suggestion). While suggestions are open, **`↑` / `↓`** cycle through autocomplete results; otherwise, **`↑`** recalls previous searches and **`↓`** focuses the first matching image without changing selection. In the grid, **`↑`** from its first row returns to search.
 - **Selection & Batch Actions:** Use **`Ctrl + A`** to select everything currently filtered, or **`Space`** to toggle the focused image's selection.
 - **File Management:** Instantly send unwanted outputs to the trash (`Delete`), download files locally (`D`), rename a selected image (`R`), or move selected images to an existing or newly created folder (`M`).
+- **Launcher Placement:** Under **Options → Launcher Button → Placement**, choose where the button that opens this panel lives: **Sidebar**, **Action Bar**, **Floating (draggable)**, or **Pick Element**. With **Pick Element**, the browser UI hides so you can click any element on the ComfyUI page; the launcher then appears as a sibling immediately before that element. A dashed preview shows the exact spot — click the same element again to flip the launcher to the other side of it — then **OK** commits it, and **Cancel** (or `Esc`) restores your previous placement. These settings are hidden in standalone mode, which has no launcher button.
 
 ### 2. Full-Screen View & Zoom
 

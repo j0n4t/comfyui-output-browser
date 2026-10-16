@@ -7,6 +7,7 @@ import CFOB_Search from "./CFOB_Search.js";
 import CFOB_Gallery from "./CFOB_Gallery.js";
 import CFOB_ImageActions from "./CFOB_ImageActions.js";
 import CFOB_Selection from "./CFOB_Selection.js";
+import { generateSelector, parseHookTarget, formatHookTarget } from "./CFOB_Selector.js";
 
 const BROWSER_HTML = `
 <div id="cfob-resizer"></div>
@@ -92,6 +93,15 @@ export default class ComfyOutputBrowser {
     this.gallery = new CFOB_Gallery(this);
     this.selection = new CFOB_Selection(this);
     this.actions = new CFOB_ImageActions(this);
+    /** @type {(() => void) | null} */
+    this._pickCleanup = null;
+    this.isPickingElement = false;
+    /** @type {{ uiVisible: boolean, placement: 'sidebar' | 'action-bar' | 'floating' | 'hook' } | null} */
+    this._pickRestore = null;
+    this._pickCommit = false;
+    // Set from window.CFOB_STANDALONE in init(); overridable so tests can exercise
+    // the launcher in the standalone harness.
+    this.launcherDisabled = false;
   }
 
   /** @param {string} id */
@@ -143,6 +153,9 @@ export default class ComfyOutputBrowser {
     document.body.appendChild(this.root);
 
     this.settings.setUiScale(this.settings.uiScale);
+    // Standalone mode is the panel itself — always open, full-bleed — so there is
+    // no launcher button to place and no launcher settings to offer.
+    this.launcherDisabled = Boolean(/** @type {any} */ (window).CFOB_STANDALONE);
     this.injectLauncherButton();
     this.bindEvents();
 
@@ -244,6 +257,12 @@ export default class ComfyOutputBrowser {
   }
 
   injectLauncherButton() {
+    // No launcher button where there is nothing for it to open.
+    if (this.launcherDisabled) {
+      document.getElementById("cfob-launcher-btn")?.remove();
+      return;
+    }
+
     // Clean up previous observer to avoid accumulation
     if (this._launcherObserver) {
       this._launcherObserver.disconnect();
@@ -442,6 +461,32 @@ export default class ComfyOutputBrowser {
         // Action bar not available — fall through to floating
       }
 
+      if (placement === 'hook') {
+        const hook = parseHookTarget(localStorage.getItem('cfob_launcher_hook_element'));
+        const hookTarget = hook ? document.querySelector(hook.selector) : null;
+        if (hook && hookTarget && hookTarget.parentElement) {
+          if (!launcherBtn.classList.contains('cfob-launcher-hook')) {
+            launcherBtn.className = "cfob-launcher-hook";
+          }
+          launcherBtn.style.border = "";
+          if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
+          launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
+          const parent = hookTarget.parentElement;
+          if (hook.side === 'after') {
+            // Sit right after the target: insert before whatever follows it.
+            const next = hookTarget.nextElementSibling;
+            if (launcherBtn.previousElementSibling !== hookTarget) {
+              if (next && next !== launcherBtn) parent.insertBefore(launcherBtn, next);
+              else parent.appendChild(launcherBtn);
+            }
+          } else if (launcherBtn.nextElementSibling !== hookTarget) {
+            parent.insertBefore(launcherBtn, hookTarget);
+          }
+          return;
+        }
+        // Hook target not found — fall through to floating
+      }
+
       // Floating placement (or fallback)
       if (launcherBtn.className !== "floating") launcherBtn.className = "floating";
       launcherBtn.style.border = "";
@@ -513,6 +558,161 @@ export default class ComfyOutputBrowser {
       this._launcherObserver.observe(canvasCont, { attributes: true, attributeFilter: ['style', 'class'] });
       canvasContObserved = true;
     }
+  }
+
+  /**
+   * Enter element picker mode. The browser UI (panel, modals, launcher) is hidden
+   * so the user can click the ComfyUI page underneath; a click only marks a
+   * candidate. OK commits it as the hook target, Cancel reverts to the placement
+   * the user had before, and either button restores the UI.
+   * @param {'sidebar' | 'action-bar' | 'floating' | 'hook'} [previousPlacement]
+   */
+  startElementPicker(previousPlacement) {
+    if (this.isPickingElement) return;
+    this.isPickingElement = true;
+
+    // Remember what to restore, then get the browser UI out of the way.
+    this._pickRestore = {
+      uiVisible: this.isUiVisible,
+      placement: previousPlacement || this.settings.launcherPlacement,
+    };
+    clearTimeout(this.transitionTimer);
+    if (this.root) {
+      this.root.style.display = 'none';
+      this.isUiVisible = false;
+    }
+    document.body.classList.add('cfob-pick-mode');
+
+    /** @type {HTMLElement | null} */
+    let picked = null;
+    /** @type {'before' | 'after'} */
+    let side = 'before';
+
+    const banner = document.createElement('div');
+    banner.id = 'cfob-pick-banner';
+    banner.innerHTML = `
+      <span>Click an element to place the launcher next to it. Click it again to switch sides.</span>
+      <button type="button" class="cfob-pick-ok" disabled>OK</button>
+      <button type="button" class="cfob-pick-cancel">Cancel</button>
+    `;
+    document.body.appendChild(banner);
+
+    // Live preview of where the launcher would land. Shown only after a click —
+    // tracking the pointer instead is too jittery to be readable.
+    const preview = document.createElement('button');
+    preview.id = 'cfob-launcher-preview';
+    preview.type = 'button';
+    preview.disabled = true;
+    preview.tabIndex = -1;
+    preview.setAttribute('aria-hidden', 'true');
+    preview.innerHTML = ICONS.logo;
+    preview.hidden = true;
+    document.body.appendChild(preview);
+
+    const okBtn = /** @type {HTMLButtonElement} */ (banner.querySelector('.cfob-pick-ok'));
+    const cancelBtn = /** @type {HTMLButtonElement} */ (banner.querySelector('.cfob-pick-cancel'));
+
+    /** Shows where the launcher would land — only ever called for a clicked element. */
+    const showPreview = (/** @type {HTMLElement} */ target, /** @type {'before' | 'after'} */ side) => {
+      // Preview only where the launcher can actually go: a sibling of the target.
+      const parent = target.parentElement;
+      if (!parent) {
+        preview.hidden = true;
+        return;
+      }
+      if (side === 'after') {
+        const next = target.nextElementSibling;
+        if (next) parent.insertBefore(preview, next);
+        else parent.appendChild(preview);
+      } else {
+        parent.insertBefore(preview, target);
+      }
+      preview.hidden = false;
+    };
+
+    /**
+     * Marks `target` as the candidate — only a click does this. Clicking the
+     * element that is already the candidate flips which side the launcher sits on.
+     */
+    const setCandidate = (/** @type {HTMLElement} */ target) => {
+      if (target === picked) {
+        side = side === 'before' ? 'after' : 'before';
+      } else {
+        picked?.classList.remove('cfob-pick-selected');
+        picked = target;
+        picked.classList.add('cfob-pick-selected');
+        side = 'before';
+      }
+      showPreview(target, side);
+      okBtn.disabled = false;
+    };
+
+    const onClick = (/** @type {MouseEvent} */ e) => {
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (!target || banner.contains(target) || target === preview) return;
+      // Keep the click from reaching ComfyUI's own handlers while picking.
+      e.preventDefault();
+      e.stopPropagation();
+      if (!generateSelector(target)) return;
+      setCandidate(target);
+    };
+
+    const onKeyDown = (/** @type {KeyboardEvent} */ e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        this.finishElementPicker(false);
+      }
+    };
+
+    okBtn.addEventListener('click', () => {
+      const selector = picked ? generateSelector(picked) : null;
+      if (!selector) return;
+      localStorage.setItem('cfob_launcher_hook_element', formatHookTarget(selector, side));
+      this.finishElementPicker(true);
+    });
+    cancelBtn.addEventListener('click', () => this.finishElementPicker(false));
+
+    document.addEventListener('click', onClick, true);
+    document.addEventListener('keydown', onKeyDown, true);
+
+    this._pickCleanup = () => {
+      document.removeEventListener('click', onClick, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+      picked?.classList.remove('cfob-pick-selected');
+      preview.remove();
+      banner.remove();
+      document.body.classList.remove('cfob-pick-mode');
+      this.isPickingElement = false;
+
+      // Restore the UI exactly as the user left it — an open modal keeps its
+      // state because it was only hidden, never closed.
+      const restore = this._pickRestore;
+      this._pickRestore = null;
+      const commit = this._pickCommit;
+      this._pickCommit = false;
+      if (restore?.uiVisible && this.root) {
+        this.root.style.display = 'flex';
+        this.root.classList.remove('cfob-hidden');
+        this.isUiVisible = true;
+      }
+      if (commit) this.injectLauncherButton();
+      else if (restore) this.settings.revertLauncherPlacement(restore.placement);
+      this._pickCleanup = null;
+    };
+  }
+
+  /**
+   * Leaves picker mode, restoring the browser UI.
+   * @param {boolean} commit - true to keep the picked target, false to revert.
+   */
+  finishElementPicker(commit) {
+    this._pickCommit = commit;
+    if (this._pickCleanup) this._pickCleanup();
+  }
+
+  cancelElementPicker() {
+    this.finishElementPicker(false);
   }
 
   bindEvents() {
@@ -1213,6 +1413,10 @@ export default class ComfyOutputBrowser {
 }
 
 const browser = new ComfyOutputBrowser();
+// Exposed so an e2e harness can reach the real instance (e.g. to re-enable the
+// launcher in standalone mode, where it is off by default).
+// @ts-ignore
+window.__cfob = browser;
 
 // @ts-ignore Check the flag we injected via __init__.py to prevent the 404 network request
 if (window.CFOB_STANDALONE) {

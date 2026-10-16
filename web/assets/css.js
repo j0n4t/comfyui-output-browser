@@ -218,6 +218,34 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-launcher-btn.side-bar-button .side-bar-button-icon { display: flex; align-items: center; justify-content: center; font-size: var(--sidebar-icon-size, 1.25rem); }
   #cfob-launcher-btn.side-bar-button .side-bar-button-icon svg { width: var(--sidebar-icon-size, 1.25rem); height: var(--sidebar-icon-size, 1.25rem); }
   .side-tool-bar-container.small-sidebar #cfob-launcher-btn .side-bar-button-label { display: none; }
+
+  #cfob-launcher-btn.cfob-launcher-hook, #cfob-launcher-preview { display: inline-flex; align-items: center; justify-content: center; padding: 0.3em; border: none; border-radius: 2px; background: var(--comfy-input-bg, #27272a); color: var(--fg-color, #f4f4f5); cursor: pointer; font-size: 0.875em; line-height: 1; transition: background 0.15s, color 0.15s; white-space: nowrap; flex-shrink: 0; }
+  #cfob-launcher-btn.cfob-launcher-hook:hover { background: var(--comfy-input-bg-hover, #3f3f46); color: var(--fg-color, #ffffff); }
+  #cfob-launcher-btn.cfob-launcher-hook.side-bar-button-selected { background: #0284c7; color: #ffffff; }
+  #cfob-launcher-btn.cfob-launcher-hook svg, #cfob-launcher-preview svg { width: 1em; height: 1em; }
+
+  /* Live placement preview shown while picking: where the launcher would land.
+     pointer-events:none so it never intercepts the pick click or the hit test. */
+  #cfob-launcher-preview { pointer-events: none; outline: 2px dashed #22c55e !important; outline-offset: 2px; opacity: 0.9; }
+  #cfob-launcher-preview[hidden] { display: none !important; }
+
+  /* Pick mode: hide the browser UI (panel + modals + launcher) so the user can
+     click the ComfyUI page underneath. Driven by the body class, so removing it
+     restores whatever visibility the panel had. The preview stays visible. */
+  body.cfob-pick-mode #cfob-root, body.cfob-pick-mode #cfob-launcher-btn { display: none !important; }
+  body.cfob-pick-mode, body.cfob-pick-mode * { cursor: crosshair !important; }
+  body.cfob-pick-mode *:hover { outline: 2px solid #0284c7 !important; outline-offset: 1px !important; }
+  body.cfob-pick-mode .cfob-pick-selected { outline: 2px solid #22c55e !important; outline-offset: 1px !important; }
+  body.cfob-pick-mode #cfob-pick-banner, body.cfob-pick-mode #cfob-pick-banner * { cursor: default !important; outline: none !important; }
+  body.cfob-pick-mode #cfob-pick-banner button { cursor: pointer !important; }
+  body.cfob-pick-mode #cfob-launcher-preview, body.cfob-pick-mode #cfob-launcher-preview * { cursor: default !important; outline: 2px dashed #22c55e !important; outline-offset: 2px !important; }
+  #cfob-pick-banner { position: fixed; top: 1em; left: 50%; transform: translateX(-50%); z-index: 99999; background: #0284c7; color: white; padding: 0.75em 1.25em; border-radius: 0.5em; font-size: 0.875em; font-weight: 500; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.3); display: flex; align-items: center; gap: 1em; pointer-events: auto; }
+  #cfob-pick-banner span { max-width: 40em; }
+  #cfob-pick-banner button { background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.25em 0.75em; border-radius: 0.25em; cursor: pointer; font-size: 0.875em; font-family: inherit; }
+  #cfob-pick-banner button:hover:not(:disabled) { background: rgba(255,255,255,0.3); }
+  #cfob-pick-banner button:disabled { opacity: 0.45; cursor: not-allowed; }
+  #cfob-pick-banner .cfob-pick-ok { background: #ffffff; color: #0369a1; font-weight: 600; }
+  #cfob-pick-banner .cfob-pick-ok:hover:not(:disabled) { background: #e0f2fe; }
 `;
 
 export const CFOB_QUERY_STYLES = /*css*/ `

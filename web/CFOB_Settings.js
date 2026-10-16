@@ -168,15 +168,17 @@ export const CFOB_SETTINGS_MODALS_HTML = `
             <button class="options-setting options-toggle" id="cfobToggleAutoHideBtn" type="button"><span>Auto-Hide Panel</span><span class="options-toggle-status" id="cfobAutoHideStatus"></span></button>
             <button class="options-setting options-toggle" id="cfobToggleConstrainFullViewBtn" type="button"><span>Constrain Full View to Panel</span><span class="options-toggle-status" id="cfobConstrainStatus"></span></button>
           </div>
-          <div class="options-section">
+          <div class="options-section" id="cfobLauncherSection">
             <h4 class="options-section-title">Launcher Button</h4>
             <div class="options-setting"><label for="cfobLauncherPlacement">Placement</label>
               <select class="options-control" id="cfobLauncherPlacement">
                 <option value="sidebar">Sidebar</option>
                 <option value="action-bar">Action Bar</option>
                 <option value="floating">Floating (draggable)</option>
+                <option value="hook">Pick Element</option>
               </select>
             </div>
+            <p id="cfobHookHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em; display: none;">Click a page element to place the launcher next to it; click it again to switch sides. <button type="button" id="cfobRehookBtn" style="background: none; border: none; color: var(--color-accent); cursor: pointer; font-size: inherit; padding: 0; text-decoration: underline;">Re-pick element</button></p>
           </div>
           <div class="options-section">
             <h4 class="options-section-title">Behavior</h4>
@@ -328,7 +330,8 @@ export default class COB_Settings {
     this.sidebarHeight = Number(localStorage.getItem('comfy_folder_browser_height') || 350);
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
     this.panelOffsets = localStorage.getItem('cfob_panel_offsets') === 'true';
-    this.launcherPlacement = localStorage.getItem('cfob_launcher_placement') || 'sidebar';
+    /** @type {'sidebar' | 'action-bar' | 'floating' | 'hook'} */
+    this.launcherPlacement = /** @type {'sidebar' | 'action-bar' | 'floating' | 'hook'} */ (localStorage.getItem('cfob_launcher_placement') || 'sidebar');
     this.gridSize = Number(localStorage.getItem('cfob_grid_size') || 380);
     this.masonryEnabled = localStorage.getItem('cfob_masonry_enabled') !== 'false';
     /** @type {'vertical' | 'horizontal'} */
@@ -556,10 +559,31 @@ export default class COB_Settings {
     this.app.root?.classList.toggle('constrain-full-view', this.constrainFullView);
   }
 
-  /** @param {'sidebar' | 'action-bar' | 'floating'} placement */
+  /** @param {'sidebar' | 'action-bar' | 'floating' | 'hook'} placement */
   setLauncherPlacement(placement) {
+    const previous = this.launcherPlacement;
     this.launcherPlacement = placement;
     localStorage.setItem('cfob_launcher_placement', placement);
+    if (placement === 'hook') {
+      this.app.startElementPicker(previous);
+    } else {
+      this.app.injectLauncherButton();
+    }
+  }
+  /**
+   * Restores a placement without re-entering the picker — used when the user
+   * cancels element picking.
+   * @param {'sidebar' | 'action-bar' | 'floating' | 'hook'} placement
+   */
+  revertLauncherPlacement(placement) {
+    this.launcherPlacement = placement;
+    localStorage.setItem('cfob_launcher_placement', placement);
+    // The options modal was only hidden while picking, so its controls still show
+    // the abandoned choice — put them back in step with the restored placement.
+    const select = /** @type {HTMLSelectElement | null} */ (this.app.$("cfobLauncherPlacement"));
+    if (select) select.value = placement;
+    const hint = this.app.$("cfobHookHint");
+    if (hint) hint.style.display = placement === 'hook' ? '' : 'none';
     this.app.injectLauncherButton();
   }
 
@@ -815,6 +839,9 @@ export default class COB_Settings {
       this.app.$("cfobCompactOffsetVal").textContent = `${this.compactSizeOffset}px`;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobModeSelect")).value = this.browserMode;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobLauncherPlacement")).value = this.launcherPlacement;
+      this.app.$("cfobHookHint").style.display = this.launcherPlacement === 'hook' ? '' : 'none';
+      // Standalone mode has no launcher button at all, so its settings are hidden.
+      this.app.$("cfobLauncherSection").style.display = /** @type {any} */ (window).CFOB_STANDALONE ? 'none' : '';
       this.syncGridFillOrderControl();
       /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollDirectionSelect")).value = this.scrollDir;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobSortSelect")).value = this.currentSort;
@@ -868,7 +895,10 @@ export default class COB_Settings {
       syncSizeControls();
     });
     this.app.$("cfobLauncherPlacement").addEventListener('change', (event) => {
-      this.setLauncherPlacement(/** @type {"action-bar" | "floating" | "sidebar"} */ (/** @type {HTMLSelectElement} */(event.target).value));
+      this.setLauncherPlacement(/** @type {"action-bar" | "floating" | "sidebar" | "hook"} */ (/** @type {HTMLSelectElement} */(event.target).value));
+    });
+    this.app.$("cfobRehookBtn").addEventListener('click', () => {
+      this.app.startElementPicker();
     });
     this.app.$("cfobPanelWidthSlider").addEventListener('input', (event) => {
       this.setSidebarSize(Number(/** @type {HTMLInputElement} */(event.target).value), null);

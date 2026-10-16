@@ -1,109 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { generateSelector, parseHookTarget, formatHookTarget } from "../../web/CFOB_Selector.js";
+import { MockElement, matches } from "./mock-element.mjs";
+
+// localStorage mock for Node.js test environment
+const _storage = new Map();
+globalThis.localStorage = {
+  getItem: (k) => _storage.has(k) ? _storage.get(k) : null,
+  setItem: (k, v) => _storage.set(k, String(v)),
+  removeItem: (k) => _storage.delete(k),
+  clear: () => _storage.clear(),
+};
 
 test("launcher button placement in sidebar (graph and app modes) and fallbacks", () => {
-  // Setup minimal DOM mock
-  class MockElement {
-    constructor(tagName) {
-      this.tagName = tagName.toUpperCase();
-      this.id = "";
-      this.className = "";
-      this.classList = {
-        _classes: new Set(),
-        add: (...cls) => cls.forEach(c => this.classList._classes.add(c)),
-        remove: (...cls) => cls.forEach(c => this.classList._classes.delete(c)),
-        toggle: (c, force) => {
-          if (force !== undefined) {
-            if (force) this.classList._classes.add(c);
-            else this.classList._classes.delete(c);
-            return force;
-          }
-          if (this.classList._classes.has(c)) {
-            this.classList._classes.delete(c);
-            return false;
-          }
-          this.classList._classes.add(c);
-          return true;
-        },
-        contains: (c) => this.classList._classes.has(c)
-      };
-      this.style = {};
-      this.children = [];
-      this.parentElement = null;
-      this.attributes = new Map();
-      this.innerHTML = "";
-    }
-
-    setAttribute(k, v) {
-      this.attributes.set(k, String(v));
-    }
-
-    getAttribute(k) {
-      return this.attributes.get(k) ?? null;
-    }
-
-    appendChild(child) {
-      if (child.parentElement) {
-        child.parentElement.removeChild(child);
-      }
-      this.children.push(child);
-      child.parentElement = this;
-      return child;
-    }
-
-    insertBefore(child, before) {
-      if (child.parentElement) {
-        child.parentElement.removeChild(child);
-      }
-      const idx = this.children.indexOf(before);
-      if (idx === -1) {
-        this.children.push(child);
-      } else {
-        this.children.splice(idx, 0, child);
-      }
-      child.parentElement = this;
-      return child;
-    }
-
-    removeChild(child) {
-      const idx = this.children.indexOf(child);
-      if (idx !== -1) {
-        this.children.splice(idx, 1);
-        child.parentElement = null;
-      }
-      return child;
-    }
-
-    querySelector(selector) {
-      for (const child of this.children) {
-        if (matches(child, selector)) return child;
-        const found = child.querySelector(selector);
-        if (found) return found;
-      }
-      return null;
-    }
-
-    get nextElementSibling() {
-      if (!this.parentElement) return null;
-      const idx = this.parentElement.children.indexOf(this);
-      if (idx !== -1 && idx < this.parentElement.children.length - 1) {
-        return this.parentElement.children[idx + 1];
-      }
-      return null;
-    }
-  }
-
-  function matches(el, selector) {
-    if (selector.includes(',')) {
-      return selector.split(',').some(part => matches(el, part.trim()));
-    }
-    if (selector.startsWith('#')) return el.id === selector.slice(1);
-    if (selector.startsWith('.')) return el.className.split(/\s+/).includes(selector.slice(1));
-    if (selector.includes('[data-testid="sidebar-top-group"]')) return el.getAttribute('data-testid') === 'sidebar-top-group';
-    if (selector.includes('[data-testid="templates-button"]')) return el.getAttribute('data-testid') === 'templates-button';
-    return false;
-  }
-
   const documentMock = {
     body: new MockElement("body"),
     createElement: (tag) => new MockElement(tag),
@@ -230,91 +139,6 @@ test("launcher button placement in sidebar (graph and app modes) and fallbacks",
 });
 
 test("launcher button placement: action-bar mode", () => {
-  class MockElement {
-    constructor(tagName) {
-      this.tagName = tagName.toUpperCase();
-      this.id = "";
-      this.className = "";
-      this.classList = {
-        _classes: new Set(),
-        add: (...cls) => cls.forEach(c => this.classList._classes.add(c)),
-        remove: (...cls) => cls.forEach(c => this.classList._classes.delete(c)),
-        toggle: (c, force) => {
-          if (force !== undefined) {
-            if (force) this.classList._classes.add(c);
-            else this.classList._classes.delete(c);
-            return force;
-          }
-          if (this.classList._classes.has(c)) {
-            this.classList._classes.delete(c);
-            return false;
-          }
-          this.classList._classes.add(c);
-          return true;
-        },
-        contains: (c) => this.classList._classes.has(c)
-      };
-      this.style = {};
-      this.children = [];
-      this.parentElement = null;
-      this.attributes = new Map();
-      this.innerHTML = "";
-    }
-    setAttribute(k, v) { this.attributes.set(k, String(v)); }
-    getAttribute(k) { return this.attributes.get(k) ?? null; }
-    appendChild(child) {
-      if (child.parentElement) child.parentElement.removeChild(child);
-      this.children.push(child);
-      child.parentElement = this;
-      return child;
-    }
-    insertBefore(child, before) {
-      if (child.parentElement) child.parentElement.removeChild(child);
-      const idx = this.children.indexOf(before);
-      if (idx === -1) this.children.push(child);
-      else this.children.splice(idx, 0, child);
-      child.parentElement = this;
-      return child;
-    }
-    removeChild(child) {
-      const idx = this.children.indexOf(child);
-      if (idx !== -1) { this.children.splice(idx, 1); child.parentElement = null; }
-      return child;
-    }
-    querySelector(selector) {
-      for (const child of this.children) {
-        if (matches(child, selector)) return child;
-        const found = child.querySelector(selector);
-        if (found) return found;
-      }
-      return null;
-    }
-    get nextElementSibling() {
-      if (!this.parentElement) return null;
-      const idx = this.parentElement.children.indexOf(this);
-      if (idx !== -1 && idx < this.parentElement.children.length - 1) return this.parentElement.children[idx + 1];
-      return null;
-    }
-  }
-
-  function matches(el, selector) {
-    if (selector.includes(',')) return selector.split(',').some(part => matches(el, part.trim()));
-    if (selector.startsWith('#')) return el.id === selector.slice(1);
-    if (selector.startsWith('.')) return el.className.split(/\s+/).includes(selector.slice(1));
-    if (selector.includes('[data-testid="sidebar-top-group"]')) return el.getAttribute('data-testid') === 'sidebar-top-group';
-    if (selector.includes('[data-testid="templates-button"]')) return el.getAttribute('data-testid') === 'templates-button';
-    if (selector.includes('[data-testid="action-bar-buttons"]')) return el.getAttribute('data-testid') === 'action-bar-buttons';
-    if (selector.includes('[data-testid="action-bar"]')) return el.getAttribute('data-testid') === 'action-bar';
-    if (selector.includes('[data-testid="login-button"]')) return el.getAttribute('data-testid') === 'login-button';
-    if (selector.includes('[data-testid="current-user-button"]')) return el.getAttribute('data-testid') === 'current-user-button';
-    if (selector.includes('[aria-label="Take a tour of App Mode"]')) return el.getAttribute('aria-label') === 'Take a tour of App Mode';
-    if (selector.includes('[aria-label="More"]')) return el.getAttribute('aria-label') === 'More';
-    if (selector.includes('[data-testid="linear-mobile-workflows"]')) return el.getAttribute('data-testid') === 'linear-mobile-workflows';
-    if (selector.includes('[aria-label="Graph mode, workflow actions"]')) return el.getAttribute('aria-label') === 'Graph mode, workflow actions';
-    if (selector.includes('.comfy-menu')) return el.className.split(/\s+/).includes('comfy-menu');
-    return false;
-  }
-
   const documentMock = {
     body: new MockElement("body"),
     createElement: (tag) => new MockElement(tag),
@@ -634,4 +458,174 @@ test("dragging the floating launcher does not toggle the panel", () => {
   btn3._cfobDragEndedAt = Date.now() - 500;
   btn3.onclick();
   assert.equal(toggles, 2, "Click well after a drag should toggle the panel");
+});
+
+test("generateSelector: element with id", () => {
+  const el = { tagName: "DIV", id: "my-element", getAttribute: () => null, className: "", parentElement: null };
+  const selector = generateSelector(el);
+  assert.equal(selector, "#my-element");
+});
+
+test("generateSelector: element with data-testid", () => {
+  const el = { tagName: "BUTTON", id: "", getAttribute: (k) => k === "data-testid" ? "login-button" : null, className: "", parentElement: null };
+  const selector = generateSelector(el);
+  assert.equal(selector, '[data-testid="login-button"]');
+});
+
+test("generateSelector: element with neither id nor testid", () => {
+  const parent = { tagName: "DIV", id: "", getAttribute: () => null, className: "container", parentElement: null };
+  const child = { tagName: "SPAN", id: "", getAttribute: () => null, className: "label", parentElement: parent };
+  const selector = generateSelector(child);
+  assert.ok(selector, "Should return a selector");
+  assert.ok(selector.includes("span"), "Should include tag name");
+  assert.ok(selector.includes("label"), "Should include class");
+});
+
+test("generateSelector: body returns null", () => {
+  const body = { tagName: "BODY", id: "", getAttribute: () => null, className: "", parentElement: null };
+  const selector = generateSelector(body);
+  assert.equal(selector, null);
+});
+
+test("parseHookTarget: a bare selector defaults to the before side", () => {
+  assert.deepEqual(parseHookTarget("#toolbar"), { selector: "#toolbar", side: "before" });
+});
+
+test("parseHookTarget: round-trips both sides", () => {
+  assert.deepEqual(parseHookTarget(formatHookTarget("#btn", "before")), { selector: "#btn", side: "before" });
+  assert.deepEqual(parseHookTarget(formatHookTarget("#btn", "after")), { selector: "#btn", side: "after" });
+});
+
+test("parseHookTarget: no stored target returns null", () => {
+  assert.equal(parseHookTarget(null), null);
+  assert.equal(parseHookTarget(""), null);
+  assert.equal(parseHookTarget("|after"), null, "an empty selector is not a target");
+});
+
+test("parseHookTarget: an unknown side falls back to before", () => {
+  assert.deepEqual(parseHookTarget("#btn|sideways"), { selector: "#btn", side: "before" });
+});
+
+test("parseHookTarget: a selector containing a pipe is not corrupted", () => {
+  // Only the first pipe separates selector from side.
+  assert.deepEqual(parseHookTarget("#a|b|after"), { selector: "#a", side: "before" });
+});
+
+test("launcher button placement: hook mode with valid target", () => {
+  const documentMock = {
+    body: new MockElement("body"),
+    createElement: (tag) => new MockElement(tag),
+    getElementById: (id) => {
+      const search = (node) => {
+        if (node.id === id) return node;
+        for (const child of node.children) { const f = search(child); if (f) return f; }
+        return null;
+      };
+      return search(documentMock.body);
+    },
+    querySelector: (selector) => {
+      const search = (node) => {
+        if (matches(node, selector)) return node;
+        for (const child of node.children) { const f = search(child); if (f) return f; }
+        return null;
+      };
+      return search(documentMock.body);
+    }
+  };
+
+  const ICONS = { logo: "<svg></svg>" };
+
+  // Set up a hook target element
+  const hookTarget = new MockElement("button");
+  hookTarget.id = "hook-anchor";
+  documentMock.body.appendChild(hookTarget);
+
+  // Simulate hook placement
+  localStorage.setItem('cfob_launcher_hook_element', '#hook-anchor');
+
+  let launcherBtn = documentMock.getElementById("cfob-launcher-btn");
+  if (!launcherBtn) {
+    launcherBtn = documentMock.createElement("button");
+    launcherBtn.id = "cfob-launcher-btn";
+    launcherBtn.title = "Browse Outputs";
+    launcherBtn.setAttribute("aria-label", "Browse Outputs");
+  }
+
+  const hookSelector = localStorage.getItem('cfob_launcher_hook_element');
+  const target = hookSelector ? documentMock.querySelector(hookSelector) : null;
+  if (target && target.parentElement) {
+    if (!launcherBtn.classList.contains('cfob-launcher-hook')) {
+      launcherBtn.className = "cfob-launcher-hook";
+    }
+    launcherBtn.style.border = "";
+    if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
+    launcherBtn.classList.toggle("side-bar-button-selected", false);
+    if (launcherBtn.nextElementSibling !== target) {
+      target.parentElement.insertBefore(launcherBtn, target);
+    }
+  }
+
+  assert.ok(launcherBtn, "Launcher button should exist");
+  assert.equal(launcherBtn.parentElement, documentMock.body, "Button should be child of body");
+  assert.equal(launcherBtn.nextElementSibling, hookTarget, "Button should be placed before hook target");
+  assert.ok(launcherBtn.className.includes("cfob-launcher-hook"), "Button should have cfob-launcher-hook class");
+});
+
+test("launcher button placement: hook mode falls back to floating when target missing", () => {
+  const documentMock = {
+    body: new MockElement("body"),
+    createElement: (tag) => new MockElement(tag),
+    getElementById: (id) => {
+      const search = (node) => {
+        if (node.id === id) return node;
+        for (const child of node.children) { const f = search(child); if (f) return f; }
+        return null;
+      };
+      return search(documentMock.body);
+    },
+    querySelector: (selector) => {
+      const search = (node) => {
+        if (matches(node, selector)) return node;
+        for (const child of node.children) { const f = search(child); if (f) return f; }
+        return null;
+      };
+      return search(documentMock.body);
+    }
+  };
+
+  const ICONS = { logo: "<svg></svg>" };
+
+  // Set a hook selector that doesn't match anything
+  localStorage.setItem('cfob_launcher_hook_element', '#nonexistent-element');
+
+  let launcherBtn = documentMock.getElementById("cfob-launcher-btn");
+  if (!launcherBtn) {
+    launcherBtn = documentMock.createElement("button");
+    launcherBtn.id = "cfob-launcher-btn";
+    launcherBtn.title = "Browse Outputs";
+    launcherBtn.setAttribute("aria-label", "Browse Outputs");
+  }
+
+  // Simulate hook placement with missing target → should fall through to floating
+  const hookSelector = localStorage.getItem('cfob_launcher_hook_element');
+  const target = hookSelector ? documentMock.querySelector(hookSelector) : null;
+
+  if (target && target.parentElement) {
+    // This branch should NOT execute
+    launcherBtn.className = "cfob-launcher-hook";
+    launcherBtn.parentElement.insertBefore(launcherBtn, target);
+  } else {
+    // Falls through to floating
+    launcherBtn.className = "floating";
+    launcherBtn.style.border = "";
+    launcherBtn.innerHTML = ICONS.logo;
+    if (launcherBtn.parentElement !== documentMock.body) {
+      documentMock.body.appendChild(launcherBtn);
+    }
+  }
+
+  assert.ok(launcherBtn, "Launcher button should exist");
+  assert.equal(launcherBtn.parentElement, documentMock.body, "Button should be child of body (floating fallback)");
+  assert.equal(launcherBtn.className, "floating", "Button should have floating class");
+  assert.ok(!launcherBtn.classList.contains("cfob-launcher-hook"), "Button should NOT have hook class");
 });

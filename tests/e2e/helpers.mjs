@@ -212,6 +212,16 @@ async function connectCdp(wsUrl) {
   /** @type {Map<string, (params: any) => void>} */
   const listeners = new Map();
 
+  // A CDP command that never gets an answer (browser died, socket half-closed)
+  // would otherwise leave its promise pending forever and hang the whole run with
+  // no output. Every command is bounded, and the error names the method.
+  const COMMAND_TIMEOUT_MS = 30000;
+
+  ws.addEventListener("close", () => {
+    for (const [, entry] of pending) entry.reject(new Error("CDP socket closed before the command answered"));
+    pending.clear();
+  });
+
   ws.addEventListener("message", ev => {
     const msg = JSON.parse(/** @type {string} */ (ev.data));
     if (msg.id !== undefined) {
@@ -229,7 +239,14 @@ async function connectCdp(wsUrl) {
   /** @param {string} method @param {any} [params] */
   const send = (method, params = {}) => new Promise((resolve, reject) => {
     const id = nextId++;
-    pending.set(id, { resolve, reject });
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error(`CDP command ${method} timed out after ${COMMAND_TIMEOUT_MS}ms`));
+    }, COMMAND_TIMEOUT_MS);
+    pending.set(id, {
+      resolve: v => { clearTimeout(timer); resolve(v); },
+      reject: e => { clearTimeout(timer); reject(e); },
+    });
     ws.send(JSON.stringify({ id, method, params }));
   });
 

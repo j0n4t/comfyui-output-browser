@@ -266,7 +266,8 @@ else:
                 <style>
                     body { margin: 0; background: var(--color-background, #121212); color: #fff; font-family: sans-serif; overflow: hidden; }
                     #cfob-root { display: flex !important; width: 100vw !important; height: 100vh !important; }
-                    .floating { display: none !important; }
+                    /* No launcher button exists in standalone mode; hide any stale one. */
+                    #cfob-launcher-btn { display: none !important; }
                 </style>
                 <!-- Explicitly flag standalone mode -->
                 <script>window.CFOB_STANDALONE = true;</script>
