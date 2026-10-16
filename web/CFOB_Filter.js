@@ -15,6 +15,7 @@
  * So an `inputs.` / `node.` prefix means the prompt blob; a bare property means workflow.
  * They are matched separately because the same widget can hold different values in each.
  *
+ * @param {string} entry
  * @returns {{ node: string; prop: string; scope: 'prompt' | 'workflow' | 'any' } | null}
  */
 const parseEntry = (entry) => {
@@ -38,6 +39,7 @@ const parseEntry = (entry) => {
  * (an empty property matches the whole node).
  * @param {{ node: string; prop: string; scope: string }[]} entries
  * @param {'prompt' | 'workflow'} scope
+ * @returns {(nodeNames: string[], props: string[]) => boolean}
  */
 const makeIsBlocked = (entries, scope) => (nodeNames, props) => {
   const nodes = nodeNames.filter(name => typeof name === 'string' && name).map(name => name.toLowerCase());
@@ -49,7 +51,13 @@ const makeIsBlocked = (entries, scope) => (nodeNames, props) => {
   );
 };
 
-/** Deep-copy a value, dropping any property whose path is blacklisted. */
+/**
+ * Deep-copy a value, dropping any property whose path is blacklisted.
+ * @param {any} value
+ * @param {string[]} props
+ * @param {(paths: string[]) => boolean} isBlocked
+ * @returns {any}
+ */
 const maskValue = (value, props, isBlocked) => {
   // With no path yet (a node root), a property starts a fresh path; otherwise it extends.
   const childProps = (/** @type {string} */ key) =>
@@ -65,6 +73,7 @@ const maskValue = (value, props, isBlocked) => {
     return masked;
   }
   if (value && typeof value === 'object') {
+    /** @type {Record<string, any>} */
     const masked = {};
     for (const [key, child] of Object.entries(value)) {
       const paths = childProps(key);
@@ -80,12 +89,18 @@ const maskValue = (value, props, isBlocked) => {
  * Mask a workflow node. Widget values are stored under `widgets_values_named` (by name)
  * and `widgets_values` (positionally). Both are walked as-is; each is blocked only by a
  * path that names it, e.g. `KSampler.seed` or `KSampler.widget[0]`.
+ * @param {Record<string, any>} node
+ * @param {string[]} nodeNames
+ * @param {(nodeNames: string[], props: string[]) => boolean} isBlocked
+ * @returns {Record<string, any>}
  */
 const maskWorkflowNode = (node, nodeNames, isBlocked) => {
+  /** @type {Record<string, any>} */
   const masked = {};
   for (const [key, value] of Object.entries(node)) {
     if (isBlocked(nodeNames, [key])) continue;
     if (key === 'widgets_values_named' && value && typeof value === 'object') {
+      /** @type {Record<string, any>} */
       const kept = {};
       for (const [name, widgetValue] of Object.entries(value)) {
         if (isBlocked(nodeNames, [name])) continue;
@@ -105,16 +120,31 @@ const maskWorkflowNode = (node, nodeNames, isBlocked) => {
   return masked;
 };
 
-/** Node names the inspector can show for a prompt node: id, title, and class type. */
+/**
+ * Node names the inspector can show for a prompt node: id, title, and class type.
+ * @param {string | number} id
+ * @param {Record<string, any> | null | undefined} node
+ * @returns {string[]}
+ */
 const promptNodeNames = (id, node) =>
   [String(id), node?._meta?.title, node?.class_type].filter(name => typeof name === 'string' && name);
 
-/** Node names the inspector can show for a workflow node: id, title, and type. */
+/**
+ * Node names the inspector can show for a workflow node: id, title, and type.
+ * @param {Record<string, any>} node
+ * @returns {string[]}
+ */
 const workflowNodeNames = (node) =>
   [String(node.id), node.title, node.type].filter(name => typeof name === 'string' && name);
 
+/**
+ * @param {Record<string, any>} prompt
+ * @param {(nodeNames: string[], props: string[]) => boolean} isBlocked
+ * @returns {Record<string, any>}
+ */
 const maskPrompt = (prompt, isBlocked) => {
   if (!prompt || typeof prompt !== 'object') return prompt;
+  /** @type {Record<string, any>} */
   const masked = {};
   for (const [id, node] of Object.entries(prompt)) {
     const names = promptNodeNames(id, node);
@@ -124,8 +154,14 @@ const maskPrompt = (prompt, isBlocked) => {
   return masked;
 };
 
+/**
+ * @param {Record<string, any>} workflow
+ * @param {(nodeNames: string[], props: string[]) => boolean} isBlocked
+ * @returns {Record<string, any>}
+ */
 const maskWorkflow = (workflow, isBlocked) => {
   if (!workflow || typeof workflow !== 'object') return workflow;
+  /** @type {Record<string, any>} */
   const masked = {};
   for (const [key, value] of Object.entries(workflow)) {
     if (key === 'nodes' && Array.isArray(value)) {
@@ -145,13 +181,19 @@ const maskWorkflow = (workflow, isBlocked) => {
  * Blacklist entries, split into whole built-in keys (`name`, `prompt`, `workflow`, ...)
  * and node paths (`KSampler.inputs.seed`).
  * @param {string[]} [blacklist]
+ * @returns {{
+ *   entries: string[];
+ *   keySet: Set<string>;
+ *   pathEntries: { node: string; prop: string; scope: 'prompt' | 'workflow' | 'any' }[];
+ *   isFieldBlacklisted: (paths: string) => boolean;
+ * }}
  */
 const compileBlacklist = (blacklist) => {
   const entries = (blacklist || []).map(entry => entry.trim()).filter(Boolean);
   return {
     entries,
     keySet: new Set(entries.map(entry => entry.toLowerCase())),
-    pathEntries: entries.map(parseEntry).filter(Boolean),
+    pathEntries: /** @type {{ node: string; prop: string; scope: 'prompt' | 'workflow' | 'any' }[]} */ (entries.map(parseEntry).filter(Boolean)),
     isFieldBlacklisted: (/** @type {string} */ paths) => {
       const lower = paths.toLowerCase();
       return entries.some(entry => lower.includes(entry.toLowerCase()));
@@ -164,6 +206,7 @@ const compileBlacklist = (blacklist) => {
  * searchable keywords. Mirrors what `filterImages` can actually match.
  * @param {CFOB_Image} img
  * @param {string[]} [blacklist]
+ * @returns {{ name: string; prompt: Record<string, any> | null; workflow: Record<string, any> | null }}
  */
 export function maskImageMetadata(img, blacklist) {
   const { keySet, pathEntries } = compileBlacklist(blacklist);
@@ -280,16 +323,16 @@ export function filterImages(images, query, options) {
       if (term.searchKey === 'name' || term.searchKey === 'path') {
         match = text.name.includes(term.searchValue);
       } else if (term.searchKey === 'prompt') {
-        match = text.prompt.includes(term.searchValue);
+        match = (text.prompt || '').includes(term.searchValue);
       } else if (term.searchKey === 'workflow') {
-        match = text.workflow.includes(term.searchValue);
+        match = (text.workflow || '').includes(term.searchValue);
       } else if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= options.fieldConfigs.length) {
         match = matchesField(options.fieldConfigs[term.fieldIdx - 1].paths);
       } else if (term.fieldMatch) {
         match = matchesField(term.fieldMatch.paths);
       }
     } else {
-      match = text.name.includes(term.searchValue) || text.prompt.includes(term.searchValue) || text.workflow.includes(term.searchValue);
+      match = text.name.includes(term.searchValue) || (text.prompt || '').includes(term.searchValue) || (text.workflow || '').includes(term.searchValue);
     }
     return term.isNot ? !match : match;
   };

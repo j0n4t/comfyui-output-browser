@@ -297,7 +297,7 @@ export default class ComfyOutputBrowser {
       </div>
     `;
 
-    const applyFloatingPosition = (btn) => {
+    const applyFloatingPosition = (/** @type {HTMLElement} */ btn) => {
       const saved = localStorage.getItem('cfob_launcher_pos');
       if (saved) {
         try {
@@ -310,10 +310,14 @@ export default class ComfyOutputBrowser {
       }
     };
 
-    const setupFloatingDrag = (btn) => {
-      let startX, startY, startLeft, startTop, dragging = false, moved = false;
+    const setupFloatingDrag = (/** @type {HTMLElement & { _cfobDragEndedAt?: number }} */ btn) => {
+      /** @type {number} */ let startX;
+      /** @type {number} */ let startY;
+      /** @type {number} */ let startLeft;
+      /** @type {number} */ let startTop;
+      let dragging = false, moved = false;
 
-      btn.addEventListener('mousedown', (e) => {
+      btn.addEventListener('mousedown', (/** @type {MouseEvent} */ e) => {
         if (e.button !== 0) return;
         dragging = true;
         moved = false;
@@ -326,7 +330,7 @@ export default class ComfyOutputBrowser {
         startTop = btn.style.top ? parseFloat(btn.style.top) : rect.top;
       });
 
-      window.addEventListener('mousemove', (e) => {
+      window.addEventListener('mousemove', (/** @type {MouseEvent} */ e) => {
         if (!dragging) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
@@ -360,7 +364,7 @@ export default class ComfyOutputBrowser {
     };
 
     const updateButtonPlacement = () => {
-      let launcherBtn = document.getElementById("cfob-launcher-btn");
+      let launcherBtn = /** @type {HTMLElement & { _cfobDragEndedAt?: number, _dragSetup?: boolean }} */ (document.getElementById("cfob-launcher-btn"));
       if (!launcherBtn) {
         launcherBtn = document.createElement("button");
         launcherBtn.id = "cfob-launcher-btn";
@@ -399,15 +403,15 @@ export default class ComfyOutputBrowser {
       }
 
       if (placement === 'action-bar') {
-        const isVisible = (el) => {
+        const isVisible = (/** @type {HTMLElement | null} */ el) => {
           if (!el) return false;
           const style = window.getComputedStyle(el);
           if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
           const rect = el.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0;
         };
-        const loginAnchor = isVisible(findLoginAnchor()) ? findLoginAnchor() : null;
-        const tourAnchor = loginAnchor ? null : (isVisible(document.querySelector('[aria-label="Take a tour of App Mode"]')) ? document.querySelector('[aria-label="Take a tour of App Mode"]') : null);
+        const loginAnchor = isVisible(/** @type {HTMLElement | null} */ (findLoginAnchor())) ? /** @type {HTMLElement | null} */ (findLoginAnchor()) : null;
+        const tourAnchor = loginAnchor ? null : (isVisible(/** @type {HTMLElement | null} */ (document.querySelector('[aria-label="Take a tour of App Mode"]'))) ? /** @type {HTMLElement | null} */ (document.querySelector('[aria-label="Take a tour of App Mode"]')) : null);
         // In app mode on mobile, fall back to the "More" menu button when login/tour are unavailable
         // Detect app mode by the presence of the mobile workflow selector or the "Graph mode" button
         const isAppMode = !!document.querySelector('[data-testid="linear-mobile-workflows"]') || !!document.querySelector('[aria-label="Graph mode, workflow actions"]');
@@ -428,7 +432,7 @@ export default class ComfyOutputBrowser {
           if (anchor) {
             // Sit immediately to the left of the login/current-user button, tour button, or menu button.
             if (launcherBtn.nextElementSibling !== anchor) {
-              anchor.parentElement.insertBefore(launcherBtn, anchor);
+              anchor.parentElement?.insertBefore(launcherBtn, anchor);
             }
           } else if (launcherBtn.parentElement !== actionBarTarget) {
             actionBarTarget.appendChild(launcherBtn);
@@ -451,14 +455,14 @@ export default class ComfyOutputBrowser {
     updateButtonPlacement();
 
     // Set up floating drag once (track via property to avoid re-adding listeners)
-    const launcherBtn = document.getElementById("cfob-launcher-btn");
+    const launcherBtn = /** @type {HTMLElement & { _dragSetup?: boolean; _cfobDragEndedAt?: number }} */ (document.getElementById("cfob-launcher-btn"));
     if (launcherBtn && !launcherBtn._dragSetup) {
       launcherBtn._dragSetup = true;
       setupFloatingDrag(launcherBtn);
     }
 
     // Keep the floating launcher inside the viewport when the window resizes
-    const clampFloatingToViewport = (btn) => {
+    const clampFloatingToViewport = (/** @type {HTMLElement | null} */ btn) => {
       if (!btn || btn.className !== "floating") return;
       const rect = btn.getBoundingClientRect();
       const maxLeft = Math.max(0, window.innerWidth - rect.width);
@@ -564,7 +568,7 @@ export default class ComfyOutputBrowser {
     this.$("cfobActionMove").addEventListener('click', () => this.actions.moveSelected());
     this.$("cfobActionSendChips").addEventListener('click', (e) => {
       e.stopPropagation();
-      this.actions.sendChipsToBasket(null, e.currentTarget);
+      this.actions.sendChipsToBasket(null, /** @type {HTMLElement} */ (e.currentTarget));
     });
     this.$("cfobActionDownload").addEventListener('click', () => this.actions.downloadSelected());
     this.$("cfobActionOpen").addEventListener('click', () => this.actions.loadWorkflowSelected());

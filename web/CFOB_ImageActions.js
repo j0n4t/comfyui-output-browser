@@ -286,7 +286,7 @@ export default class CFOB_ImageActions {
     menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
 
     let html = `<div class="popover-header">Send Chips From Field:</div>`;
-    app.settings.fieldConfigs.forEach((cfg, i) => {
+    app.settings.fieldConfigs.forEach((/** @type {CFOB_CardFieldSettings} */ cfg, /** @type {number} */ i) => {
       html += `<button class="popover-item" data-idx="${i}"><span>${app.escapeHtml(cfg.label)}</span></button>`;
     });
 
@@ -304,7 +304,7 @@ export default class CFOB_ImageActions {
 
     menu.querySelectorAll(".popover-item").forEach(b => {
       b.addEventListener("click", () => {
-        const field = app.settings.fieldConfigs[/** @type {HTMLElement} */ (b).dataset.idx];
+        const field = app.settings.fieldConfigs[Number(/** @type {HTMLElement} */ (b).dataset.idx)];
         app.settings.activePopover?.remove();
         app.settings.activePopover = null;
         if (field) this.sendChipsToBasket(field, null, images);

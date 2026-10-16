@@ -868,7 +868,7 @@ export default class COB_Settings {
       syncSizeControls();
     });
     this.app.$("cfobLauncherPlacement").addEventListener('change', (event) => {
-      this.setLauncherPlacement(/** @type {HTMLSelectElement} */(event.target).value);
+      this.setLauncherPlacement(/** @type {"action-bar" | "floating" | "sidebar"} */ (/** @type {HTMLSelectElement} */(event.target).value));
     });
     this.app.$("cfobPanelWidthSlider").addEventListener('input', (event) => {
       this.setSidebarSize(Number(/** @type {HTMLInputElement} */(event.target).value), null);
