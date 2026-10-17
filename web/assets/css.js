@@ -205,7 +205,7 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .toast { position: fixed; bottom: 1.25em; right: 1.25em; background: var(--color-accent); color: var(--color-text-inverse); padding: 0.625em 1em; border-radius: var(--radius-md); font-size: 0.8125em; font-weight: 500; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.3); z-index: var(--z-toast); opacity: 0; transform: translateY(0.625em); transition: all 0.2s ease; pointer-events: none; }
   #cfob-root .toast.show { opacity: 1; transform: translateY(0); }
 
-  #cfob-launcher-btn.floating { position: fixed; bottom: 2em; right: 2em; z-index: 9999; width: 3em; height: 3em; border-radius: 50%; background: #27272a; border: 1px solid #3f3f46; color: #f4f4f5; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); transition: background 0.15s, transform 0.15s; padding: 0; }
+  #cfob-launcher-btn.floating { position: fixed; bottom: 2em; right: 2em; z-index: 9999; width: 3em; height: 3em; border-radius: 50%; background: #27272a; border: 1px solid #3f3f46; color: #f4f4f5; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.4); transition: background 0.15s, transform 0.15s; padding: 0; touch-action: none; }
   #cfob-launcher-btn.floating:hover { background: #3f3f46; box-shadow: 0 0.375em 1em rgba(0,0,0,0.55); }
   #cfob-launcher-btn.floating.side-bar-button-selected { background: #0284c7; color: #ffffff; }
 

@@ -124,7 +124,7 @@ function createMockApp(overrides = {}) {
       resetFullViewTransform: () => calls.push('fullView.resetFullViewTransform'),
       openFullView: () => calls.push('fullView.openFullView'),
       fvZoom: 1,
-      handleKeydown(e) {
+      handleKeydown() {
         calls.push('fullView.handleKeydown');
         return true;
       },
@@ -135,7 +135,7 @@ function createMockApp(overrides = {}) {
       handleGridNavigation: () => calls.push('selection.handleGridNavigation'),
       updateCardStyles: () => calls.push('selection.updateCardStyles'),
       updateActionBar: () => calls.push('selection.updateActionBar'),
-      handleKeydown(e) {
+      handleKeydown() {
         calls.push('selection.handleKeydown');
         return true;
       },
@@ -904,7 +904,7 @@ test("real CFOB_FullView.handleKeydown: space on button returns false", () => {
 });
 
 test("real CFOB_FullView.handleKeydown: unknown key returns false", () => {
-  const { fv, calls } = createMockFullView();
+  const { fv } = createMockFullView();
   const e = createKeyEvent('z');
   const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
   assert.ok(!handled, "should return false for unknown key");
@@ -1085,7 +1085,7 @@ test("real CFOB_Selection.handleKeydown: 'alt--' routes to setGridSize", () => {
 });
 
 test("real CFOB_Selection.handleKeydown: unknown key returns false", () => {
-  const { sel, calls } = createMockSelection();
+  const { sel } = createMockSelection();
   const e = createKeyEvent('z', { target: { closest: () => null, matches: () => false } });
   const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
   assert.ok(!handled, "should return false for unknown key");
@@ -1155,7 +1155,7 @@ test("real CFOB_Search.handleKeydown: Escape on search input in full-view mode f
 });
 
 test("real CFOB_Search.handleKeydown: Escape when not on search input returns false", () => {
-  const { search, calls } = createMockSearch();
+  const { search } = createMockSearch();
   globalThis.document.activeElement = null;
   const e = createKeyEvent('Escape');
   const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
@@ -1163,7 +1163,7 @@ test("real CFOB_Search.handleKeydown: Escape when not on search input returns fa
 });
 
 test("real CFOB_Search.handleKeydown: non-Escape key returns false", () => {
-  const { search, calls } = createMockSearch();
+  const { search } = createMockSearch();
   const e = createKeyEvent('f');
   const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
   assert.ok(!handled, "should return false for non-Escape key");

@@ -8,6 +8,7 @@ import CFOB_Gallery from "./CFOB_Gallery.js";
 import CFOB_ImageActions from "./CFOB_ImageActions.js";
 import CFOB_Selection from "./CFOB_Selection.js";
 import { generateSelector, parseHookTarget, formatHookTarget } from "./CFOB_Selector.js";
+import { setupFloatingDragFn } from "./CFOB_Drag.js";
 
 const BROWSER_HTML = `
 <div id="cfob-resizer"></div>
@@ -329,58 +330,7 @@ export default class ComfyOutputBrowser {
       }
     };
 
-    const setupFloatingDrag = (/** @type {HTMLElement & { _cfobDragEndedAt?: number }} */ btn) => {
-      /** @type {number} */ let startX;
-      /** @type {number} */ let startY;
-      /** @type {number} */ let startLeft;
-      /** @type {number} */ let startTop;
-      let dragging = false, moved = false;
-
-      btn.addEventListener('mousedown', (/** @type {MouseEvent} */ e) => {
-        if (e.button !== 0) return;
-        dragging = true;
-        moved = false;
-        startX = e.clientX;
-        startY = e.clientY;
-        // Capture the base position from the inline styles (unaffected by the
-        // hover transform), falling back to the measured rect.
-        const rect = btn.getBoundingClientRect();
-        startLeft = btn.style.left ? parseFloat(btn.style.left) : rect.left;
-        startTop = btn.style.top ? parseFloat(btn.style.top) : rect.top;
-      });
-
-      window.addEventListener('mousemove', (/** @type {MouseEvent} */ e) => {
-        if (!dragging) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
-        if (!moved) {
-          // First real move: pin the position so it becomes the drag origin.
-          moved = true;
-          btn.style.left = `${startLeft}px`;
-          btn.style.top = `${startTop}px`;
-          btn.style.right = '';
-          btn.style.bottom = '';
-          document.body.style.userSelect = 'none';
-        }
-        const newLeft = Math.max(0, Math.min(window.innerWidth - btn.offsetWidth, startLeft + dx));
-        const newTop = Math.max(0, Math.min(window.innerHeight - btn.offsetHeight, startTop + dy));
-        btn.style.left = `${newLeft}px`;
-        btn.style.top = `${newTop}px`;
-      });
-
-      window.addEventListener('mouseup', () => {
-        if (!dragging) return;
-        dragging = false;
-        document.body.style.userSelect = '';
-        if (moved) {
-          const rect = btn.getBoundingClientRect();
-          localStorage.setItem('cfob_launcher_pos', JSON.stringify({ left: rect.left, top: rect.top }));
-          // Suppress the click that follows a drag so it doesn't toggle the panel
-          btn._cfobDragEndedAt = Date.now();
-        }
-      });
-    };
+    const setupFloatingDrag = setupFloatingDragFn;
 
     const updateButtonPlacement = () => {
       let launcherBtn = /** @type {HTMLElement & { _cfobDragEndedAt?: number, _dragSetup?: boolean }} */ (document.getElementById("cfob-launcher-btn"));
@@ -735,7 +685,6 @@ export default class ComfyOutputBrowser {
 
     const noModalOpen = !activeDialog;
     const key = e.key.toLowerCase();
-    const searchInput = this.$("cfobSearchInput");
 
     if (e.key === 'Escape') {
       if (activeDialog) return;
