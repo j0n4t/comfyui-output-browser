@@ -138,6 +138,7 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <input type="range" class="options-slider" id="cfobCompactOffsetSlider" min="0" max="600" step="10">
             </div>
             <button class="options-setting options-toggle" id="cfobToggleMasonryBtn" type="button"><span>Masonry Grid</span><span class="options-toggle-status" id="cfobMasonryStatus"></span></button>
+            <button class="options-setting options-toggle" id="cfobToggleHideCardInfoBtn" type="button"><span>Hide Card Info</span><span class="options-toggle-status" id="cfobHideCardInfoStatus"></span></button>
             <div class="options-setting"><label for="cfobScrollDirectionSelect">Scroll Direction</label>
               <select class="options-control" id="cfobScrollDirectionSelect"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select>
             </div>
@@ -334,6 +335,7 @@ export default class COB_Settings {
     this.launcherPlacement = /** @type {'sidebar' | 'action-bar' | 'floating' | 'hook'} */ (localStorage.getItem('cfob_launcher_placement') || 'sidebar');
     this.gridSize = Number(localStorage.getItem('cfob_grid_size') || 380);
     this.masonryEnabled = localStorage.getItem('cfob_masonry_enabled') !== 'false';
+    this.hideCardInfo = localStorage.getItem('cfob_hide_card_info') === 'true';
     /** @type {'vertical' | 'horizontal'} */
     this.scrollDir = localStorage.getItem('cfob_scroll_dir') === 'horizontal' ? 'horizontal' : 'vertical';
     const savedGridFillOrder = localStorage.getItem('cfob_grid_fill_order');
@@ -457,6 +459,13 @@ export default class COB_Settings {
     this.app.gallery?.syncGridLayout?.();
   }
 
+  /** @param {boolean} enabled */
+  setHideCardInfo(enabled) {
+    this.hideCardInfo = Boolean(enabled);
+    localStorage.setItem('cfob_hide_card_info', String(this.hideCardInfo));
+    this.app.$("cfobGalleryGrid")?.classList.toggle('hide-card-info', this.hideCardInfo);
+  }
+
   /** @param {'row' | 'column'} order */
   setGridFillOrder(order) {
     this.gridFillOrder = order;
@@ -511,7 +520,7 @@ export default class COB_Settings {
     }
     if (grid && mode !== 'full') {
       const fillClass = this.gridFillOrder === 'column' ? ' grid-column-first' : '';
-      grid.className = `gallery-container view-${mode}${this.masonryEnabled ? ' masonry' : ''}${fillClass}`;
+      grid.className = `gallery-container view-${mode}${this.masonryEnabled ? ' masonry' : ''}${this.hideCardInfo ? ' hide-card-info' : ''}${fillClass}`;
       this.app.gallery?.syncGridLayout?.();
     }
     localStorage.setItem('comfy_folder_browser_view', mode);
@@ -846,6 +855,7 @@ export default class COB_Settings {
       /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollDirectionSelect")).value = this.scrollDir;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobSortSelect")).value = this.currentSort;
       setStatus("cfobMasonryStatus", this.masonryEnabled);
+      setStatus("cfobHideCardInfoStatus", this.hideCardInfo);
       setStatus("cfobAutoHideStatus", this.autoHide);
       setStatus("cfobPanelOffsetsStatus", this.panelOffsets);
       setStatus("cfobConstrainStatus", this.constrainFullView);
@@ -889,6 +899,10 @@ export default class COB_Settings {
     this.app.$("cfobToggleMasonryBtn").addEventListener('click', () => {
       this.setMasonryEnabled(!this.masonryEnabled);
       setStatus("cfobMasonryStatus", this.masonryEnabled);
+    });
+    this.app.$("cfobToggleHideCardInfoBtn").addEventListener('click', () => {
+      this.setHideCardInfo(!this.hideCardInfo);
+      setStatus("cfobHideCardInfoStatus", this.hideCardInfo);
     });
     this.app.$("cfobModeSelect").addEventListener('change', (event) => {
       this.setBrowserMode(/** @type {HTMLSelectElement} */(event.target).value);

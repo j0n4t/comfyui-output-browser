@@ -169,6 +169,7 @@ export default class ComfyOutputBrowser {
     this.settings.setPanelOffsets(this.settings.panelOffsets);
     this.settings.setBrowserMode(this.settings.browserMode);
     this.settings.setConstrainFullView(this.settings.constrainFullView);
+    this.settings.setHideCardInfo(this.settings.hideCardInfo);
     this.observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
