@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grid nav debug &mdash; ComfyUI Output Browser</title>
+<!--
+  Dev-only visual tool for understanding grid arrow navigation.
+
+  Served by the standalone server at /web/dev-grid-nav.html (run `python __init__.py`).
+  It drives the REAL CFOB_Selection.handleGridNavigation against a real DOM, so what you
+  see is what the browser computes - no reimplementation of the layout.
+
+  Why this exists: row-first masonry packs cards with inline grid-row-end spans, so DOM
+  order stops matching visual column order. This page shows, for every arrow press, which
+  card the code picked, which card the spatial heuristic would pick, and the scored
+  candidate list - so a wrong pick can be seen rather than inferred.
+-->
+<style>
+  :root {
+    --color-background: #121212; --color-bg-panel: #1b1b1b; --color-bg-input: #242424;
+    --color-text: #e6e6e6; --color-text-disabled: #8a8a8a; --color-border: #333;
+    --color-accent: #4f8cff;
+    --grid-size: 200px; --compact-size: 120px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--color-background); color: var(--color-text);
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  }
+  header {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    padding: 8px 12px; background: var(--color-bg-panel); border-bottom: 1px solid var(--color-border);
+  }
+  header label { display: flex; align-items: center; gap: 6px; color: var(--color-text-disabled); }
+  header select, header input { background: var(--color-bg-input); color: var(--color-text); border: 1px solid var(--color-border); border-radius: 4px; padding: 2px 6px; font: inherit; }
+  header input[type=number] { width: 64px; }
+  header .spacer { flex: 1; }
+  header .hint { color: var(--color-text-disabled); }
+  main { display: flex; flex: 1; min-height: 0; }
+  #stage { flex: 1; position: relative; overflow: auto; padding: 12px; }
+  /* The app's stylesheet ships #cfob-root as display:none and the real app flips it to
+     flex from JS. The tool has no app instance, so show it here. */
+  #cfob-root { display: flex !important; flex-direction: column; width: 100%; min-height: 100%; }
+  #cfobMainContainer { flex: 1; min-height: 100%; }
+
+  /* --- debug overlay ---------------------------------------------------------- */
+  .image-card { position: relative; outline: 1px dashed transparent; }
+  .image-card.is-current { outline: 2px solid #4f8cff; }
+  .image-card.is-chosen { outline: 2px solid #39d98a; }
+  .image-card.is-spatial { outline: 2px dashed #ffb020; }
+  .image-card .tag {
+    position: absolute; top: 2px; left: 2px; z-index: 3; padding: 0 4px;
+    font-size: 11px; line-height: 16px; background: rgba(0,0,0,.78); border-radius: 3px;
+  }
+  .image-card.is-current .tag { background: #4f8cff; color: #fff; }
+  .image-card.is-chosen .tag { background: #39d98a; color: #062; }
+  .image-card.is-spatial .tag { background: #ffb020; color: #420; }
+
+  aside {
+    width: 460px; flex: none; border-left: 1px solid var(--color-border);
+    background: var(--color-bg-panel); overflow: auto; padding: 10px 12px;
+  }
+  aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-disabled); margin: 0 0 6px; }
+  aside .verdict { padding: 6px 8px; border-radius: 4px; margin-bottom: 10px; border: 1px solid var(--color-border); }
+  aside .verdict.ok { border-color: #39d98a; }
+  aside .verdict.drift { border-color: #ffb020; }
+  aside .verdict b { color: #fff; }
+  aside table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  aside th, aside td { text-align: right; padding: 2px 6px; border-bottom: 1px solid #262626; }
+  aside th { color: var(--color-text-disabled); font-weight: normal; }
+  aside th:first-child, aside td:first-child { text-align: left; }
+  aside tr.is-chosen td { background: rgba(57,217,138,.16); }
+  aside tr.is-spatial td { background: rgba(255,176,32,.16); }
+  aside tr.is-current td { background: rgba(79,140,255,.16); }
+  aside .legend { margin-top: 10px; color: var(--color-text-disabled); font-size: 12px; }
+  aside .legend span { display: inline-block; margin-right: 12px; }
+  aside .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+  aside code { color: #9ecbff; }
+</style>
+</head>
+<body>
+<header>
+  <label>View
+    <select id="view">
+      <option value="grid">Grid</option>
+      <option value="compact">Compact</option>
+    </select>
+  </label>
+  <label>Scroll
+    <select id="scroll">
+      <option value="vertical">Vertical</option>
+      <option value="horizontal">Horizontal</option>
+    </select>
+  </label>
+  <label>Fill order
+    <select id="order">
+      <option value="row">Row first</option>
+      <option value="column">Column first</option>
+    </select>
+  </label>
+  <label>Masonry
+    <select id="masonry">
+      <option value="1">On</option>
+      <option value="0">Off</option>
+    </select>
+  </label>
+  <label>Cards <input type="number" id="count" value="24" min="4" max="80"></label>
+  <label>Seed <input type="number" id="seed" value="7"></label>
+  <button id="rebuild">Rebuild</button>
+  <span class="spacer"></span>
+  <span class="hint">Arrow keys move focus &middot; the panel shows why</span>
+</header>
+
+<main>
+  <div id="stage">
+    <div id="cfob-root">
+      <div id="cfobMainContainer" class="main-container">
+        <div id="cfobGalleryGrid" class="gallery-container view-grid"></div>
+      </div>
+    </div>
+  </div>
+  <aside>
+    <h2>Last move</h2>
+    <div class="verdict" id="verdict">Press an arrow key.</div>
+    <h2>Candidates, best first</h2>
+    <table id="candidates">
+      <thead><tr><th>card</th><th>off-axis</th><th>along-axis</th><th>centre dist</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="legend">
+      <span><i class="swatch" style="background:#4f8cff"></i>current</span>
+      <span><i class="swatch" style="background:#39d98a"></i>chosen</span>
+      <span><i class="swatch" style="background:#ffb020"></i>spatial best</span>
+    </div>
+  </aside>
+</main>
+
+<script type="module">
+import { CFOB_STYLES } from "./assets/css.js";
+import CFOB_Selection from "./CFOB_Selection.js";
+
+const $ = id => document.getElementById(id);
+const grid = $("cfobGalleryGrid");
+const container = $("cfobMainContainer");
+
+// The app's real stylesheet, so the layout is the one the browser actually computes.
+const styleEl = document.createElement("style");
+styleEl.textContent = CFOB_STYLES;
+document.head.appendChild(styleEl);
+
+/** Deterministic pseudo-random in [0,1), so a seed reproduces a layout exactly. */
+function rng(seed) {
+  let s = seed >>> 0 || 1;
+  return () => {
+    s ^= s << 13; s >>>= 0;
+    s ^= s >> 17;
+    s ^= s << 5; s >>>= 0;
+    return s / 4294967296;
+  };
+}
+
+/** Inline SVG so card heights vary without any image files. */
+function cardImage(w, h, hue, label) {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+    `<rect width="${w}" height="${h}" fill="hsl(${hue},55%,42%)"/>` +
+    `<text x="8" y="${Math.min(h - 8, 26)}" fill="#fff" font-size="18" font-family="monospace">${label}</text>` +
+    `</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+let app = null;
+let images = [];
+
+/** Rebuilds the grid and the minimal app object CFOB_Selection needs. */
+async function rebuild() {
+  const view = $("view").value;
+  const scroll = $("scroll").value;
+  const order = $("order").value;
+  const masonry = $("masonry").value === "1";
+  const count = Math.max(4, Math.min(80, Number($("count").value) || 24));
+  const rand = rng(Number($("seed").value) || 1);
+
+  const compact = view === "compact";
+  const itemSize = compact ? 120 : 200;
+
+  // Row-first masonry is the JS-packed staggered layout; column-first masonry is CSS
+  // columns. Both need the same classes the app applies.
+  grid.className = [
+    "gallery-container",
+    `view-${view}`,
+    masonry ? "masonry" : "",
+    order === "column" ? "grid-column-first" : ""
+  ].filter(Boolean).join(" ");
+  grid.style.removeProperty("grid-auto-rows");
+  grid.style.removeProperty("row-gap");
+  grid.style.removeProperty("grid-auto-flow");
+  grid.style.removeProperty("grid-template-columns");
+  grid.style.removeProperty("grid-template-rows");
+  grid.style.removeProperty("--cfob-col-count");
+  grid.style.removeProperty("--cfob-row-count");
+  grid.innerHTML = "";
+
+  container.classList.toggle("scroll-horizontal", scroll === "horizontal");
+  document.documentElement.style.setProperty("--gallery-item-size", `${itemSize}px`);
+  document.documentElement.style.setProperty("--grid-size", `${itemSize}px`);
+  document.documentElement.style.setProperty("--compact-size", `${itemSize}px`);
+
+  images = [];
+  for (let i = 0; i < count; i++) {
+    // Vary the aspect ratio a lot: uniform cards make every layout a plain grid.
+    const ratio = 0.55 + rand() * 2.1;
+    const h = Math.max(40, Math.round(itemSize * ratio));
+    const card = document.createElement("div");
+    card.className = "image-card";
+    card.dataset.idx = String(i);
+    card.innerHTML =
+      `<div class="checkbox-wrapper"><input type="checkbox" class="card-checkbox"></div>` +
+      `<img class="card-preview" alt="">` +
+      `<div class="card-content-wrapper"><div class="card-header">` +
+      `<span class="card-filename">img${String(i).padStart(2, "0")}.png</span></div></div>`;
+    const img = card.querySelector("img");
+    img.src = cardImage(itemSize, h, Math.round(rand() * 360), String(i));
+    // Masonry sizes a card by its image, so pin the height here rather than racing the
+    // image load: the tool needs a deterministic layout, and this reproduces exactly the
+    // height the real app would compute from the same aspect ratio.
+    if (masonry) img.style.height = `${h}px`;
+    grid.appendChild(card);
+    images.push(img);
+  }
+
+  app = {
+    lastSelectedIdx: 0,
+    filteredImages: images.map((_, i) => ({ name: `img${String(i).padStart(2, "0")}.png` })),
+    $: id => document.getElementById(id),
+    gallery: { getOrderedCards: () => Array.from(grid.querySelectorAll(".image-card")) }
+  };
+  app.selection = new CFOB_Selection(app);
+
+  // The packing engine only runs from the real app; apply the spans the same way so
+  // row-first masonry is staggered here too.
+  if (masonry && order === "row" && (view === "grid" || view === "compact")) {
+    // Let the browser lay the pinned heights out before measuring them.
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const gap = 0.4 * parseFloat(getComputedStyle(grid).fontSize || "16");
+    const heights = Array.from(grid.querySelectorAll(".image-card")).map(c => c.getBoundingClientRect().height);
+    grid.style.setProperty("grid-auto-rows", "1px");
+    grid.style.setProperty("row-gap", "0px");
+    grid.style.setProperty("grid-auto-flow", "row");
+    Array.from(grid.querySelectorAll(".image-card")).forEach((c, i) => {
+      c.style.setProperty("grid-row-end", `span ${Math.max(1, Math.ceil(heights[i] + gap))}`);
+      c.style.removeProperty("grid-column");
+    });
+  }
+
+  app.lastSelectedIdx = 0;
+  paint(null, null);
+}
+
+const centre = r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+
+/**
+ * The spatial branch's own metric, mirrored so the panel can show what it scored.
+ * off-axis = gap on the cross axis (0 when the rects overlap), along-axis = distance
+ * along the direction of travel.
+ */
+function score(rects, from, key) {
+  const isVertical = key === "ArrowDown" || key === "ArrowUp";
+  const isBackward = key === "ArrowLeft" || key === "ArrowUp";
+  const cur = rects[from];
+  const a = centre(cur);
+  return rects.map((r, i) => {
+    const b = centre(r);
+    const primary = isVertical ? b.y - a.y : b.x - a.x;
+    const cross = isVertical
+      ? Math.max(0, Math.max(cur.left - (r.left + r.width), r.left - (cur.left + cur.width)))
+      : Math.max(0, Math.max(cur.top - (r.top + r.height), r.top - (cur.top + cur.height)));
+    return {
+      i, cross, primary,
+      along: Math.abs(primary),
+      off: cross,
+      dist: Math.hypot(b.x - a.x, b.y - a.y),
+      inDirection: (isBackward ? primary < 0 : primary > 0)
+    };
+  });
+}
+
+/** Highlights and reports. `move` is null on a plain rebuild. */
+function paint(from, key) {
+  const cards = app.gallery.getOrderedCards();
+  cards.forEach(c => {
+    c.classList.remove("is-current", "is-chosen", "is-spatial");
+    const t = c.querySelector(".tag");
+    if (t) t.remove();
+  });
+  const rects = cards.map(c => c.getBoundingClientRect());
+
+  if (from === null || key === null) {
+    $("verdict").className = "verdict";
+    $("verdict").textContent = "Press an arrow key.";
+    $("candidates").querySelector("tbody").innerHTML = "";
+    return;
+  }
+
+  // `from` is captured by the keydown handler before the move; reading
+  // app.lastSelectedIdx here would give the post-move index.
+  const before = from;
+  const scored = score(rects, before, key);
+  const inDir = scored.filter(s => s.i !== before && s.inDirection)
+    .sort((x, y) => x.off - y.off || x.along - y.along);
+  const spatial = inDir[0] || null;
+
+  const cards2 = app.gallery.getOrderedCards();
+  const chosen = cards2.findIndex(c => c.classList.contains("focused"));
+
+  const mark = (idx, cls, label) => {
+    if (idx === -1 || !cards2[idx]) return;
+    cards2[idx].classList.add(cls);
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = label;
+    cards2[idx].appendChild(tag);
+  };
+  mark(before, "is-current", `cur ${before}`);
+  mark(chosen, "is-chosen", `chose ${chosen}`);
+  if (spatial && spatial.i !== chosen) mark(spatial.i, "is-spatial", `spatial ${spatial.i}`);
+
+  const drift = spatial && spatial.i !== chosen;
+  const v = $("verdict");
+  v.className = `verdict ${drift ? "drift" : "ok"}`;
+  v.innerHTML = drift
+    ? `<b>Drift.</b> ${key} from card ${before} picked <b>${chosen}</b> ` +
+      `(${Math.round(scored[chosen].dist)}px away) but the nearest card in that direction is ` +
+      `<b>${spatial.i}</b> (${Math.round(spatial.dist)}px away).`
+    : `<b>Ok.</b> ${key} from card ${before} picked <b>${chosen}</b> ` +
+      `(${chosen === -1 ? "no move" : Math.round(scored[chosen].dist) + "px away"}), ` +
+      `which is the nearest card in that direction.`;
+
+  const body = $("candidates").querySelector("tbody");
+  body.innerHTML = "";
+  for (const s of inDir.slice(0, 14)) {
+    const tr = document.createElement("tr");
+    if (s.i === chosen) tr.className = "is-chosen";
+    if (spatial && s.i === spatial.i) tr.className = "is-spatial";
+    if (s.i === before) tr.className = "is-current";
+    tr.innerHTML = `<td>#${s.i}</td><td>${Math.round(s.off)}</td><td>${Math.round(s.along)}</td><td>${Math.round(s.dist)}</td>`;
+    body.appendChild(tr);
+  }
+}
+
+document.addEventListener("keydown", e => {
+  if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "PageDown", "PageUp", "Home", "End"].includes(e.key)) return;
+  e.preventDefault();
+  const from = app.lastSelectedIdx;
+  app.selection.handleGridNavigation({ key: e.key });
+  paint(from, e.key);
+});
+
+for (const id of ["view", "scroll", "order", "masonry", "count", "seed"]) {
+  $(id).addEventListener("change", rebuild);
+}
+$("rebuild").addEventListener("click", rebuild);
+
+await rebuild();
+</script>
+</body>
+</html>
