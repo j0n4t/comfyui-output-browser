@@ -10,9 +10,10 @@ Progress so far on this branch:
 | 0. Declare `selectionAnchorIdx` | done — `typecheck` green |
 | 1. Grid paging and edges | done — 9 tests, mutation-proven |
 | Masonry PageUp/PageDown sideways | done — fixed, 6 tests, browser-verified |
+| Row-first masonry arrow drift | done — fixed, 6 tests, browser-verified |
 | 2–6 | not started |
 
-Three follow-ups were found while working; two are recorded at the bottom.
+Three follow-ups were found while working; all are recorded at the bottom.
 
 ## What "covered" means here
 
@@ -51,7 +52,7 @@ the one red gate on `main`.
 | `CFOB_Selector.js` | 100.00 | 91.67 | 100.00 |
 | `assets/*.js` | 100.00 | 100.00 | 100.00 |
 | `CFOB_Filter.js` | 99.52 | 90.24 | 93.10 |
-| `CFOB_Selection.js` | 61.78 | 81.68 | 28.57 |
+| `CFOB_Selection.js` | 66.03 | 84.67 | 28.57 |
 | `CFOB_Settings.js` | 34.67 | 43.75 | 13.95 |
 | `CFOB_FullView.js` | 30.64 | 83.93 | 7.41 |
 | `PngMetadata.js` | 30.65 | 100.00 | 0.00 |
@@ -61,9 +62,9 @@ the one red gate on `main`.
 | `ComfyOutputBrowser.js` | 21.25 | 97.96 | 7.14 |
 | `CFOB_Gallery.js` | 19.58 | 100.00 | 7.69 |
 | `CFOB_ImageActions.js` | 13.86 | 100.00 | 8.33 |
-| **all files** | **55.44** | **89.40** | **58.80** |
+| **all files** | **56.01** | **89.88** | **59.26** |
 
-`CFOB_Selection.js` was 41.46% before this branch's tests and is 61.78% after — the only
+`CFOB_Selection.js` was 41.46% before this branch's tests and is 66.03% after — the only
 row that moved. The rest are the pre-existing baseline.
 
 ### The finding worth acting on
@@ -278,25 +279,36 @@ the bottom row moving left (`29 -> 23`, `23 -> 17`). Fixed at
 when none qualifies, focus stays put. Re-probed in the browser afterwards: 42 moves across
 7 starting positions, **0 directional reversals**.
 
-**Masonry + row-first fill order does not render as masonry — still open.** The CSS rule
-that produces the columns layout is `.masonry.view-grid.grid-column-first`
-(`web/assets/css.js:173`), so `.masonry` alone falls through to the plain `.view-grid`
-rule. Probing all four combinations confirmed it: with masonry on and fill order row-first
-the grid reports `display: grid, columnWidth: auto` — a byte-identical layout to masonry
-off. The Masonry toggle has no visual effect in that mode, while the README claims
-row-first is supported "for standard and masonry grids".
+**Row-first masonry used index arithmetic for arrow keys — fixed.** `isMasonry` also
+required `.grid-column-first`, so row-first masonry never took the spatial branch either.
+Row-first masonry is real and is implemented as JS packing
+(`CFOB_Gallery.applyRowFirstMasonryPacking`, inline `grid-row-end` spans), not CSS columns.
+Cards are dealt row-major but each lands at the first free slot scanning right then down,
+so with uneven image heights the DOM order stops matching the visual column order and
+`nextIdx ± cols` jumped to an unrelated card. Measured in the browser before the fix:
+**39–67 of 96 arrow moves** disagreed with the spatial heuristic across the view × scroll ×
+fill-order × masonry combinations. Worst case: `ArrowDown from card 0` picked a card
+**5468px** away when one **242px** away was available. Dropping the `grid-column-first`
+requirement takes row-first masonry onto the spatial branch; re-measured afterwards,
+**0 of 96 in every combination**.
 
-This is a layout/CSS bug, not a navigation one, so it is deliberately not fixed here: in
-that mode the grid really is a plain grid and the non-masonry nav is correct for it. It is
-in `draft/todo.txt`.
+An earlier version of this plan claimed row-first masonry did not render as masonry at
+all. That was wrong. The probe inferred masonry from `display: block`, which is only how
+*column-first* masonry renders (CSS multi-column). Row-first masonry is a packed grid and
+reports `display: grid` with `grid-auto-rows: 1px` and per-card `grid-row-end` spans.
 
-**Mutation-proving the tests caught a degenerate assertion.** The first version of the
-masonry `PageDown`/`PageUp` tests used three cards and asserted the correct destination —
-but "nearest card to one viewport away" and "nearest card to the current row" resolved to
-the same card, so both tests stayed green when the page offset was deleted from the
-production code. The fixtures now include a card in the next row that is *closer* to the
-current row than the correct page target, so the two cases disagree and the tests can
-fail.
+**Mutation-proving the tests caught two flaws in the tests themselves.** The first version
+of the masonry `PageDown`/`PageUp` tests used three cards and asserted the correct
+destination — but "nearest card to one viewport away" and "nearest card to the current row"
+resolved to the same card, so both tests stayed green when the page offset was deleted
+from the production code. The fixtures now include a card in the next row that is *closer*
+to the current row than the correct page target, so the two cases disagree and the tests
+can fail.
+
+The second was caught by a mutation that re-added the `grid-column-first` requirement:
+the row-first masonry fixtures were tagged `MASONRY`, which *includes*
+`grid-column-first`, so the test was exercising column-first masonry and passing for the
+wrong reason. The fixtures now use `["masonry", "view-grid"]`.
 
 Worth remembering: a test that passes is not evidence. `npm run test:mutation` is the
 cheap way to check a new test can actually fail.
@@ -323,3 +335,24 @@ npm run test:mutation # break the code, confirm the tests catch it (~15 s)
 
 Add coverage numbers to the unit run with
 `node --test --experimental-test-coverage "tests/unit/*.test.mjs"`.
+
+## Dev tool: grid navigation
+
+`web/dev-grid-nav.html` — open it from the standalone server at
+`http://localhost:8189/web/dev-grid-nav.html` (or whichever port you run
+`python __init__.py` on). It drives the real `CFOB_Selection.handleGridNavigation`
+against a real DOM using the app's own stylesheet, and lets you switch view, scroll
+direction, fill order and masonry while pressing arrow keys.
+
+For every move it reports which card was picked, which card the spatial heuristic would
+have picked, and the scored candidate list. It exists because the row-first masonry bug
+was invisible from the outside — the wrong card gets the focus outline and nothing in the
+UI says so. With the bug present it reported:
+
+```
+Drift. ArrowRight from card 3 picked 4 (504px away) but the nearest card in that
+direction is 1 (521px away).
+```
+
+It is a dev page, not part of the UI: it lives in `web/` only because the standalone
+server mounts that directory.
