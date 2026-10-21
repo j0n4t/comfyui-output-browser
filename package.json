@@ -2,6 +2,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/unit/*.test.mjs\"",
+    "test:mutation": "node tests/mutation/probe-grid-navigation.mjs",
     "test:e2e": "node --test --test-concurrency=1 --test-timeout=180000 \"tests/e2e/*.test.mjs\"",
     "lint": "eslint web/**/*.js tests/**/*.mjs",
     "lint:fix": "eslint web/**/*.js tests/**/*.mjs --fix",
