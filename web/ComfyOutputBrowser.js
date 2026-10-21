@@ -215,7 +215,7 @@ export default class ComfyOutputBrowser {
     }
   }
 
-  showWithTransition() {
+  showWithTransition(focusSearch = false) {
     if (!this.root) return;
     const launcher = document.getElementById("cfob-launcher-btn");
     if (launcher) launcher.classList.add('side-bar-button-selected');
@@ -225,10 +225,14 @@ export default class ComfyOutputBrowser {
     void this.root.offsetWidth;
     this.root.classList.remove('cfob-hidden');
     this.isUiVisible = true;
-    if (this.$("cfobFullViewModal").classList.contains('active')) {
-      this.fullView.setFullViewUIHidden(false);
+    if (focusSearch) {
+      if (this.$("cfobFullViewModal").classList.contains('active')) {
+        this.fullView.setFullViewUIHidden(false);
+      }
+      this.$("cfobSearchInput").focus();
+    } else {
+      this.$("cfobMainContainer").focus();
     }
-    this.$("cfobSearchInput").focus();
   }
 
   hideWithTransition() {
@@ -1220,13 +1224,19 @@ if (window.CFOB_STANDALONE) {
         {
           id: "OutputBrowser.FocusSearch",
           label: "Output Browser: Focus Search",
-          function: () => { browser.showWithTransition(); },
+          function: () => {
+            browser.showWithTransition(true);
+          },
         }
       ],
       keybindings: [
         {
           combo: { key: "?", ctrl: true, shift: true },
           commandId: "OutputBrowser.Toggle"
+        },
+        {
+          combo: { key: ":", ctrl: true, shift: true },
+          commandId: "OutputBrowser.FocusSearch"
         }
       ],
       async setup() {
