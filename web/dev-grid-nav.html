@@ -46,6 +46,9 @@
   #cfobMainContainer { flex: 1; min-height: 100%; }
 
   /* --- debug overlay ---------------------------------------------------------- */
+  /* The selection checkboxes are noise here: this page is about focus movement.
+     Two classes so it outranks the app's own #cfob-root .checkbox-wrapper rule. */
+  #cfob-root .image-card .checkbox-wrapper { display: none; }
   .image-card { position: relative; outline: 1px dashed transparent; }
   .image-card.is-current { outline: 2px solid #4f8cff; }
   .image-card.is-chosen { outline: 2px solid #39d98a; }
