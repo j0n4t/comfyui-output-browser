@@ -145,8 +145,11 @@ export default class CFOB_Selection {
         const grid = app.$("cfobGalleryGrid");
         const cards = app.gallery.getOrderedCards();
         const currentCard = cards[app.lastSelectedIdx];
+        // Row-first masonry is a packed, staggered layout (inline grid-row-end spans),
+        // so DOM order is not the visual column order and only spatial navigation is
+        // correct. Restricting this to column-first left row-first masonry on the
+        // index arithmetic, which sent ArrowDown to a card thousands of pixels away.
         const isMasonry = grid.classList.contains('masonry')
-          && grid.classList.contains('grid-column-first')
           && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
         const isFirstRow = isMasonry && currentCard
           ? !cards.some((card) => {
@@ -196,8 +199,10 @@ export default class CFOB_Selection {
     const direction = e.key;
     const currentIdx = Math.max(0, Math.min(app.lastSelectedIdx, cards.length - 1));
 
+    // Row-first masonry packs cards with inline grid-row-end spans, so its DOM order is
+    // not the visual column order: the index arithmetic below would jump to an unrelated
+    // card. Only spatial navigation is correct there.
     const isMasonry = grid.classList.contains('masonry')
-      && grid.classList.contains('grid-column-first')
       && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
     const isColumnFlow = grid.classList.contains('grid-column-first');
     let masonryNextIdx = currentIdx;

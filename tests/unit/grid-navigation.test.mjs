@@ -251,3 +251,89 @@ test("masonry PageUp still jumps about a page when there is room", () => {
   assert.equal(to, 13);
   assert.ok(cards[to].offsetTop < cards[17].offsetTop, "moved up");
 });
+
+// --- Row-first masonry is staggered, so only spatial navigation is correct ---------
+//
+// Row-first masonry packs cards with inline grid-row-end spans. Cards are dealt
+// row-major, but each lands at the first free slot scanning right then down, so uneven
+// heights break the link between DOM order and visual column order. With these heights
+// card 4 lands in column 2 while card 5 sits under card 0 in column 0.
+
+/** Simulates CSS sparse row-flow auto-placement with grid-row-end spans. */
+function simulateRowFirstMasonry(heights, cols) {
+  const occupied = new Set();
+  const pos = [];
+  let row = 0, col = 0;
+  for (let i = 0; i < heights.length; i++) {
+    const span = Math.max(1, Math.ceil(heights[i]));
+    for (;;) {
+      let free = true;
+      for (let r = row; r < row + span; r++) {
+        if (occupied.has(`${r},${col}`)) { free = false; break; }
+      }
+      if (free) break;
+      if (++col >= cols) { col = 0; row++; }
+    }
+    for (let r = row; r < row + span; r++) occupied.add(`${r},${col}`);
+    pos.push({ row, col, h: heights[i] });
+    if (++col >= cols) { col = 0; row++; }
+  }
+  return pos;
+}
+
+/** Row-first masonry: 1px grid rows, 200px cards, 6px column gap. */
+function makeRowFirstMasonry() {
+  const heights = [200, 320, 140, 420, 250, 170, 200, 300, 150, 400, 220, 180];
+  const cols = 4;
+  const pos = simulateRowFirstMasonry(heights, cols);
+  const cards = pos.map(p => makeCard({ top: p.row, left: p.col * 206, width: 200, height: p.h }));
+  // No grid-column-first: that class is what column-first masonry uses, and it is also
+  // what the old isMasonry check keyed on.
+  return { cards, pos, app: makeApp({ cards, gridClasses: ["masonry", "view-grid"], containerHeight: 900 }) };
+}
+
+test("row-first masonry arrows never jump to a card outside the current column band", () => {
+  const { app, pos } = makeRowFirstMasonry();
+  // The old index arithmetic moved card 0 to card 4, which sits in a different column.
+  // The bottom card of a column has nothing beneath it, so the nearest card below in a
+  // neighbouring column is the right answer; everywhere else the move must stay put.
+  const continuesBelow = [0, 5, 2, 4, 8];
+  for (const from of continuesBelow) {
+    app.lastSelectedIdx = from;
+    const to = navigate(app, "ArrowDown");
+    assert.equal(pos[to].col, pos[from].col,
+      `ArrowDown from card ${from} (column ${pos[from].col}) must stay in that column, not ${pos[to].col}`);
+  }
+});
+
+test("row-first masonry fixture really is staggered (card 4 is not under card 0)", () => {
+  const { pos } = makeRowFirstMasonry();
+  assert.equal(pos[0].col, 0);
+  assert.equal(pos[4].col, 2, "card 4 lands in column 2");
+  assert.equal(pos[5].col, 0, "card 5 lands in column 0, under card 0");
+});
+
+test("row-first masonry ArrowDown follows the column, not the DOM index", () => {
+  const { app } = makeRowFirstMasonry();
+  for (const [from, to] of [[0, 5], [5, 7], [2, 4], [4, 8], [8, 11]]) {
+    app.lastSelectedIdx = from;
+    assert.equal(navigate(app, "ArrowDown"), to, `ArrowDown from ${from} goes to ${to}`);
+  }
+});
+
+test("row-first masonry ArrowUp follows the column, not the DOM index", () => {
+  const { app } = makeRowFirstMasonry();
+  for (const [from, to] of [[5, 0], [7, 5], [4, 2], [8, 4], [11, 8]]) {
+    app.lastSelectedIdx = from;
+    assert.equal(navigate(app, "ArrowUp"), to, `ArrowUp from ${from} goes to ${to}`);
+  }
+});
+
+test("row-first masonry ArrowRight/ArrowLeft move between adjacent columns", () => {
+  const { app } = makeRowFirstMasonry();
+  app.lastSelectedIdx = 0;
+  assert.equal(navigate(app, "ArrowRight"), 1, "card 1 is the nearest card to the right");
+
+  app.lastSelectedIdx = 1;
+  assert.equal(navigate(app, "ArrowLeft"), 0, "card 0 is the nearest card to the left");
+});

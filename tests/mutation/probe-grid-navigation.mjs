@@ -100,6 +100,12 @@ const MUTATIONS = {
         from: "const targetY = currentY + (direction === 'PageUp' ? -1 : 1) * app.$(\"cfobMainContainer\").clientHeight;",
         to: "const targetY = currentY;",
         testName: "masonry PageDown still jumps about a page when there is room"
+      },
+      {
+        label: "isMasonry requires column-first again (row-first falls back to DOM index)",
+        from: "    const isMasonry = grid.classList.contains('masonry')\n      && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));",
+        to: "    const isMasonry = grid.classList.contains('masonry')\n      && grid.classList.contains('grid-column-first') && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));",
+        testName: "row-first masonry ArrowDown follows the column, not the DOM index"
       }
     ]
   }
@@ -114,7 +120,9 @@ if (!entry) {
 
 const absFile = resolve(ROOT, entry.file);
 const original = readFileSync(absFile);
-const text = original.toString("utf-8");
+// Match on LF so patterns stay readable; write back with the file's own line endings.
+const eol = original.toString("utf-8").includes("\r\n") ? "\r\n" : "\n";
+const text = original.toString("utf-8").replace(/\r\n/g, "\n");
 const problems = [];
 
 try {
@@ -124,7 +132,13 @@ try {
       console.log(`!! pattern missing      <- ${m.label}`);
       continue;
     }
-    writeFileSync(absFile, text.replace(m.from, m.to));
+    const mutated = text.replace(m.from, m.to);
+    if (mutated === text) {
+      problems.push(`mutation changed nothing: ${m.label}`);
+      console.log(`!! changed nothing          <- ${m.label}`);
+      continue;
+    }
+    writeFileSync(absFile, mutated.split("\n").join(eol));
     let red = false;
     try {
       execFileSync(
