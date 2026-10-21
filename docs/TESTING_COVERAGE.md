@@ -1,7 +1,17 @@
 # Testing Coverage Plan
 
-Status: **draft — first pass**. Every number and gap below was measured against the
-working tree on `docs/testing-coverage-plan`, not estimated.
+Status: **in progress**. Every number and gap below was measured against the working
+tree on `docs/testing-coverage-plan`, not estimated.
+
+Progress so far on this branch:
+
+| Item | State |
+| --- | --- |
+| 0. Declare `selectionAnchorIdx` | done — `typecheck` green |
+| 1. Grid paging and edges | done — 9 tests, mutation-proven |
+| 2–6 | not started |
+
+Two follow-ups were found while working and are recorded at the bottom.
 
 ## What "covered" means here
 
@@ -40,7 +50,7 @@ the one red gate on `main`.
 | `CFOB_Selector.js` | 100.00 | 91.67 | 100.00 |
 | `assets/*.js` | 100.00 | 100.00 | 100.00 |
 | `CFOB_Filter.js` | 99.52 | 90.24 | 93.10 |
-| `CFOB_Selection.js` | 41.46 | 78.57 | 15.38 |
+| `CFOB_Selection.js` | 61.22 | 81.10 | 28.57 |
 | `CFOB_Settings.js` | 34.67 | 43.75 | 13.95 |
 | `CFOB_FullView.js` | 30.64 | 83.93 | 7.41 |
 | `PngMetadata.js` | 30.65 | 100.00 | 0.00 |
@@ -51,6 +61,9 @@ the one red gate on `main`.
 | `CFOB_Gallery.js` | 19.58 | 100.00 | 7.69 |
 | `CFOB_ImageActions.js` | 13.86 | 100.00 | 8.33 |
 | **all files** | **53.37** | **89.25** | **56.67** |
+
+`CFOB_Selection.js` was 41.46% before this branch's tests and is 61.22% after — the only
+row that moved. The rest are the pre-existing baseline.
 
 ### The finding worth acting on
 
@@ -120,8 +133,8 @@ two kinds of test honestly, because `keydown-dispatch.test.mjs` mixes them:
 | `Enter` toggle selection | Grid | yes | yes |
 | `Delete` / `D` | Global | yes | yes |
 | Arrow keys navigate grid | Grid | yes | yes |
-| `PageUp` / `PageDown` | Grid | yes (`CFOB_Selection.js:204`–`276`) | **no** |
-| `Home` / `End` | Grid | yes (`:275`–`276`) | **no** |
+| `PageUp` / `PageDown` | Grid | yes (`CFOB_Selection.js:204`–`276`) | yes |
+| `Home` / `End` | Grid | yes (`:275`–`276`) | yes |
 | `Escape` (full view) | Full View | yes | yes |
 | `ArrowLeft` / `ArrowRight` | Full View | yes | yes |
 | `ArrowUp` focus search | Full View | yes | yes |
@@ -131,7 +144,7 @@ two kinds of test honestly, because `keydown-dispatch.test.mjs` mixes them:
 | `T` toggle sidebar | Full View | yes | yes |
 | `+` / `-` / `0` zoom | Full View | yes | yes |
 
-**Totals: 16 asserted, 4 routing-only, 7 untested.** None of the seven is a missing
+**Totals: 18 asserted, 4 routing-only, 5 untested.** None of the five is a missing
 feature — every one is implemented. These are pure gaps.
 
 ### C. Settings (README §Core Operational Modes)
@@ -198,14 +211,18 @@ prerequisite, not as coverage work.
 Ordered by (user-visible risk) / (effort). Each item is a behavior assertion, and each
 should be proven to fail before it is trusted.
 
-**0. Declare `selectionAnchorIdx` on the class** — prerequisite for every item below,
-because the gate is red. One line.
+**0. Declare `selectionAnchorIdx` on the class** — **done.** `web/ComfyOutputBrowser.js:75`,
+matching the sibling index properties. `npm run typecheck` now exits 0.
 
-**1. Grid paging and edges — `PageUp`/`PageDown`/`Home`/`End`**
-Pure logic in `CFOB_Selection.handleGridNavigation`, already a seam. This is the last
-untested part of the grid-navigation contract, and it is where an off-by-one in
-`pageItems` (masonry vs. non-masonry, `:212` vs. `:269`) would silently strand the user.
-Both branches exist and neither is asserted.
+**1. Grid paging and edges — `PageUp`/`PageDown`/`Home`/`End`** — **done.**
+`tests/unit/grid-navigation.test.mjs`, 9 tests over row-first, column-first and masonry
+grids, plus clamping and the empty-grid case. Asserts which card ends up focused and
+scrolled into view. `CFOB_Selection.js` line coverage 41.46% → 61.22%.
+
+Both were mutation-proven with `tests/mutation/probe-grid-navigation.mjs`
+(`npm run test:mutation`): nine deliberate breakages of `web/CFOB_Selection.js`, each one
+turning its test red. The probe is what caught the first version of the masonry tests
+asserting nothing — see the follow-up below.
 
 **2. Metadata copy actually copies — `1`–`9`**
 `handleFieldCopyKey` (`ComfyOutputBrowser.js:1128`) resolves the field config, finds the
@@ -248,6 +265,36 @@ verify it manually once.
 tier already boots it for real. Adding pytest for its own sake would be a new dependency
 in service of a number. Cover `/delete` and `/upload` through e2e instead (item 6).
 
+## Follow-ups found while working
+
+**Masonry navigation only engages in column-first mode.** `CFOB_Selection.js:199` defines
+
+```js
+const isMasonry = grid.classList.contains('masonry')
+  && grid.classList.contains('grid-column-first')
+  && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
+```
+
+So a masonry grid using **row-first** fill order never takes the masonry branch. It falls
+through to the non-masonry path, which derives `cols` from `offsetTop` and pages by
+`(isColumnFlow ? 1 : cols) * pageRows` — arithmetic that assumes uniform rows and is
+meaningless for a masonry layout. The user flagged this as "weird" before it was written
+down; it is now in `draft/todo.txt`.
+
+The masonry tests above assert the *current* column-first behavior. They are not an
+endorsement of it: if the row-first case is fixed, those fixtures will need revisiting.
+
+**Mutation-proving the tests caught a degenerate assertion.** The first version of the
+masonry `PageDown`/`PageUp` tests used three cards and asserted the correct destination —
+but "nearest card to one viewport away" and "nearest card to the current row" resolved to
+the same card, so both tests stayed green when the page offset was deleted from the
+production code. The fixtures now include a card in the next row that is *closer* to the
+current row than the correct page target, so the two cases disagree and the tests can
+fail.
+
+Worth remembering: a test that passes is not evidence. `npm run test:mutation` is the
+cheap way to check a new test can actually fail.
+
 ## Definition of done for each item
 
 - The test asserts an outcome the user can observe (a card moved, a value copied, a
@@ -265,6 +312,7 @@ npm test              # unit, ~0.4 s
 npm run test:e2e      # real Chromium over CDP, ~87 s
 npm run lint
 npm run typecheck
+npm run test:mutation # break the code, confirm the tests catch it (~15 s)
 ```
 
 Add coverage numbers to the unit run with
