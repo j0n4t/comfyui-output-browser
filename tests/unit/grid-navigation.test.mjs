@@ -56,6 +56,25 @@ function makeGridCards({ count, cols, columnFirst = false, cell = 50, gap = 10 }
   return cards;
 }
 
+/**
+ * Masonry grid as the CSS-columns layout actually renders it: cards flow down a column,
+ * then into the next column. `rows` cards per column, `cols` columns.
+ */
+function makeMasonryCards({ cols = 5, rows = 6, cell = 226, gap = 4 } = {}) {
+  const cards = [];
+  for (let i = 0; i < cols * rows; i++) {
+    const col = Math.floor(i / rows);
+    const row = i % rows;
+    cards.push(makeCard({
+      top: 10 + row * (cell + gap),
+      left: 10 + col * (cell + gap),
+      width: cell,
+      height: cell
+    }));
+  }
+  return cards;
+}
+
 function makeApp({ cards, gridClasses = [], containerHeight = 300 }) {
   const grid = { classList: { contains: c => gridClasses.includes(c) } };
   const container = { clientHeight: containerHeight };
@@ -178,4 +197,57 @@ test("navigation is a no-op when there are no cards", () => {
 
   assert.doesNotThrow(() => sel.handleGridNavigation({ key: "PageDown" }));
   assert.equal(app.lastSelectedIdx, 0, "no index is written");
+});
+
+// --- Masonry paging must move vertically, never sideways ----------------------
+//
+// In masonry the page target is `currentY +/- containerHeight`. Near the top or bottom
+// of the grid no card is anywhere near that target, so the old code fell back to
+// "whichever card is closest" — which is a card in the SAME row. PageUp moved right,
+// PageDown moved left. A page key that moves sideways is not "up or down by about a
+// grid page".
+
+const MASONRY_APP = () => {
+  const cards = makeMasonryCards({ cols: 5, rows: 6 });
+  return { app: makeApp({ cards, gridClasses: MASONRY, containerHeight: 900 }), cards };
+};
+
+test("masonry PageUp on the top row does not move sideways", () => {
+  const { app } = MASONRY_APP();
+  app.lastSelectedIdx = 0;
+  assert.equal(navigate(app, "PageUp"), 0, "already at the top: stay put");
+});
+
+test("masonry PageUp on the top row of a later column does not move sideways", () => {
+  const { app } = MASONRY_APP();
+  app.lastSelectedIdx = 12; // row 0, column 2
+  assert.equal(navigate(app, "PageUp"), 12, "already at the top: stay put");
+});
+
+test("masonry PageDown on the bottom row does not move sideways", () => {
+  const { app } = MASONRY_APP();
+  app.lastSelectedIdx = 29; // row 5, column 4
+  assert.equal(navigate(app, "PageDown"), 29, "already at the bottom: stay put");
+});
+
+test("masonry PageDown on the bottom row of an earlier column does not move sideways", () => {
+  const { app } = MASONRY_APP();
+  app.lastSelectedIdx = 23; // row 5, column 3
+  assert.equal(navigate(app, "PageDown"), 23, "already at the bottom: stay put");
+});
+
+test("masonry PageDown still jumps about a page when there is room", () => {
+  const { app, cards } = MASONRY_APP();
+  app.lastSelectedIdx = 0;
+  const to = navigate(app, "PageDown");
+  assert.equal(to, 4);
+  assert.ok(cards[to].offsetTop > cards[0].offsetTop, "moved down");
+});
+
+test("masonry PageUp still jumps about a page when there is room", () => {
+  const { app, cards } = MASONRY_APP();
+  app.lastSelectedIdx = 17; // row 5, column 2
+  const to = navigate(app, "PageUp");
+  assert.equal(to, 13);
+  assert.ok(cards[to].offsetTop < cards[17].offsetTop, "moved up");
 });

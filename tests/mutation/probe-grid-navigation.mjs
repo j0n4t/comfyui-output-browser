@@ -82,6 +82,24 @@ const MUTATIONS = {
         from: "el.classList.toggle('focused', i === nextIdx);",
         to: "el.classList.toggle('focused', false);",
         testName: "only the destination card is focused"
+      },
+      {
+        label: "masonry page direction guard removed",
+        from: "if (direction === 'PageUp' ? candidateY >= currentY : candidateY <= currentY) continue;",
+        to: "",
+        testName: "masonry PageUp on the top row does not move sideways"
+      },
+      {
+        label: "masonry page direction guard inverted",
+        from: "if (direction === 'PageUp' ? candidateY >= currentY : candidateY <= currentY) continue;",
+        to: "if (direction === 'PageUp' ? candidateY <= currentY : candidateY >= currentY) continue;",
+        testName: "masonry PageUp on the top row does not move sideways"
+      },
+      {
+        label: "masonry page target ignores the page height",
+        from: "const targetY = currentY + (direction === 'PageUp' ? -1 : 1) * app.$(\"cfobMainContainer\").clientHeight;",
+        to: "const targetY = currentY;",
+        testName: "masonry PageDown still jumps about a page when there is room"
       }
     ]
   }

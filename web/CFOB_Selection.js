@@ -214,7 +214,13 @@ export default class CFOB_Selection {
         for (let i = 0; i < cards.length; i++) {
           if (i === currentIdx) continue;
           const rect = cards[i].getBoundingClientRect();
-          const score = Math.abs(rect.top + rect.height / 2 - targetY)
+          const candidateY = rect.top + rect.height / 2;
+          // A page key moves vertically, so skip cards beside the current one. Without
+          // this, paging from the top/bottom row finds nothing near targetY and falls
+          // back to the nearest card overall - which is a same-row neighbour, sending
+          // PageUp to the right and PageDown to the left.
+          if (direction === 'PageUp' ? candidateY >= currentY : candidateY <= currentY) continue;
+          const score = Math.abs(candidateY - targetY)
             + Math.abs(rect.left + rect.width / 2 - currentX) * 0.25;
           if (score < nextScore) {
             nextScore = score;
