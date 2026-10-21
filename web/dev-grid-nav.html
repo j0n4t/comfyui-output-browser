@@ -49,6 +49,16 @@
   /* The selection checkboxes are noise here: this page is about focus movement.
      Two classes so it outranks the app's own #cfob-root .checkbox-wrapper rule. */
   #cfob-root .image-card .checkbox-wrapper { display: none; }
+  /* Landing arrows: drawn on the card a key would move to, from the current card. */
+  .image-card .nav-arrows {
+    position: absolute; top: 0.25em; right: 0.25em; z-index: 4;
+    display: flex; gap: 2px;
+  }
+  .image-card .nav-arrows .arr {
+    min-width: 1.15em; height: 1.15em; line-height: 1.15em; text-align: center;
+    font-size: 11px; border-radius: 3px; background: rgba(0,0,0,.82); color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+  }
   .image-card { position: relative; outline: 1px dashed transparent; }
   .image-card.is-current { outline: 2px solid #4f8cff; }
   .image-card.is-chosen { outline: 2px solid #39d98a; }
@@ -136,6 +146,7 @@
       <span><i class="swatch" style="background:#4f8cff"></i>current</span>
       <span><i class="swatch" style="background:#39d98a"></i>chosen</span>
       <span><i class="swatch" style="background:#ffb020"></i>spatial best</span>
+      <span><i class="swatch" style="background:#000;border:1px solid #888"></i>arrow = key that lands here</span>
     </div>
   </aside>
 </main>
@@ -290,6 +301,68 @@ function score(rects, from, key) {
   });
 }
 
+const ARROW_KEYS = ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"];
+const ARROW_GLYPH = { ArrowDown: "▼", ArrowUp: "▲", ArrowLeft: "◄", ArrowRight: "►" };
+
+/**
+ * Where each arrow key would land from `from`, by driving the real nav once per key.
+ * scrollIntoView and focus are stubbed for the duration: the preview must not scroll
+ * the page out from under the badges it is about to draw.
+ */
+function destinations(from) {
+  const cards = app.gallery.getOrderedCards();
+  const saved = app.lastSelectedIdx;
+  const scrolls = cards.map(c => c.scrollIntoView);
+  const focuses = cards.map(c => c.focus);
+  cards.forEach(c => { c.scrollIntoView = () => {}; c.focus = () => {}; });
+  const out = {};
+  try {
+    for (const key of ARROW_KEYS) {
+      app.lastSelectedIdx = from;
+      cards.forEach(c => c.classList.remove("focused"));
+      app.selection.handleGridNavigation({ key });
+      out[key] = cards.findIndex(c => c.classList.contains("focused"));
+    }
+  } finally {
+    cards.forEach((c, i) => { c.scrollIntoView = scrolls[i]; c.focus = focuses[i]; });
+    app.lastSelectedIdx = saved;
+    cards.forEach(c => c.classList.remove("focused"));
+  }
+  return out;
+}
+
+/** Draws, on each destination card, the arrow key that lands there from `from`. */
+function paintArrows(from) {
+  const cards = app.gallery.getOrderedCards();
+  cards.forEach(c => {
+    const h = c.querySelector(".nav-arrows");
+    if (h) h.remove();
+  });
+  if (from === null || from === undefined) return;
+
+  const dests = destinations(from);
+  const byDest = new Map();
+  for (const key of ARROW_KEYS) {
+    const dest = dests[key];
+    if (dest === -1 || dest === from) continue;
+    if (!byDest.has(dest)) byDest.set(dest, []);
+    byDest.get(dest).push(key);
+  }
+
+  for (const [idx, keys] of byDest) {
+    const holder = document.createElement("div");
+    holder.className = "nav-arrows";
+    for (const key of keys) {
+      const chip = document.createElement("span");
+      chip.className = "arr";
+      chip.textContent = ARROW_GLYPH[key];
+      chip.title = `${key} from card ${from} lands on card ${idx}`;
+      holder.appendChild(chip);
+    }
+    cards[idx].appendChild(holder);
+  }
+}
+
 /** Highlights and reports. `move` is null on a plain rebuild. */
 function paint(from, key) {
   const cards = app.gallery.getOrderedCards();
@@ -297,6 +370,8 @@ function paint(from, key) {
     c.classList.remove("is-current", "is-chosen", "is-spatial");
     const t = c.querySelector(".tag");
     if (t) t.remove();
+    const h = c.querySelector(".nav-arrows");
+    if (h) h.remove();
   });
   const rects = cards.map(c => c.getBoundingClientRect());
 
@@ -304,6 +379,7 @@ function paint(from, key) {
     $("verdict").className = "verdict";
     $("verdict").textContent = "Press an arrow key.";
     $("candidates").querySelector("tbody").innerHTML = "";
+    paintArrows(app.lastSelectedIdx);
     return;
   }
 
@@ -351,6 +427,10 @@ function paint(from, key) {
     tr.innerHTML = `<td>#${s.i}</td><td>${Math.round(s.off)}</td><td>${Math.round(s.along)}</td><td>${Math.round(s.dist)}</td>`;
     body.appendChild(tr);
   }
+
+  // After `chosen` is read: the preview drives the real nav, which would otherwise
+  // leave focus on whichever key happened to be tried last.
+  paintArrows(before);
 }
 
 document.addEventListener("keydown", e => {
