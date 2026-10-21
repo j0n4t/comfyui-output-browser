@@ -9,9 +9,10 @@ Progress so far on this branch:
 | --- | --- |
 | 0. Declare `selectionAnchorIdx` | done — `typecheck` green |
 | 1. Grid paging and edges | done — 9 tests, mutation-proven |
+| Masonry PageUp/PageDown sideways | done — fixed, 6 tests, browser-verified |
 | 2–6 | not started |
 
-Two follow-ups were found while working and are recorded at the bottom.
+Three follow-ups were found while working; two are recorded at the bottom.
 
 ## What "covered" means here
 
@@ -50,7 +51,7 @@ the one red gate on `main`.
 | `CFOB_Selector.js` | 100.00 | 91.67 | 100.00 |
 | `assets/*.js` | 100.00 | 100.00 | 100.00 |
 | `CFOB_Filter.js` | 99.52 | 90.24 | 93.10 |
-| `CFOB_Selection.js` | 61.22 | 81.10 | 28.57 |
+| `CFOB_Selection.js` | 61.78 | 81.68 | 28.57 |
 | `CFOB_Settings.js` | 34.67 | 43.75 | 13.95 |
 | `CFOB_FullView.js` | 30.64 | 83.93 | 7.41 |
 | `PngMetadata.js` | 30.65 | 100.00 | 0.00 |
@@ -60,9 +61,9 @@ the one red gate on `main`.
 | `ComfyOutputBrowser.js` | 21.25 | 97.96 | 7.14 |
 | `CFOB_Gallery.js` | 19.58 | 100.00 | 7.69 |
 | `CFOB_ImageActions.js` | 13.86 | 100.00 | 8.33 |
-| **all files** | **53.37** | **89.25** | **56.67** |
+| **all files** | **55.44** | **89.40** | **58.80** |
 
-`CFOB_Selection.js` was 41.46% before this branch's tests and is 61.22% after — the only
+`CFOB_Selection.js` was 41.46% before this branch's tests and is 61.78% after — the only
 row that moved. The rest are the pre-existing baseline.
 
 ### The finding worth acting on
@@ -267,22 +268,27 @@ in service of a number. Cover `/delete` and `/upload` through e2e instead (item 
 
 ## Follow-ups found while working
 
-**Masonry navigation only engages in column-first mode.** `CFOB_Selection.js:199` defines
+**Masonry PageUp/PageDown moved sideways — fixed.** The masonry page branch scored every
+card by distance from `currentY +/- containerHeight`, with no directional constraint. Near
+the top or bottom of the grid nothing is anywhere near that target, so it fell back to the
+nearest card overall — which is a card in the *same row*. Probing the real browser showed
+PageUp from the top row moving right (`0 -> 5`, `12 -> 6`, `20 -> 15`) and PageDown from
+the bottom row moving left (`29 -> 23`, `23 -> 17`). Fixed at
+`web/CFOB_Selection.js:220` by skipping any candidate not strictly on the requested side;
+when none qualifies, focus stays put. Re-probed in the browser afterwards: 42 moves across
+7 starting positions, **0 directional reversals**.
 
-```js
-const isMasonry = grid.classList.contains('masonry')
-  && grid.classList.contains('grid-column-first')
-  && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
-```
+**Masonry + row-first fill order does not render as masonry — still open.** The CSS rule
+that produces the columns layout is `.masonry.view-grid.grid-column-first`
+(`web/assets/css.js:173`), so `.masonry` alone falls through to the plain `.view-grid`
+rule. Probing all four combinations confirmed it: with masonry on and fill order row-first
+the grid reports `display: grid, columnWidth: auto` — a byte-identical layout to masonry
+off. The Masonry toggle has no visual effect in that mode, while the README claims
+row-first is supported "for standard and masonry grids".
 
-So a masonry grid using **row-first** fill order never takes the masonry branch. It falls
-through to the non-masonry path, which derives `cols` from `offsetTop` and pages by
-`(isColumnFlow ? 1 : cols) * pageRows` — arithmetic that assumes uniform rows and is
-meaningless for a masonry layout. The user flagged this as "weird" before it was written
-down; it is now in `draft/todo.txt`.
-
-The masonry tests above assert the *current* column-first behavior. They are not an
-endorsement of it: if the row-first case is fixed, those fixtures will need revisiting.
+This is a layout/CSS bug, not a navigation one, so it is deliberately not fixed here: in
+that mode the grid really is a plain grid and the non-masonry nav is correct for it. It is
+in `draft/todo.txt`.
 
 **Mutation-proving the tests caught a degenerate assertion.** The first version of the
 masonry `PageDown`/`PageUp` tests used three cards and asserted the correct destination —
