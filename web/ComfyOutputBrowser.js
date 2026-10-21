@@ -72,6 +72,7 @@ export default class ComfyOutputBrowser {
     /** @type {any[]} */
     this.serverOrder = [];
     this.lastSelectedIdx = -1;
+    this.selectionAnchorIdx = -1;
     this.isUiVisible = false;
     this.serverImageFetchCount = 0;
     this.isIdleParsing = false;
