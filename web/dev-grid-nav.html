@@ -41,35 +41,52 @@
   main { display: flex; flex: 1; min-height: 0; }
   #stage { flex: 1; position: relative; overflow: auto; padding: 12px; }
   /* The app's stylesheet ships #cfob-root as display:none and the real app flips it to
-     flex from JS. The tool has no app instance, so show it here. */
-  #cfob-root { display: flex !important; flex-direction: column; width: 100%; min-height: 100%; }
-  #cfobMainContainer { flex: 1; min-height: 100%; }
+     flex from JS. The tool has no app instance, so show it here.
+     It is also position:fixed in the app (a full-viewport panel), which would make
+     width:100% resolve against the viewport instead of the stage and push the grid
+     sideways out of its container — so pin it back to normal flow. */
+  #cfob-root {
+    display: flex !important;
+    flex-direction: column;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100%;
+  }
+  #cfobMainContainer { flex: 1; min-width: 0; min-height: 100%; }
 
   /* --- debug overlay ---------------------------------------------------------- */
   /* The selection checkboxes are noise here: this page is about focus movement.
      Two classes so it outranks the app's own #cfob-root .checkbox-wrapper rule. */
   #cfob-root .image-card .checkbox-wrapper { display: none; }
-  /* Landing arrows: drawn on the card a key would move to, from the current card. */
+  /* Landing arrows: drawn on the card a key would move to, from the current card.
+     Centred on the card and large enough to read at a glance. */
   .image-card .nav-arrows {
-    position: absolute; top: 0.25em; right: 0.25em; z-index: 4;
-    display: flex; gap: 2px;
+    position: absolute; inset: 0; z-index: 4;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    pointer-events: none;
   }
   .image-card .nav-arrows .arr {
-    min-width: 1.15em; height: 1.15em; line-height: 1.15em; text-align: center;
-    font-size: 11px; border-radius: 3px; background: rgba(0,0,0,.82); color: #fff;
-    border: 1px solid rgba(255,255,255,.25);
+    min-width: 2.1em; height: 2.1em; line-height: 2.1em; text-align: center;
+    font-size: 22px; border-radius: 6px; background: rgba(0,0,0,.85); color: #fff;
+    border: 1px solid rgba(255,255,255,.4);
+    pointer-events: auto;
   }
   .image-card { position: relative; outline: 1px dashed transparent; }
-  .image-card.is-current { outline: 2px solid #4f8cff; }
   .image-card.is-chosen { outline: 2px solid #39d98a; }
   .image-card.is-spatial { outline: 2px dashed #ffb020; }
-  .image-card .tag {
-    position: absolute; top: 2px; left: 2px; z-index: 3; padding: 0 4px;
-    font-size: 11px; line-height: 16px; background: rgba(0,0,0,.78); border-radius: 3px;
+  /* A card the user is dragging an arrow onto. */
+  .image-card.drop-target { outline: 3px dashed #c084fc; }
+  /* An arrow the user moved to a different card. */
+  .image-card .nav-arrows .arr.is-corrected {
+    background: #c084fc; border-color: #e9d5ff;
   }
-  .image-card.is-current .tag { background: #4f8cff; color: #fff; }
-  .image-card.is-chosen .tag { background: #39d98a; color: #062; }
-  .image-card.is-spatial .tag { background: #ffb020; color: #420; }
+  /* The only label: which card you are on. */
+  .image-card .current-badge {
+    position: absolute; top: 0.25em; left: 0.25em; z-index: 4;
+    padding: 0 5px; font-size: 11px; line-height: 17px; border-radius: 3px;
+    background: #4f8cff; color: #fff;
+  }
 
   aside {
     width: 460px; flex: none; border-left: 1px solid var(--color-border);
@@ -91,6 +108,23 @@
   aside .legend span { display: inline-block; margin-right: 12px; }
   aside .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
   aside code { color: #9ecbff; }
+
+  aside .hint { color: var(--color-text-disabled); font-size: 12px; }
+  aside .examples { margin: 6px 0; max-height: 260px; overflow: auto; }
+  aside .example {
+    padding: 3px 6px; margin-bottom: 3px; border-radius: 3px;
+    background: var(--color-bg-input); border: 1px solid var(--color-border);
+  }
+  aside .example .ex-line { display: block; }
+  aside .example .ex-layout { color: var(--color-text-disabled); font-size: 11px; display: block; }
+  aside .export-row { display: flex; gap: 6px; align-items: center; }
+  aside .export-row button {
+    background: var(--color-bg-input); color: var(--color-text);
+    border: 1px solid var(--color-border); border-radius: 4px;
+    padding: 3px 10px; font: inherit; cursor: pointer;
+  }
+  aside .export-row button:hover { border-color: var(--color-accent); }
+  aside .export-row .hint { margin-left: auto; }
 </style>
 </head>
 <body>
@@ -148,6 +182,19 @@
       <span><i class="swatch" style="background:#ffb020"></i>spatial best</span>
       <span><i class="swatch" style="background:#000;border:1px solid #888"></i>arrow = key that lands here</span>
     </div>
+
+    <h2>Recorded examples <span id="exCount">(0)</span></h2>
+    <p class="hint">
+      Drag an arrow onto the card the key should really land on. Each drop is recorded
+      below with the layout and card geometry, so the logic can be fixed from the data.
+    </p>
+    <div class="examples" id="examples"></div>
+    <div class="export-row">
+      <button id="copyJson" type="button">Copy JSON</button>
+      <button id="downloadJson" type="button">Download</button>
+      <button id="clearExamples" type="button">Clear</button>
+      <span class="hint" id="exportStatus"></span>
+    </div>
   </aside>
 </main>
 
@@ -189,6 +236,32 @@ let app = null;
 let images = [];
 
 /** Rebuilds the grid and the minimal app object CFOB_Selection needs. */
+/**
+ * Runs rebuilds one at a time, coalescing bursts.
+ *
+ * Changing four settings fires four change events synchronously. Without this, four
+ * rebuilds interleave: each clears and rebuilds the grid, then resumes after its
+ * `requestAnimationFrame` and wires drop targets onto whatever cards are current — so
+ * the last rebuilds stack duplicate listeners onto the same elements, and one drop
+ * records several examples.
+ */
+let rebuildInFlight = null;
+let rebuildPending = false;
+
+function requestRebuild() {
+  if (rebuildInFlight) {
+    rebuildPending = true;
+    return;
+  }
+  rebuildInFlight = rebuild().finally(() => {
+    rebuildInFlight = null;
+    if (rebuildPending) {
+      rebuildPending = false;
+      requestRebuild();
+    }
+  });
+}
+
 async function rebuild() {
   const view = $("view").value;
   const scroll = $("scroll").value;
@@ -270,7 +343,7 @@ async function rebuild() {
   }
 
   app.lastSelectedIdx = 0;
-  paint(null, null);
+  afterLayoutChange();
 }
 
 const centre = r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
@@ -331,6 +404,15 @@ function destinations(from) {
   return out;
 }
 
+/** The one label this page needs: which card you are standing on. */
+function markCurrent(cards, idx) {
+  if (idx === -1 || !cards[idx]) return;
+  const badge = document.createElement("span");
+  badge.className = "current-badge";
+  badge.textContent = "current";
+  cards[idx].appendChild(badge);
+}
+
 /** Draws, on each destination card, the arrow key that lands there from `from`. */
 function paintArrows(from) {
   const cards = app.gallery.getOrderedCards();
@@ -343,24 +425,166 @@ function paintArrows(from) {
   const dests = destinations(from);
   const byDest = new Map();
   for (const key of ARROW_KEYS) {
-    const dest = dests[key];
+    // A recorded correction wins over the computed destination, so the arrow the user
+    // moved stays where they put it.
+    const corrected = corrections.get(`${from}|${key}`);
+    const dest = corrected !== undefined ? corrected : dests[key];
     if (dest === -1 || dest === from) continue;
     if (!byDest.has(dest)) byDest.set(dest, []);
-    byDest.get(dest).push(key);
+    // The chip always carries the code's ORIGINAL prediction, not the corrected one —
+    // otherwise a second drag would record the correction as if it were the prediction.
+    byDest.get(dest).push({ key, predicted: dests[key], corrected: corrected !== undefined });
   }
 
-  for (const [idx, keys] of byDest) {
+  for (const [idx, entries] of byDest) {
     const holder = document.createElement("div");
     holder.className = "nav-arrows";
-    for (const key of keys) {
+    for (const { key, predicted, corrected } of entries) {
       const chip = document.createElement("span");
-      chip.className = "arr";
+      chip.className = "arr" + (corrected ? " is-corrected" : "");
       chip.textContent = ARROW_GLYPH[key];
-      chip.title = `${key} from card ${from} lands on card ${idx}`;
+      chip.title = `${key} from card ${from} lands on card ${idx}`
+        + (corrected ? " (corrected)" : "");
+      chip.draggable = true;
+      // The payload the drop handler needs to record a correction.
+      chip.dataset.payload = JSON.stringify({ from, key, predicted });
+      chip.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("text/plain", chip.dataset.payload);
+        e.dataTransfer.effectAllowed = "move";
+      });
       holder.appendChild(chip);
     }
     cards[idx].appendChild(holder);
   }
+}
+
+// --- corrections ----------------------------------------------------------------
+
+/**
+ * Corrections the user has made, keyed "from|key" -> the card the key should land on.
+ * These are per-layout: changing the layout invalidates them, so they are cleared on
+ * rebuild. Recorded examples are kept, because each one carries its own layout.
+ * @type {Map<string, number>}
+ */
+const corrections = new Map();
+
+/** Accumulated examples, oldest first. */
+const examples = [];
+
+/** Settings that fully determine the layout: enough for the data to be reproducible. */
+function layoutIdentity() {
+  return {
+    view: $("view").value,
+    scroll: $("scroll").value,
+    order: $("order").value,
+    masonry: $("masonry").value === "1",
+    count: Number($("count").value) || 24,
+    seed: Number($("seed").value) || 1
+  };
+}
+
+/** Card geometry relative to the grid, so it is independent of scroll position. */
+function currentGeometry() {
+  const gridRect = grid.getBoundingClientRect();
+  return app.gallery.getOrderedCards().map((c, i) => {
+    const r = c.getBoundingClientRect();
+    return {
+      i,
+      top: Math.round(r.top - gridRect.top),
+      left: Math.round(r.left - gridRect.left),
+      w: Math.round(r.width),
+      h: Math.round(r.height)
+    };
+  });
+}
+
+/**
+ * Records that `key` from card `from` should land on `correct` rather than the
+ * `predicted` card. A drop on the predicted card is not a correction.
+ */
+function recordCorrection(from, key, predicted, correct) {
+  if (correct === predicted) return;
+  corrections.set(`${from}|${key}`, correct);
+  examples.push({
+    from, key, predicted, correct,
+    layout: layoutIdentity(),
+    geometry: currentGeometry()
+  });
+  renderExamples();
+  paintArrows(app.lastSelectedIdx);
+}
+
+/** Renders the recorded examples and wires up drag-and-drop on the cards. */
+function renderExamples() {
+  const box = $("examples");
+  box.innerHTML = "";
+  for (const ex of examples) {
+    const row = document.createElement("div");
+    row.className = "example";
+    const line = document.createElement("span");
+    line.className = "ex-line";
+    line.textContent = `#${ex.from} ${ex.key}: predicted ${ex.predicted} -> correct ${ex.correct}`;
+    const layout = document.createElement("span");
+    layout.className = "ex-layout";
+    layout.textContent = ex.layout.view
+      + (ex.layout.masonry ? " masonry" : "")
+      + " / " + ex.layout.order + "-first"
+      + " / scroll " + ex.layout.scroll
+      + " / " + ex.layout.count + " cards / seed " + ex.layout.seed;
+    row.appendChild(line);
+    row.appendChild(layout);
+    box.appendChild(row);
+  }
+  $("exCount").textContent = `(${examples.length})`;
+}
+
+/** JSON ready to hand over for analysis. */
+function exportPayload() {
+  return {
+    tool: "comfyui-output-browser/dev-grid-nav",
+    exportedAt: new Date().toISOString(),
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    note: "each example records a key press from a card and where it should have landed",
+    examples
+  };
+}
+
+/** Makes every card a drop target for the arrow chips. Idempotent per card. */
+function wireDropTargets() {
+  const cards = app.gallery.getOrderedCards();
+  cards.forEach((card, i) => {
+    // Guard against a second pass over the same elements, which would make one drop
+    // record several examples.
+    if (card.dataset.dropWired) return;
+    card.dataset.dropWired = "1";
+    card.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      card.classList.add("drop-target");
+    });
+    card.addEventListener("dragleave", () => card.classList.remove("drop-target"));
+    card.addEventListener("drop", e => {
+      e.preventDefault();
+      card.classList.remove("drop-target");
+      let payload;
+      try {
+        payload = JSON.parse(e.dataTransfer.getData("text/plain"));
+      } catch {
+        return;
+      }
+      if (typeof payload.from !== "number" || typeof payload.predicted !== "number") return;
+      recordCorrection(payload.from, payload.key, payload.predicted, i);
+    });
+  });
+}
+
+/** Updates the examples panel after a layout change, then re-arms the drop targets. */
+function afterLayoutChange() {
+  // Card indices mean something different now, so any pending corrections are void.
+  corrections.clear();
+  renderExamples();
+  wireDropTargets();
+  paint(null, null);
 }
 
 /** Highlights and reports. `move` is null on a plain rebuild. */
@@ -368,10 +592,10 @@ function paint(from, key) {
   const cards = app.gallery.getOrderedCards();
   cards.forEach(c => {
     c.classList.remove("is-current", "is-chosen", "is-spatial");
-    const t = c.querySelector(".tag");
-    if (t) t.remove();
-    const h = c.querySelector(".nav-arrows");
-    if (h) h.remove();
+    for (const sel of [".current-badge", ".nav-arrows"]) {
+      const el = c.querySelector(sel);
+      if (el) el.remove();
+    }
   });
   const rects = cards.map(c => c.getBoundingClientRect());
 
@@ -379,6 +603,7 @@ function paint(from, key) {
     $("verdict").className = "verdict";
     $("verdict").textContent = "Press an arrow key.";
     $("candidates").querySelector("tbody").innerHTML = "";
+    markCurrent(cards, app.lastSelectedIdx);
     paintArrows(app.lastSelectedIdx);
     return;
   }
@@ -394,17 +619,19 @@ function paint(from, key) {
   const cards2 = app.gallery.getOrderedCards();
   const chosen = cards2.findIndex(c => c.classList.contains("focused"));
 
-  const mark = (idx, cls, label) => {
+  // Outlines only: the card you are on (green), and the nearest card in the pressed
+  // direction when that is not where you landed (amber). The card you came from is not
+  // highlighted — it is not where you are.
+  const mark = (idx, cls) => {
     if (idx === -1 || !cards2[idx]) return;
     cards2[idx].classList.add(cls);
-    const tag = document.createElement("span");
-    tag.className = "tag";
-    tag.textContent = label;
-    cards2[idx].appendChild(tag);
   };
-  mark(before, "is-current", `cur ${before}`);
-  mark(chosen, "is-chosen", `chose ${chosen}`);
-  if (spatial && spatial.i !== chosen) mark(spatial.i, "is-spatial", `spatial ${spatial.i}`);
+  mark(chosen, "is-chosen");
+  if (spatial && spatial.i !== chosen) mark(spatial.i, "is-spatial");
+
+  // One label, on the card you are on. The old "cur"/"chose" pair was redundant —
+  // after a move the chosen card is the current card.
+  markCurrent(cards2, chosen === -1 ? before : chosen);
 
   const drift = spatial && spatial.i !== chosen;
   const v = $("verdict");
@@ -428,9 +655,9 @@ function paint(from, key) {
     body.appendChild(tr);
   }
 
-  // After `chosen` is read: the preview drives the real nav, which would otherwise
-  // leave focus on whichever key happened to be tried last.
-  paintArrows(before);
+  // Arrows show where keys lead from the card you are on NOW. Using `before` here
+  // would leave them a step behind: they would describe the move you just made.
+  paintArrows(chosen === -1 ? before : chosen);
 }
 
 document.addEventListener("keydown", e => {
@@ -442,9 +669,39 @@ document.addEventListener("keydown", e => {
 });
 
 for (const id of ["view", "scroll", "order", "masonry", "count", "seed"]) {
-  $(id).addEventListener("change", rebuild);
+  $(id).addEventListener("change", requestRebuild);
 }
-$("rebuild").addEventListener("click", rebuild);
+$("rebuild").addEventListener("click", requestRebuild);
+
+/** Copies the payload as JSON, for pasting straight into a message. */
+$("copyJson").addEventListener("click", async () => {
+  const status = $("exportStatus");
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(exportPayload(), null, 2));
+    status.textContent = `${examples.length} example(s) copied`;
+  } catch {
+    status.textContent = "clipboard blocked — use Download";
+  }
+});
+
+/** Saves the payload as a file. */
+$("downloadJson").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(exportPayload(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `cfob-nav-examples-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  $("exportStatus").textContent = `${examples.length} example(s) downloaded`;
+});
+
+$("clearExamples").addEventListener("click", () => {
+  examples.length = 0;
+  corrections.clear();
+  renderExamples();
+  paintArrows(app.lastSelectedIdx);
+});
 
 await rebuild();
 </script>
