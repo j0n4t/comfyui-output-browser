@@ -3,6 +3,10 @@
 Status: **in progress**. Every number and gap below was measured against the working
 tree on `docs/testing-coverage-plan`, not estimated.
 
+> **Picking this up? Read `docs/HANDOFF.md` first** — it carries the current state, the
+> traps that bit during this work, and the next steps (the dev tool, and the corrections
+> that are still waiting to be collected).
+
 Progress so far on this branch:
 
 | Item | State |
@@ -10,7 +14,8 @@ Progress so far on this branch:
 | 0. Declare `selectionAnchorIdx` | done — `typecheck` green |
 | 1. Grid paging and edges | done — 9 tests, mutation-proven |
 | Masonry PageUp/PageDown sideways | done — fixed, 6 tests, browser-verified |
-| Row-first masonry arrow drift | done — fixed, 6 tests, browser-verified |
+| Row-first masonry arrow drift | done — fixed, 5 tests, browser-verified |
+| Masonry arrows pick the nearest centre | done — fixed from recorded corrections |
 | 2–6 | not started |
 
 Three follow-ups were found while working; all are recorded at the bottom.
@@ -296,6 +301,29 @@ An earlier version of this plan claimed row-first masonry did not render as maso
 all. That was wrong. The probe inferred masonry from `display: block`, which is only how
 *column-first* masonry renders (CSS multi-column). Row-first masonry is a packed grid and
 reports `display: grid` with `grid-auto-rows: 1px` and per-card `grid-row-end` spans.
+
+**Masonry arrows ranked by cross-axis gap instead of centre distance — fixed.** The
+masonry arrow branch scored candidates by how far they were from the current card on the
+cross axis (0 when the two cards overlapped sideways), then by along-axis distance. That
+preferred *any* card overlapping the current one horizontally, even when a nearer card
+existed, so arrows landed on a card several columns away. `web/CFOB_Selection.js` now
+takes the nearest centre among cards in the pressed direction.
+
+Found from 11 corrections recorded by the user with `web/dev-grid-nav.html`, in the real
+layout (grid / masonry / row-first / 24 cards / seed 7): **10 of 11** corrections are
+reproduced by nearest-centre. It is also correct on 388/388 moves in uniform grids, so it
+does not regress the plain grid, and it changes only 18 of 96 moves in that masonry layout
+(the alternatives tested changed 53–70).
+
+The 11th is deliberately not asserted: from card 15, ArrowDown, recorded as "should go to
+22" and then withdrawn by the user. Nearest-centre picks 20 there. `docs/HANDOFF.md` and
+the fixture comment in `tests/unit/grid-navigation.test.mjs` record it as a known
+remaining disagreement.
+
+**ArrowUp is unverified against recorded data.** All 11 corrections are ArrowRight (9),
+ArrowLeft (1) and ArrowDown (1) — none is ArrowUp. Nearest-centre makes ArrowUp cross
+columns on 5 of 23 cards in the recorded layout, which is arithmetic, not the user's
+judgement. Worth confirming in the dev tool.
 
 **Mutation-proving the tests caught two flaws in the tests themselves.** The first version
 of the masonry `PageDown`/`PageUp` tests used three cards and asserted the correct
