@@ -112,6 +112,36 @@ const MUTATIONS = {
         from: "          const centreDistance = Math.hypot(candidateX - currentX, candidateY - currentY);\n          if (centreDistance < nextScore) {\n            nextScore = centreDistance;\n            masonryNextIdx = i;\n          }",
         to: "          const crossDistance = isVertical\n            ? Math.max(0, Math.max(currentRect.left - rect.right, rect.left - currentRect.right))\n            : Math.max(0, Math.max(currentRect.top - rect.bottom, rect.top - currentRect.bottom));\n          if (crossDistance < nextScore) {\n            nextScore = crossDistance;\n            masonryNextIdx = i;\n          }",
         testName: "recorded corrections: masonry arrows land on the nearest centre"
+      },
+      {
+        label: "masonry vertical arrows may cross columns again",
+        from: "          if (isVertical && !this.isSameColumn(rect, currentRect)) continue;",
+        to: "",
+        testName: "masonry vertical arrows stay in the current column"
+      },
+      {
+        label: "column test accepts any two cards (column check is a no-op)",
+        from: "    return Math.abs(rect.left - currentRect.left) <= cardGap;",
+        to: "    return true;",
+        testName: "masonry vertical arrows stay in the current column"
+      },
+      {
+        label: "column test accepts any left edge (tolerance is infinite)",
+        from: "rect.left - currentRect.left) <= cardGap;",
+        to: "rect.left - currentRect.left) <= Number.POSITIVE_INFINITY;",
+        testName: "row-first masonry ArrowUp follows the column, like ArrowDown"
+      },
+      {
+        label: "first-row test compares card centres instead of rows",
+        from: "              && candidate.getBoundingClientRect().top < currentCard.getBoundingClientRect().top;",
+        to: "              && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2 < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;",
+        testName: "ArrowUp from a top-row masonry card focuses the search box, not the card beside it"
+      },
+      {
+        label: "column test compares widths instead of left edges",
+        from: "    return Math.abs(rect.left - currentRect.left) <= cardGap;",
+        to: "    return Math.abs(rect.width - currentRect.width) <= cardGap;",
+        testName: "masonry vertical arrows stay in the current column"
       }
     ]
   }

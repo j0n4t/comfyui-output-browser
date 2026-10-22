@@ -322,13 +322,13 @@ test("row-first masonry ArrowDown follows the column, not the DOM index", () => 
   }
 });
 
-test("row-first masonry ArrowUp goes to the nearest centre, which may cross columns", () => {
-  // Nearest centre, not the same column. From card 7 the nearest centre above is card 6
-  // (229px, one column over) rather than card 5 (235px, directly above) — an 11px
-  // difference. This is the rule the corrections in user-layout-fixture.mjs ask for, and
-  // it crosses columns on 5 of 23 cards in the real recorded layout.
+test("row-first masonry ArrowUp follows the column, like ArrowDown", () => {
+  // A vertical move stays in the current column: from card 7 the card directly above is
+  // card 5 (235px, same column) and card 6 is one column over. Nearest-centre preferred
+  // card 6 by 11px, which is a sideways jump, and the recorded layout shows the same
+  // shape 5 times over.
   const { app } = makeRowFirstMasonry();
-  for (const [from, to] of [[5, 0], [7, 6], [4, 2], [8, 4], [11, 8]]) {
+  for (const [from, to] of [[5, 0], [7, 5], [4, 2], [8, 4], [11, 8]]) {
     app.lastSelectedIdx = from;
     assert.equal(navigate(app, "ArrowUp"), to, `ArrowUp from ${from} goes to ${to}`);
   }
@@ -377,11 +377,67 @@ test("recorded corrections: masonry arrows land on the nearest centre", () => {
     "every recorded correction except the withdrawn one is asserted");
 });
 
+test("masonry vertical arrows stay in the current column", () => {
+  // Masonry columns sit one card plus a 6px gutter apart, so a neighbouring column is a
+  // full card to the left or right. Left unconstrained, nearest-centre picks it whenever
+  // it happens to be a few pixels closer: on the recorded layout ArrowUp crossed columns
+  // on 5 of 23 cards (1->0, 2->3, 3->1, 4->3, 15->13) and ArrowDown on 1 (23->21).
+  const app = makeUserLayoutApp();
+  for (const key of ["ArrowUp", "ArrowDown"]) {
+    for (let from = 0; from < USER_LAYOUT.length; from++) {
+      app.lastSelectedIdx = from;
+      const to = navigate(app, key);
+      if (to === from) continue;
+      assert.equal(USER_LAYOUT[to].left, USER_LAYOUT[from].left,
+        `${key} from card ${from} must stay in its column, not cross to card ${to}`);
+    }
+  }
+});
+
+test("a masonry card with nothing above it in its column stays put", () => {
+  // Confining a vertical move to its column can leave no candidate, and the documented
+  // contract is a no-op there, not a jump sideways. Card 3 has only card 1 above it, and
+  // card 1 is in the next column: ArrowUp from 3 must do nothing.
+  const app = makeUserLayoutApp();
+  app.lastSelectedIdx = 3;
+  assert.equal(navigate(app, "ArrowUp"), 3, "no card above it in its own column: stay put");
+});
+
+test("ArrowUp from a top-row masonry card focuses the search box, not the card beside it", () => {
+  // Every card in the recorded layout's first row has top 0, but cards 1-4 are taller
+  // than the card to their left, so a centre comparison called them "not first row" and
+  // ArrowUp fell through to the grid and jumped sideways into that shorter card.
+  const cards = USER_LAYOUT.map(g => makeCard({ top: g.top, left: g.left, width: g.w, height: g.h }));
+  const grid = { classList: { contains: c => ["masonry", "view-grid"].includes(c) } };
+  const handledBy = { where: null };
+  const app = {
+    lastSelectedIdx: 1,
+    filteredImages: cards.map((_, i) => ({ name: `img-${i}.png` })),
+    settings: { modals: { getActive: () => null } },
+    $: (id) => (id === "cfobGalleryGrid" ? grid
+      : id === "cfobSearchInput" ? { focus: () => { handledBy.where = "search"; } }
+        : null),
+    gallery: { getOrderedCards: () => cards },
+    selection: { handleGridNavigation: () => { handledBy.where = "grid"; } }
+  };
+  const sel = makeSelection(app);
+
+  sel.handleKeydown({
+    key: "ArrowUp",
+    target: { closest: () => null },
+    preventDefault() {},
+    stopPropagation() {}
+  });
+
+  assert.equal(handledBy.where, "search",
+    "ArrowUp on the first row must focus the search box");
+});
+
 test("withdrawn correction is still reported as a disagreement, not silently passing", () => {
   // Guards the guard above: if the heuristic ever starts picking 22 here, the note in
   // docs/HANDOFF.md is stale and this test should be revisited.
   const app = makeUserLayoutApp();
   app.lastSelectedIdx = 15;
-  assert.equal(navigate(app, "ArrowDown"), 20,
-    "ArrowDown from card 15 currently lands on 20; the user withdrew the 22 correction");
+  assert.equal(navigate(app, "ArrowDown"), 15,
+    "ArrowDown from card 15 has nothing below it in its own column: it stays put. The withdrawn 22 correction was itself a crossing.");
 });

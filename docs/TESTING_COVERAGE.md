@@ -16,6 +16,7 @@ Progress so far on this branch:
 | Masonry PageUp/PageDown sideways | done — fixed, 6 tests, browser-verified |
 | Row-first masonry arrow drift | done — fixed, 5 tests, browser-verified |
 | Masonry arrows pick the nearest centre | done — fixed from recorded corrections |
+| Vertical arrows crossing columns | done — same-column rule, browser-verified |
 | 2–6 | not started |
 
 Three follow-ups were found while working; all are recorded at the bottom.
@@ -36,11 +37,11 @@ Two consequences, both deliberate:
 
 | Tier | Runner | Files | Tests | Covers |
 | --- | --- | --- | --- | --- |
-| Unit | `npm test` | `tests/unit/*.test.mjs` (7 files) | 140 | Pure logic + key dispatch against mock elements |
+| Unit | `npm test` | `tests/unit/*.test.mjs` (8 files) | 165 | Pure logic + key dispatch against mock elements |
 | E2E | `npm run test:e2e` | `tests/e2e/*.test.mjs` (3 files) | 3 | Real Chromium over CDP against the standalone server (~87 s) |
 | Python | — | — | 0 | `__init__.py` (291 LOC, 5 HTTP endpoints) has **no** test of its own |
 
-The unit and e2e suites were run while writing this and both pass (140/140, 3/3). E2E
+The unit and e2e suites were run while writing this and both pass (165/165, 3/3). E2E
 only skips when no browser is found, so a green run means the UI actually worked, not
 that it was skipped.
 
@@ -57,7 +58,7 @@ the one red gate on `main`.
 | `CFOB_Selector.js` | 100.00 | 91.67 | 100.00 |
 | `assets/*.js` | 100.00 | 100.00 | 100.00 |
 | `CFOB_Filter.js` | 99.52 | 90.24 | 93.10 |
-| `CFOB_Selection.js` | 66.03 | 84.67 | 28.57 |
+| `CFOB_Selection.js` | 72.97 | 84.96 | 40.00 |
 | `CFOB_Settings.js` | 34.67 | 43.75 | 13.95 |
 | `CFOB_FullView.js` | 30.64 | 83.93 | 7.41 |
 | `PngMetadata.js` | 30.65 | 100.00 | 0.00 |
@@ -69,7 +70,7 @@ the one red gate on `main`.
 | `CFOB_ImageActions.js` | 13.86 | 100.00 | 8.33 |
 | **all files** | **56.01** | **89.88** | **59.26** |
 
-`CFOB_Selection.js` was 41.46% before this branch's tests and is 66.03% after — the only
+`CFOB_Selection.js` was 41.46% before this branch's tests and is 72.97% after — the only
 row that moved. The rest are the pre-existing baseline.
 
 ### The finding worth acting on
@@ -227,8 +228,8 @@ grids, plus clamping and the empty-grid case. Asserts which card ends up focused
 scrolled into view. `CFOB_Selection.js` line coverage 41.46% → 61.22%.
 
 Both were mutation-proven with `tests/mutation/probe-grid-navigation.mjs`
-(`npm run test:mutation`): nine deliberate breakages of `web/CFOB_Selection.js`, each one
-turning its test red. The probe is what caught the first version of the masonry tests
+(`npm run test:mutation`): nineteen deliberate breakages of `web/CFOB_Selection.js`, each
+one turning its test red. The probe is what caught the first version of the masonry tests
 asserting nothing — see the follow-up below.
 
 **2. Metadata copy actually copies — `1`–`9`**
@@ -316,14 +317,39 @@ does not regress the plain grid, and it changes only 18 of 96 moves in that maso
 (the alternatives tested changed 53–70).
 
 The 11th is deliberately not asserted: from card 15, ArrowDown, recorded as "should go to
-22" and then withdrawn by the user. Nearest-centre picks 20 there. `docs/HANDOFF.md` and
-the fixture comment in `tests/unit/grid-navigation.test.mjs` record it as a known
-remaining disagreement.
+22" and then withdrawn by the user. Nearest-centre picked 20 there; 20 is itself a
+crossing, so the column rule makes the move stay put (15) instead. `docs/HANDOFF.md` and
+the fixture comment in `tests/unit/grid-navigation.test.mjs` record it. If the user wants
+"wrap into the next column when this one runs out", that is a new decision rather than a
+fix to this one.
 
-**ArrowUp is unverified against recorded data.** All 11 corrections are ArrowRight (9),
-ArrowLeft (1) and ArrowDown (1) — none is ArrowUp. Nearest-centre makes ArrowUp cross
-columns on 5 of 23 cards in the recorded layout, which is arithmetic, not the user's
-judgement. Worth confirming in the dev tool.
+**Vertical arrows crossed columns — fixed.** All 11 recorded corrections are ArrowRight
+(9), ArrowLeft (1) and ArrowDown (1) — none is ArrowUp, so the nearest-centre rule for a
+vertical key was arithmetic, not the user's judgement. Confirmed in the dev tool: it made
+ArrowUp cross columns on 5 of 23 cards in the recorded layout (1→0, 2→3, 3→1, 4→3,
+15→13) and ArrowDown on 1 (23→21), and the user's ruling was that a vertical arrow should
+not cross columns at all.
+
+`web/CFOB_Selection.js` now requires a vertical move to stay in the current column, decided
+by left edge: masonry columns are one card plus a 6px gutter wide, so neighbouring columns
+never overlap horizontally and only the left edge tells them apart. A card with nothing
+above or below it in its own column stays put.
+
+Measured in a real browser over the dev tool's masonry DOM (4 columns, 24 cards): **34
+column crossings on 48 vertical moves before, 0 after**; disabling the check in-page
+reproduced the 34.
+
+The same commit fixed a second defect the change would otherwise have exposed: the
+"first row" test for the `ArrowUp` shortcut compared card *centres*, so a top-row card with
+a shorter card to its left looked like a later row and ArrowUp jumped sideways into that
+card. It now compares `top`, matching the grid branch's `offsetTop`.
+
+**The dev tool's card-size controls are dead.** `dev-grid-nav.html` sets `--grid-size` on
+`documentElement`, but the app stylesheet's `#cfob-root { --grid-size: 380px }` is closer
+to the grid and wins, so the tool always lays out at 380px cards — and at a narrow window
+that collapses masonry to one column, which reads as "the column rule does nothing". Set
+`--grid-size` on `#cfob-root` instead. Left unfixed: it is a sizing bug, not a navigation
+one, and no navigation claim depends on it.
 
 **Mutation-proving the tests caught two flaws in the tests themselves.** The first version
 of the masonry `PageDown`/`PageUp` tests used three cards and asserted the correct

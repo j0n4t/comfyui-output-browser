@@ -352,6 +352,9 @@ const centre = r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
  * The spatial branch's own metric, mirrored so the panel can show what it scored.
  * off-axis = gap on the cross axis (0 when the rects overlap), along-axis = distance
  * along the direction of travel.
+ *
+ * The mirror must match web/CFOB_Selection.js: a vertical move only considers cards in
+ * the same column, so a neighbouring column is never offered as the "spatial best".
  */
 function score(rects, from, key) {
   const isVertical = key === "ArrowDown" || key === "ArrowUp";
@@ -370,6 +373,7 @@ function score(rects, from, key) {
       off: cross,
       dist: Math.hypot(b.x - a.x, b.y - a.y),
       inDirection: (isBackward ? primary < 0 : primary > 0)
+        && (!isVertical || Math.abs(r.left - cur.left) <= 6)
     };
   });
 }

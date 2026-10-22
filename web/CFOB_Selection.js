@@ -149,14 +149,16 @@ export default class CFOB_Selection {
         // so DOM order is not the visual column order and only spatial navigation is
         // correct. Restricting this to column-first left row-first masonry on the
         // index arithmetic, which sent ArrowDown to a card thousands of pixels away.
+        // "First row" is a row test, not a centre test: comparing card centres made every
+        // top-row card look like a later row whenever a shorter card sat to its left, so
+        // ArrowUp from it fell through to the grid and jumped sideways into that card.
         const isMasonry = grid.classList.contains('masonry')
           && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));
         const isFirstRow = isMasonry && currentCard
           ? !cards.some((card) => {
             const candidate = card;
             return candidate !== currentCard
-              && candidate.getBoundingClientRect().top + candidate.getBoundingClientRect().height / 2
-              < currentCard.getBoundingClientRect().top + currentCard.getBoundingClientRect().height / 2;
+              && candidate.getBoundingClientRect().top < currentCard.getBoundingClientRect().top;
           })
           : Boolean(cards[0] && currentCard && currentCard.offsetTop <= cards[0].offsetTop);
         if (isFirstRow) {
@@ -182,6 +184,19 @@ export default class CFOB_Selection {
     const firstCard = cards[0];
     firstCard?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
     firstCard?.focus();
+  }
+
+  /**
+   * True when two cards are in the same masonry column: their left edges line up, within
+   * one gutter. Columns are one card plus a 6px gutter wide, so cards in neighbouring
+   * columns never overlap horizontally — only their left edge tells them apart.
+   * @param {{left: number, width: number}} rect
+   * @param {{left: number, width: number}} currentRect
+   * @returns {boolean}
+   */
+  isSameColumn(rect, currentRect) {
+    const cardGap = 6;
+    return Math.abs(rect.left - currentRect.left) <= cardGap;
   }
 
   /**
@@ -245,6 +260,14 @@ export default class CFOB_Selection {
           // gap instead preferred any card overlapping this one sideways, even when a
           // nearer one existed, which is what made masonry arrows drift. In a uniform
           // grid this is identical to the previous rule.
+          // A vertical move must also stay in the current column: masonry columns sit
+          // one card plus a 6px gutter apart, so a neighbouring column is a full card
+          // to the left or right and the nearest centre there can be a few pixels
+          // closer than the card directly above or below. Left unconstrained, ArrowUp
+          // crossed columns on 5 of 23 cards in the recorded layout (1->0, 2->3, 3->1,
+          // 4->3, 15->13) and ArrowDown on 1 (23->21). A card with nothing above or below
+          // it in its own column now stays put rather than jumping sideways.
+          if (isVertical && !this.isSameColumn(rect, currentRect)) continue;
           const centreDistance = Math.hypot(candidateX - currentX, candidateY - currentY);
           if (centreDistance < nextScore) {
             nextScore = centreDistance;
