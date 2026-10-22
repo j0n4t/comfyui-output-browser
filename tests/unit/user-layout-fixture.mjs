@@ -1,0 +1,7 @@
+// GENERATED from docs/cfob-nav-examples-1792626064364.json by gen-fixture.mjs - do not hand-edit.
+// Real geometry the dev tool measured, plus the corrections the user recorded.
+
+export const USER_LAYOUT = [{"top":0,"left":0,"w":408,"h":135},{"top":0,"left":414,"w":408,"h":172},{"top":0,"left":828,"w":408,"h":351},{"top":0,"left":1242,"w":408,"h":226},{"top":0,"left":1656,"w":408,"h":362},{"top":142,"left":0,"w":408,"h":542},{"top":179,"left":414,"w":408,"h":334},{"top":233,"left":1242,"w":408,"h":458},{"top":358,"left":828,"w":408,"h":160},{"top":369,"left":1656,"w":408,"h":505},{"top":520,"left":414,"w":408,"h":226},{"top":525,"left":828,"w":408,"h":355},{"top":691,"left":0,"w":408,"h":259},{"top":698,"left":1242,"w":408,"h":428},{"top":753,"left":414,"w":408,"h":222},{"top":881,"left":1656,"w":408,"h":492},{"top":887,"left":828,"w":408,"h":185},{"top":957,"left":0,"w":408,"h":383},{"top":982,"left":414,"w":408,"h":507},{"top":1079,"left":828,"w":408,"h":183},{"top":1133,"left":1242,"w":408,"h":151},{"top":1269,"left":828,"w":408,"h":504},{"top":1291,"left":1242,"w":408,"h":225},{"top":1347,"left":0,"w":408,"h":313}];
+
+// [from, key, correct] - the card the key should land on.
+export const USER_CORRECTIONS = [[5,"ArrowRight",6],[6,"ArrowRight",8],[11,"ArrowRight",13],[7,"ArrowRight",9],[14,"ArrowRight",16],[18,"ArrowRight",19],[19,"ArrowRight",20],[15,"ArrowLeft",20],[15,"ArrowDown",22],[21,"ArrowRight",22],[17,"ArrowRight",18]];

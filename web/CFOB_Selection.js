@@ -233,7 +233,6 @@ export default class CFOB_Selection {
           }
         }
       } else {
-        let bestCrossDistance = Infinity;
         for (let i = 0; i < cards.length; i++) {
           if (i === currentIdx) continue;
           const rect = cards[i].getBoundingClientRect();
@@ -241,13 +240,14 @@ export default class CFOB_Selection {
           const candidateY = rect.top + rect.height / 2;
           const primaryDistance = isVertical ? candidateY - currentY : candidateX - currentX;
           if ((isBackward && primaryDistance >= 0) || (!isBackward && primaryDistance <= 0)) continue;
-          const crossDistance = isVertical
-            ? Math.max(0, Math.max(currentRect.left - rect.right, rect.left - currentRect.right))
-            : Math.max(0, Math.max(currentRect.top - rect.bottom, rect.top - currentRect.bottom));
-          if (crossDistance < bestCrossDistance
-            || (crossDistance === bestCrossDistance && Math.abs(primaryDistance) < nextScore)) {
-            bestCrossDistance = crossDistance;
-            nextScore = Math.abs(primaryDistance);
+          // Among the cards in the pressed direction, take the nearest centre. That is
+          // the card the eye reads as "the next one that way". Ranking by cross-axis
+          // gap instead preferred any card overlapping this one sideways, even when a
+          // nearer one existed, which is what made masonry arrows drift. In a uniform
+          // grid this is identical to the previous rule.
+          const centreDistance = Math.hypot(candidateX - currentX, candidateY - currentY);
+          if (centreDistance < nextScore) {
+            nextScore = centreDistance;
             masonryNextIdx = i;
           }
         }

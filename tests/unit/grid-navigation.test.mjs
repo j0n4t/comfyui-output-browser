@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { USER_LAYOUT, USER_CORRECTIONS } from "./user-layout-fixture.mjs";
 
 const { default: CFOB_Selection } = await import("../../web/CFOB_Selection.js");
 
@@ -321,9 +322,13 @@ test("row-first masonry ArrowDown follows the column, not the DOM index", () => 
   }
 });
 
-test("row-first masonry ArrowUp follows the column, not the DOM index", () => {
+test("row-first masonry ArrowUp goes to the nearest centre, which may cross columns", () => {
+  // Nearest centre, not the same column. From card 7 the nearest centre above is card 6
+  // (229px, one column over) rather than card 5 (235px, directly above) — an 11px
+  // difference. This is the rule the corrections in user-layout-fixture.mjs ask for, and
+  // it crosses columns on 5 of 23 cards in the real recorded layout.
   const { app } = makeRowFirstMasonry();
-  for (const [from, to] of [[5, 0], [7, 5], [4, 2], [8, 4], [11, 8]]) {
+  for (const [from, to] of [[5, 0], [7, 6], [4, 2], [8, 4], [11, 8]]) {
     app.lastSelectedIdx = from;
     assert.equal(navigate(app, "ArrowUp"), to, `ArrowUp from ${from} goes to ${to}`);
   }
@@ -336,4 +341,47 @@ test("row-first masonry ArrowRight/ArrowLeft move between adjacent columns", () 
 
   app.lastSelectedIdx = 1;
   assert.equal(navigate(app, "ArrowLeft"), 0, "card 0 is the nearest card to the left");
+});
+
+// --- Recorded corrections from the dev tool --------------------------------------
+//
+// Real geometry and corrections captured with web/dev-grid-nav.html
+// (grid / masonry / row-first / 24 cards / seed 7). These are the user's judgements,
+// not a reconstruction: each entry means "pressing this key from this card should land
+// on that card". Raw export: docs/cfob-nav-examples-*.json; see docs/HANDOFF.md.
+
+/**
+ * One recorded case is deliberately not asserted. From card 15, ArrowDown: recorded as
+ * "should go to 22", then withdrawn by the user. Nearest-centre picks 20 there, so it is
+ * a known remaining disagreement rather than a regression.
+ */
+const WITHDRAWN = new Set(["15|ArrowDown"]);
+
+function makeUserLayoutApp() {
+  const cards = USER_LAYOUT.map(g =>
+    makeCard({ top: g.top, left: g.left, width: g.w, height: g.h }));
+  return makeApp({ cards, gridClasses: ["masonry", "view-grid"], containerHeight: 900 });
+}
+
+test("recorded corrections: masonry arrows land on the nearest centre", () => {
+  const app = makeUserLayoutApp();
+  const checked = [];
+  for (const [from, key, correct] of USER_CORRECTIONS) {
+    if (WITHDRAWN.has(`${from}|${key}`)) continue;
+    app.lastSelectedIdx = from;
+    assert.equal(navigate(app, key), correct,
+      `${key} from card ${from} should land on card ${correct}`);
+    checked.push(`${from}|${key}`);
+  }
+  assert.equal(checked.length, USER_CORRECTIONS.length - WITHDRAWN.size,
+    "every recorded correction except the withdrawn one is asserted");
+});
+
+test("withdrawn correction is still reported as a disagreement, not silently passing", () => {
+  // Guards the guard above: if the heuristic ever starts picking 22 here, the note in
+  // docs/HANDOFF.md is stale and this test should be revisited.
+  const app = makeUserLayoutApp();
+  app.lastSelectedIdx = 15;
+  assert.equal(navigate(app, "ArrowDown"), 20,
+    "ArrowDown from card 15 currently lands on 20; the user withdrew the 22 correction");
 });

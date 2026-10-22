@@ -106,6 +106,12 @@ const MUTATIONS = {
         from: "    const isMasonry = grid.classList.contains('masonry')\n      && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));",
         to: "    const isMasonry = grid.classList.contains('masonry')\n      && grid.classList.contains('grid-column-first') && (grid.classList.contains('view-grid') || grid.classList.contains('view-compact'));",
         testName: "row-first masonry ArrowDown follows the column, not the DOM index"
+      },
+      {
+        label: "masonry arrows rank by cross-axis gap instead of centre distance",
+        from: "          const centreDistance = Math.hypot(candidateX - currentX, candidateY - currentY);\n          if (centreDistance < nextScore) {\n            nextScore = centreDistance;\n            masonryNextIdx = i;\n          }",
+        to: "          const crossDistance = isVertical\n            ? Math.max(0, Math.max(currentRect.left - rect.right, rect.left - currentRect.right))\n            : Math.max(0, Math.max(currentRect.top - rect.bottom, rect.top - currentRect.bottom));\n          if (crossDistance < nextScore) {\n            nextScore = crossDistance;\n            masonryNextIdx = i;\n          }",
+        testName: "recorded corrections: masonry arrows land on the nearest centre"
       }
     ]
   }
