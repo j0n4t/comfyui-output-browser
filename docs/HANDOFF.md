@@ -79,6 +79,13 @@ so what it shows is what the browser computes.
 Controls: view (grid/compact), scroll direction, fill order, masonry, card count, seed.
 The seed drives a deterministic RNG, so a layout is reproducible from the settings.
 
+The analysis panel is its own control: drag the grip between the grid and the panel to
+resize it (clamped to 240px on each side, so the grid keeps its own floor), press
+`Hide panel` in the header to give all of the space to the grid, and click a card to make
+it the current one — including clicking the image. Clicking a landing arrow performs the
+move it describes, as the arrow key does. The grip is keyboard-operable too
+(`ArrowLeft`/`ArrowRight`, `Shift` for a larger step).
+
 For each move it reports which card was picked, which the spatial heuristic would pick,
 and the scored candidate list. It exists because a wrong pick is invisible in the real
 UI — the wrong card just gets the focus outline.
@@ -97,7 +104,8 @@ UI — the wrong card just gets the focus outline.
   `cur N` / `chose N` pair was removed as redundant (after a move, the chosen card *is*
   the current card).
 - **Landing arrows** — on each destination card, a chip with the glyph of the key that
-  lands there. Centred on the card, 46px. They describe the card you are on **now**;
+  lands there, anchored to the card's bottom-right corner so it does not cover the image
+  (which is itself a click target). They describe the card you are on **now**;
   an earlier version drew them from the pre-move card and was therefore one step behind.
 - **Outlines** — green on the current card, amber on the spatial best when it differs.
 

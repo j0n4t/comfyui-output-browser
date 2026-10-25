@@ -21,7 +21,7 @@
     --color-background: #121212; --color-bg-panel: #1b1b1b; --color-bg-input: #242424;
     --color-text: #e6e6e6; --color-text-disabled: #8a8a8a; --color-border: #333;
     --color-accent: #4f8cff;
-    --grid-size: 200px; --compact-size: 120px;
+    --grid-size: 200px; --compact-size: 200px;
   }
   * { box-sizing: border-box; }
   body {
@@ -36,34 +36,68 @@
   header label { display: flex; align-items: center; gap: 6px; color: var(--color-text-disabled); }
   header select, header input { background: var(--color-bg-input); color: var(--color-text); border: 1px solid var(--color-border); border-radius: 4px; padding: 2px 6px; font: inherit; }
   header input[type=number] { width: 64px; }
+  /* Min/max pairs sit side by side inside one label. */
+  header label.pair { gap: 4px; }
+  header label.pair input[type=number] { width: 52px; }
+  header label.pair .sep { color: var(--color-text-disabled); }
   header .spacer { flex: 1; }
   header .hint { color: var(--color-text-disabled); }
+  /* The dev tool's own controls: the app's stylesheet only reaches #cfob-root, so
+       nothing it ships can restyle these. */
+  header button {
+    background: var(--color-bg-input); color: var(--color-text);
+    border: 1px solid var(--color-border); border-radius: 4px;
+    padding: 2px 8px; font: inherit; cursor: pointer;
+  }
+  header button:hover { border-color: var(--color-accent); }
+  /* Styled after the app's own details-pane grip, so the two feel like one control. It
+     is keyboard-operable here even though the tool's arrow handler ignores it. */
+  #asideResizer {
+    flex: 0 0 1px; position: relative; cursor: col-resize; touch-action: none;
+    background: var(--color-border);
+  }
+  #asideResizer::after {
+    content: ""; position: absolute; inset: 0 -2px; background: var(--color-accent);
+    opacity: 0; transition: opacity 0.15s;
+  }
+  #asideResizer:hover::after, #asideResizer:focus-visible::after,
+  main.resizing-aside #asideResizer::after { opacity: 1; }
+  main.aside-collapsed aside, main.aside-collapsed #asideResizer { display: none; }
+  main.resizing-aside { cursor: col-resize; user-select: none; }
   main { display: flex; flex: 1; min-height: 0; }
-  #stage { flex: 1; position: relative; overflow: auto; padding: 12px; }
-  /* The app's stylesheet ships #cfob-root as display:none and the real app flips it to
-     flex from JS. The tool has no app instance, so show it here.
-     It is also position:fixed in the app (a full-viewport panel), which would make
-     width:100% resolve against the viewport instead of the stage and push the grid
-     sideways out of its container — so pin it back to normal flow. */
-  #cfob-root {
+  /* min-width: 0 is what lets the stage give way: without it the grid's min-content
+     width holds the stage open and the panel takes whatever is left. */
+  #stage { flex: 1; min-width: 0; position: relative; overflow: auto; padding: 12px; display: flex; }
+  /* The app's stylesheet ships #cfob-root as display:none / position:fixed — it is a
+     full-viewport panel that the real app flips to flex from JS. This tool has no app
+     instance, so it hosts the real app shell in normal flow inside #stage and pins the
+     properties the app's own layout reads. Everything else — the scroll-horizontal
+     overrides, the masonry packing, the column widths — comes from the app's
+     stylesheet and from CFOB_Gallery.syncGridLayout, which this page calls directly
+     rather than reimplementing. */
+  #cfob-root.cfob-dev-app {
     display: flex !important;
     flex-direction: column;
     position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
-    min-height: 100%;
+    flex: 1;
+    min-height: 0;
   }
-  #cfobMainContainer { flex: 1; min-width: 0; min-height: 100%; }
+  #cfobMainContainer { flex: 1; min-width: 0; min-height: 0; }
 
   /* --- debug overlay ---------------------------------------------------------- */
   /* The selection checkboxes are noise here: this page is about focus movement.
      Two classes so it outranks the app's own #cfob-root .checkbox-wrapper rule. */
   #cfob-root .image-card .checkbox-wrapper { display: none; }
   /* Landing arrows: drawn on the card a key would move to, from the current card.
-     Centred on the card and large enough to read at a glance. */
+     Large enough to read at a glance, and anchored clear of the image (see below). */
   .image-card .nav-arrows {
-    position: absolute; inset: 0; z-index: 4;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
+    /* Anchored to the card's bottom-right corner rather than centred. The card's centre is
+       where the image is, and the image is a click target: a centred chip covered it, so
+       clicking the picture landed on the chip instead of the card. */
+    position: absolute; right: 0.35em; bottom: 2.2em; z-index: 4;
+    display: flex; gap: 6px;
     pointer-events: none;
   }
   .image-card .nav-arrows .arr {
@@ -72,7 +106,9 @@
     border: 1px solid rgba(255,255,255,.4);
     pointer-events: auto;
   }
-  .image-card { position: relative; outline: 1px dashed transparent; }
+  .image-card { position: relative; outline: 1px dashed transparent; cursor: pointer; }
+  /* Clicking a card makes it the current one — the focus outline moves and the analysis
+     follows it, the way the app's own card click behaves. */
   .image-card.is-chosen { outline: 2px solid #39d98a; }
   .image-card.is-spatial { outline: 2px dashed #ffb020; }
   /* A card the user is dragging an arrow onto. */
@@ -87,11 +123,35 @@
     padding: 0 5px; font-size: 11px; line-height: 17px; border-radius: 3px;
     background: #4f8cff; color: #fff;
   }
+  /* Card index, drawn as HTML rather than baked into the SVG: the SVG scales with the
+     card, so a number inside it would grow and shrink with the image and stop being
+     comparable between cards. */
+  .image-card .img-label {
+    position: absolute; right: 0.25em; bottom: 0.25em; z-index: 3;
+    padding: 1px 5px; border-radius: 3px; pointer-events: none;
+    background: rgba(0,0,0,.6); color: #fff;
+    font: 600 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
 
   aside {
     width: 460px; flex: none; border-left: 1px solid var(--color-border);
     background: var(--color-bg-panel); overflow: auto; padding: 10px 12px;
   }
+  /* The resize grip: a 1px flex item whose drawn centre appears on hover, the way the
+     app's own details-pane resizer does it. The aside is `display: none` when collapsed,
+     so it is hidden here too rather than left as a dead strip. */
+  #asideResizer {
+    flex: 0 0 1px; position: relative; cursor: col-resize; touch-action: none;
+    background: var(--color-border);
+  }
+  #asideResizer::after {
+    content: ""; position: absolute; inset: 0 -2px; background: var(--color-accent);
+    opacity: 0; transition: opacity 0.15s;
+  }
+  #asideResizer:hover::after, #asideResizer:focus-visible::after,
+  main.resizing-aside #asideResizer::after { opacity: 1; }
+  main.aside-collapsed aside, main.aside-collapsed #asideResizer { display: none; }
+  main.resizing-aside { cursor: col-resize; user-select: none; }
   aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-disabled); margin: 0 0 6px; }
   aside .verdict { padding: 6px 8px; border-radius: 4px; margin-bottom: 10px; border: 1px solid var(--color-border); }
   aside .verdict.ok { border-color: #39d98a; }
@@ -154,20 +214,28 @@
     </select>
   </label>
   <label>Cards <input type="number" id="count" value="24" min="4" max="80"></label>
+  <label>Card size <input type="number" id="size" value="200" min="20" max="800" step="10"></label>
+  <label>Compact offset <input type="number" id="compactOffset" value="80" min="0" max="600" step="10"></label>
+  <label class="pair">Image width <input type="number" id="minW" value="100" min="20" max="800" step="10"><span class="sep">&ndash;</span><input type="number" id="maxW" value="300" min="20" max="800" step="10"></label>
+  <label class="pair">Image height <input type="number" id="minH" value="100" min="20" max="1200" step="10"><span class="sep">&ndash;</span><input type="number" id="maxH" value="300" min="20" max="1200" step="10"></label>
   <label>Seed <input type="number" id="seed" value="7"></label>
-  <button id="rebuild">Rebuild</button>
   <span class="spacer"></span>
-  <span class="hint">Arrow keys move focus &middot; the panel shows why</span>
+  <button id="toggleAside" type="button" title="Hide the analysis panel (the grid takes the space)">Hide panel</button>
+  <span class="hint">Arrow keys move focus &middot; click a card to make it current &middot; the panel shows why</span>
 </header>
 
 <main>
   <div id="stage">
-    <div id="cfob-root">
+    <div id="cfob-root" class="cfob-dev-app">
       <div id="cfobMainContainer" class="main-container">
         <div id="cfobGalleryGrid" class="gallery-container view-grid"></div>
       </div>
     </div>
   </div>
+  <div id="asideResizer" role="separator" tabindex="0"
+       aria-label="Resize the analysis panel" aria-orientation="vertical"
+       aria-valuemin="240" aria-valuemax="1200" aria-valuenow="460"
+       title="Drag to resize the panel"></div>
   <aside>
     <h2>Last move</h2>
     <div class="verdict" id="verdict">Press an arrow key.</div>
@@ -201,15 +269,53 @@
 <script type="module">
 import { CFOB_STYLES } from "./assets/css.js";
 import CFOB_Selection from "./CFOB_Selection.js";
+import CFOB_Gallery from "./CFOB_Gallery.js";
 
 const $ = id => document.getElementById(id);
 const grid = $("cfobGalleryGrid");
 const container = $("cfobMainContainer");
+const root = $("cfob-root");
+const main = document.querySelector("main");
+const aside = document.querySelector("aside");
+const asideResizer = $("asideResizer");
 
 // The app's real stylesheet, so the layout is the one the browser actually computes.
 const styleEl = document.createElement("style");
 styleEl.textContent = CFOB_STYLES;
 document.head.appendChild(styleEl);
+
+/**
+ * The subset of CFOB_Settings that CFOB_Gallery.syncGridLayout reads. Keeping it to
+ * exactly those fields is the point: the layout this page shows is computed by the
+ * app's code, so it cannot drift from the app by the tool growing its own copy.
+ */
+const settings = {
+  masonryEnabled: false,
+  scrollDir: "vertical",
+  gridFillOrder: "row",
+  gridSize: 200,
+  getGalleryViewMode() {
+    if (grid.classList.contains("view-compact")) return "compact";
+    if (grid.classList.contains("view-list")) return "list";
+    return "grid";
+  }
+};
+
+/**
+ * The app shell, built once for the page's lifetime — the way the real app does it.
+ *
+ * CFOB_Gallery owns a ResizeObserver that re-runs the layout when the pane resizes, so
+ * a gallery per rebuild would stack observers on the same container and re-pack the
+ * grid from a stale instance every time it fired.
+ */
+const app = {
+  lastSelectedIdx: 0,
+  filteredImages: [],
+  $,
+  settings
+};
+app.gallery = new CFOB_Gallery(app);
+app.selection = new CFOB_Selection(app);
 
 /** Deterministic pseudo-random in [0,1), so a seed reproduces a layout exactly. */
 function rng(seed) {
@@ -223,126 +329,126 @@ function rng(seed) {
 }
 
 /** Inline SVG so card heights vary without any image files. */
-function cardImage(w, h, hue, label) {
+function cardImage(w, h, hue) {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
     `<rect width="${w}" height="${h}" fill="hsl(${hue},55%,42%)"/>` +
-    `<text x="8" y="${Math.min(h - 8, 26)}" fill="#fff" font-size="18" font-family="monospace">${label}</text>` +
     `</svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-let app = null;
 let images = [];
 
-/** Rebuilds the grid and the minimal app object CFOB_Selection needs. */
 /**
- * Runs rebuilds one at a time, coalescing bursts.
+ * Reads a min/max pair from two number fields, keeping the min at or below the max and
+ * both inside the range the app itself allows.
  *
- * Changing four settings fires four change events synchronously. Without this, four
- * rebuilds interleave: each clears and rebuilds the grid, then resumes after its
- * `requestAnimationFrame` and wires drop targets onto whatever cards are current — so
- * the last rebuilds stack duplicate listeners onto the same elements, and one drop
- * records several examples.
+ * @param {string} minId
+ * @param {string} maxId
+ * @param {number} fallbackMin
+ * @param {number} fallbackMax
+ * @param {number} hardMax
  */
-let rebuildInFlight = null;
-let rebuildPending = false;
-
-function requestRebuild() {
-  if (rebuildInFlight) {
-    rebuildPending = true;
-    return;
-  }
-  rebuildInFlight = rebuild().finally(() => {
-    rebuildInFlight = null;
-    if (rebuildPending) {
-      rebuildPending = false;
-      requestRebuild();
-    }
-  });
+function sizeRange(minId, maxId, fallbackMin, fallbackMax, hardMax) {
+  const min = Math.max(20, Math.min(hardMax, Number($(minId).value) || fallbackMin));
+  const max = Math.max(20, Math.min(hardMax, Number($(maxId).value) || fallbackMax));
+  return { min: Math.min(min, max), max };
 }
 
-async function rebuild() {
+/**
+ * Rebuilds the grid and runs the app's layout pass over it.
+ *
+ * This used to be async and awaited two animation frames, so the browser would apply
+ * the heights it had just written before anything measured them. It also reimplemented
+ * the layout by hand and never computed the row/column counts horizontal scrolling
+ * needs, which collapsed every horizontal layout to a single column. Delegating to
+ * CFOB_Gallery.syncGridLayout is what fixes that — and it measures with
+ * getBoundingClientRect(), which flushes layout on the spot, so there is nothing left
+ * to wait a frame for.
+ */
+function rebuild() {
   const view = $("view").value;
   const scroll = $("scroll").value;
   const order = $("order").value;
   const masonry = $("masonry").value === "1";
   const count = Math.max(4, Math.min(80, Number($("count").value) || 24));
+  // Clamped the way the app clamps its own settings, so the tool cannot wander outside
+  // the layouts the app can produce.
+  const size = Math.max(20, Math.min(800, Number($("size").value) || 380));
+  const compactOffset = Math.max(0, Math.min(600, Number($("compactOffset").value) || 180));
+  const imgW = sizeRange("minW", "maxW", 100, 200, 800);
+  const imgH = sizeRange("minH", "maxH", 100, 500, 1200);
   const rand = rng(Number($("seed").value) || 1);
 
-  const compact = view === "compact";
-  const itemSize = compact ? 120 : 200;
+  const itemSize = size;
 
   // Row-first masonry is the JS-packed staggered layout; column-first masonry is CSS
-  // columns. Both need the same classes the app applies.
+  // columns. Both need the same classes the app applies — syncGridLayout branches on them.
   grid.className = [
     "gallery-container",
     `view-${view}`,
     masonry ? "masonry" : "",
     order === "column" ? "grid-column-first" : ""
   ].filter(Boolean).join(" ");
-  grid.style.removeProperty("grid-auto-rows");
-  grid.style.removeProperty("row-gap");
-  grid.style.removeProperty("grid-auto-flow");
-  grid.style.removeProperty("grid-template-columns");
-  grid.style.removeProperty("grid-template-rows");
-  grid.style.removeProperty("--cfob-col-count");
-  grid.style.removeProperty("--cfob-row-count");
   grid.innerHTML = "";
 
   container.classList.toggle("scroll-horizontal", scroll === "horizontal");
-  document.documentElement.style.setProperty("--gallery-item-size", `${itemSize}px`);
-  document.documentElement.style.setProperty("--grid-size", `${itemSize}px`);
-  document.documentElement.style.setProperty("--compact-size", `${itemSize}px`);
+  // The app writes these on #cfob-root (its own stylesheet pins them there, closer to the
+  // grid than :root, so a documentElement write loses). --compact-size then follows from
+  // the app's own formula, the way it does in the real settings modal.
+  root.style.setProperty("--grid-size", `${size}px`);
+  root.style.setProperty("--compact-offset", `${compactOffset}px`);
+
+  settings.masonryEnabled = masonry;
+  settings.scrollDir = scroll;
+  settings.gridFillOrder = order;
+  settings.gridSize = size;
 
   images = [];
   for (let i = 0; i < count; i++) {
-    // Vary the aspect ratio a lot: uniform cards make every layout a plain grid.
-    const ratio = 0.55 + rand() * 2.1;
-    const h = Math.max(40, Math.round(itemSize * ratio));
+    // Width and height are drawn independently inside their ranges, so the aspect ratios
+    // vary as much as the ranges allow — that spread is what makes a layout worth
+    // studying. The height is the one the app's masonry packing measures.
+    const w = Math.round(imgW.min + rand() * (imgW.max - imgW.min));
+    const h = Math.round(imgH.min + rand() * (imgH.max - imgH.min));
     const card = document.createElement("div");
     card.className = "image-card";
     card.dataset.idx = String(i);
+    card.tabIndex = -1;
     card.innerHTML =
       `<div class="checkbox-wrapper"><input type="checkbox" class="card-checkbox"></div>` +
+      `<span class="img-label">${i}</span>` +
       `<img class="card-preview" alt="">` +
       `<div class="card-content-wrapper"><div class="card-header">` +
       `<span class="card-filename">img${String(i).padStart(2, "0")}.png</span></div></div>`;
     const img = card.querySelector("img");
-    img.src = cardImage(itemSize, h, Math.round(rand() * 360), String(i));
-    // Masonry sizes a card by its image, so pin the height here rather than racing the
-    // image load: the tool needs a deterministic layout, and this reproduces exactly the
-    // height the real app would compute from the same aspect ratio.
-    if (masonry) img.style.height = `${h}px`;
+    img.src = cardImage(w, h, Math.round(rand() * 360));
+    // The width/height attributes give the image an intrinsic aspect ratio before the SVG
+    // decodes, so the app's own `width: 100%; height: auto` can size it. Without them the
+    // masonry packing would measure a card whose image has no box yet and pack it wrong.
+    // The card's width is the masonry column width either way — Card size decides that —
+    // and its height follows the aspect ratio, which is what makes both ranges matter.
+    img.width = w;
+    img.height = h;
+    // A click anywhere on the card makes it current, including the image: the app excludes
+    // `.card-preview` because its image click opens the full view, and this tool has no
+    // full view to open. The arrow chips are the only part excluded, because they are the
+    // tool's own interaction (drag an arrow onto a card to record a correction).
+    // Focus is not taken: the card becoming current is not the card being focused.
+    card.addEventListener("click", (e) => {
+      const target = /** @type {HTMLElement} */ (e.target);
+      if (target.closest(".nav-arrows")) return;
+      moveFocus(Number(card.dataset.idx));
+      paint(null, null);
+    });
     grid.appendChild(card);
     images.push(img);
   }
 
-  app = {
-    lastSelectedIdx: 0,
-    filteredImages: images.map((_, i) => ({ name: `img${String(i).padStart(2, "0")}.png` })),
-    $: id => document.getElementById(id),
-    gallery: { getOrderedCards: () => Array.from(grid.querySelectorAll(".image-card")) }
-  };
-  app.selection = new CFOB_Selection(app);
-
-  // The packing engine only runs from the real app; apply the spans the same way so
-  // row-first masonry is staggered here too.
-  if (masonry && order === "row" && (view === "grid" || view === "compact")) {
-    // Let the browser lay the pinned heights out before measuring them.
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    const gap = 0.4 * parseFloat(getComputedStyle(grid).fontSize || "16");
-    const heights = Array.from(grid.querySelectorAll(".image-card")).map(c => c.getBoundingClientRect().height);
-    grid.style.setProperty("grid-auto-rows", "1px");
-    grid.style.setProperty("row-gap", "0px");
-    grid.style.setProperty("grid-auto-flow", "row");
-    Array.from(grid.querySelectorAll(".image-card")).forEach((c, i) => {
-      c.style.setProperty("grid-row-end", `span ${Math.max(1, Math.ceil(heights[i] + gap))}`);
-      c.style.removeProperty("grid-column");
-    });
-  }
-
+  app.filteredImages = images.map((_, i) => ({ name: `img${String(i).padStart(2, "0")}.png` }));
   app.lastSelectedIdx = 0;
+
+  app.gallery.syncGridLayout();
   afterLayoutChange();
 }
 
@@ -403,7 +509,12 @@ function destinations(from) {
   } finally {
     cards.forEach((c, i) => { c.scrollIntoView = scrolls[i]; c.focus = focuses[i]; });
     app.lastSelectedIdx = saved;
+    // The preview above moved the `focused` class around to read where each key lands, so
+    // it has to be put back afterwards. Clearing without restoring left the tool with no
+    // current card at all once this ran — and this runs at the end of every paint, so a key
+    // press or a click wiped the current card instead of moving it.
     cards.forEach(c => c.classList.remove("focused"));
+    cards[saved]?.classList.add("focused");
   }
   return out;
 }
@@ -411,10 +522,29 @@ function destinations(from) {
 /** The one label this page needs: which card you are standing on. */
 function markCurrent(cards, idx) {
   if (idx === -1 || !cards[idx]) return;
-  const badge = document.createElement("span");
-  badge.className = "current-badge";
-  badge.textContent = "current";
-  cards[idx].appendChild(badge);
+  const label = document.createElement("span");
+  label.className = "current-badge";
+  label.textContent = "current";
+  label.title = "Click a card to make it current";
+  cards[idx].appendChild(label);
+}
+
+/**
+ * Moves the current card to `idx`: the app's `focused` class and `lastSelectedIdx`, which
+ * is what the arrow keys start from and what `paint` reads to find the current card.
+ *
+ * Focus is only taken when the caller asks for it. Taking it unconditionally is what made
+ * the tool steal focus from a control being edited — a click on a card is not the same as
+ * a card becoming current.
+ *
+ * @param {number} idx
+ * @param {{ focus?: boolean }} [opts]
+ */
+function moveFocus(idx, opts) {
+  const cards = app.gallery.getOrderedCards();
+  app.lastSelectedIdx = idx;
+  cards.forEach((c, i) => c.classList.toggle("focused", i === idx));
+  if (opts?.focus) cards[idx]?.focus();
 }
 
 /** Draws, on each destination card, the arrow key that lands there from `from`. */
@@ -456,6 +586,15 @@ function paintArrows(from) {
         e.dataTransfer.setData("text/plain", chip.dataset.payload);
         e.dataTransfer.effectAllowed = "move";
       });
+      // A click is the keyboard in mouse form: it performs the move the chip describes,
+      // rather than only offering it. Without this the chip advertised a destination the
+      // pointer could not take.
+      chip.addEventListener("click", e => {
+        e.stopPropagation();
+        const fromIdx = app.lastSelectedIdx;
+        app.selection.handleGridNavigation({ key });
+        paint(fromIdx, key);
+      });
       holder.appendChild(chip);
     }
     cards[idx].appendChild(holder);
@@ -483,6 +622,10 @@ function layoutIdentity() {
     order: $("order").value,
     masonry: $("masonry").value === "1",
     count: Number($("count").value) || 24,
+    size: Number($("size").value) || 200,
+    compactOffset: Number($("compactOffset").value) || 80,
+    imgW: sizeRange("minW", "maxW", 100, 200, 800),
+    imgH: sizeRange("minH", "maxH", 100, 500, 1200),
     seed: Number($("seed").value) || 1
   };
 }
@@ -534,7 +677,11 @@ function renderExamples() {
       + (ex.layout.masonry ? " masonry" : "")
       + " / " + ex.layout.order + "-first"
       + " / scroll " + ex.layout.scroll
-      + " / " + ex.layout.count + " cards / seed " + ex.layout.seed;
+      + " / " + ex.layout.count + " cards"
+      + " / " + ex.layout.size + "px"
+      + " / img " + ex.layout.imgW.min + "-" + ex.layout.imgW.max + "x"
+      + ex.layout.imgH.min + "-" + ex.layout.imgH.max
+      + " / seed " + ex.layout.seed;
     row.appendChild(line);
     row.appendChild(layout);
     box.appendChild(row);
@@ -594,13 +741,20 @@ function afterLayoutChange() {
 /** Highlights and reports. `move` is null on a plain rebuild. */
 function paint(from, key) {
   const cards = app.gallery.getOrderedCards();
+  // The app's `focused` class is what identifies the current card to everything downstream
+  // — this function's own chosen-card lookup, the arrow-key handler's starting index, the
+  // drop targets. It is cleared here along with the outlines and then put back, because
+  // clearing without restoring is what left the tool with no current card at all after a
+  // key press: the class was set correctly by the nav, then wiped by this loop.
+  const current = app.lastSelectedIdx;
   cards.forEach(c => {
-    c.classList.remove("is-current", "is-chosen", "is-spatial");
+    c.classList.remove("focused", "is-current", "is-chosen", "is-spatial");
     for (const sel of [".current-badge", ".nav-arrows"]) {
       const el = c.querySelector(sel);
       if (el) el.remove();
     }
   });
+  moveFocus(current);
   const rects = cards.map(c => c.getBoundingClientRect());
 
   if (from === null || key === null) {
@@ -666,16 +820,104 @@ function paint(from, key) {
 
 document.addEventListener("keydown", e => {
   if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "PageDown", "PageUp", "Home", "End"].includes(e.key)) return;
+  // A control being edited is editing, not navigating. Taking the key (and calling
+  // preventDefault) is what stole focus mid-value-change: the arrow keys are how a number
+  // field and a select are driven, and the page's handler was swallowing them.
+  if (e.target instanceof HTMLElement) {
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+  }
   e.preventDefault();
   const from = app.lastSelectedIdx;
   app.selection.handleGridNavigation({ key: e.key });
   paint(from, e.key);
 });
 
-for (const id of ["view", "scroll", "order", "masonry", "count", "seed"]) {
-  $(id).addEventListener("change", requestRebuild);
+// Live: the grid follows the controls as they change, so there is no Rebuild step. The
+// selects report `change`; the number fields report `input`, which fires per keystroke and
+// per spinner click, not only on blur.
+for (const id of ["view", "scroll", "order", "masonry"]) {
+  $(id).addEventListener("change", rebuild);
 }
-$("rebuild").addEventListener("click", requestRebuild);
+for (const id of ["count", "size", "compactOffset", "minW", "maxW", "minH", "maxH", "seed"]) {
+  $(id).addEventListener("input", rebuild);
+}
+
+// --- the analysis panel: resize and hide -------------------------------------------
+
+/**
+ * The panel's floor and ceiling.
+ *
+ * The floor is the width the candidates table stops being readable below. The ceiling
+ * is read from `main` rather than from the panel: the panel has to leave the stage its
+ * own minimum, or the grid is squeezed into a strip that collapses every layout to one
+ * column — which is the exact failure this tool exists to make visible.
+ */
+const ASIDE_MIN = 240;
+const STAGE_MIN = 240;
+
+/** @param {number} value @param {number} min @param {number} max */
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(value, Math.max(min, max)));
+}
+
+function asideBounds() {
+  return { min: ASIDE_MIN, max: Math.max(ASIDE_MIN, main.clientWidth - STAGE_MIN) };
+}
+
+function setAsideWidth(width) {
+  const { min, max } = asideBounds();
+  const value = clamp(width, min, max);
+  aside.style.width = `${value}px`;
+  asideResizer.setAttribute("aria-valuemin", String(min));
+  asideResizer.setAttribute("aria-valuemax", String(max));
+  asideResizer.setAttribute("aria-valuenow", String(Math.round(value)));
+  return value;
+}
+
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+asideResizer.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+  // The grip's left edge is the boundary being dragged, so the grab offset is measured
+  // from it rather than from the pointer. Recording only the pointer's absolute position
+  // would move the panel by the distance the grip itself travelled since the grab — the
+  // panel would jump by the accumulated drag, not follow the pointer.
+  const gripX = asideResizer.getBoundingClientRect().left;
+  resizeStartX = gripX;
+  resizeStartWidth = aside.getBoundingClientRect().width;
+  main.classList.add("resizing-aside");
+  asideResizer.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+asideResizer.addEventListener("pointermove", (e) => {
+  if (!asideResizer.hasPointerCapture(e.pointerId)) return;
+  // The panel is anchored on the right, so dragging its left edge leftwards widens it.
+  setAsideWidth(resizeStartWidth + (resizeStartX - e.clientX));
+});
+/** @param {PointerEvent} e */
+const finishResize = (e) => {
+  if (!asideResizer.hasPointerCapture(e.pointerId)) return;
+  asideResizer.releasePointerCapture(e.pointerId);
+  main.classList.remove("resizing-aside");
+};
+asideResizer.addEventListener("pointerup", finishResize);
+asideResizer.addEventListener("pointercancel", finishResize);
+// The same control by keyboard: Shift moves it in larger steps, as in the app's pane.
+asideResizer.addEventListener("keydown", (e) => {
+  const delta = e.shiftKey ? 40 : 10;
+  const change = e.key === "ArrowLeft" ? delta : e.key === "ArrowRight" ? -delta : 0;
+  if (!change) return;
+  e.preventDefault();
+  setAsideWidth(aside.getBoundingClientRect().width + change);
+});
+
+/** Hides the panel and gives its space to the grid. */
+$("toggleAside").addEventListener("click", () => {
+  const hidden = main.classList.toggle("aside-collapsed");
+  $("toggleAside").textContent = hidden ? "Show panel" : "Hide panel";
+  $("toggleAside").setAttribute("aria-expanded", String(!hidden));
+});
 
 /** Copies the payload as JSON, for pasting straight into a message. */
 $("copyJson").addEventListener("click", async () => {
@@ -707,7 +949,7 @@ $("clearExamples").addEventListener("click", () => {
   paintArrows(app.lastSelectedIdx);
 });
 
-await rebuild();
+rebuild();
 </script>
 </body>
 </html>

@@ -395,7 +395,15 @@ export default class CFOB_Gallery {
       grid.style.setProperty('--cfob-col-count', String(cols));
     }
 
-    this.applyRowFirstMasonryPacking(isMasonryGrid, grid, true);
+    // Row-first masonry fits its own row count to the measured card heights, so it
+    // overwrites the counts above. Those have to go back into the cache, or the next
+    // plain pass reads "unchanged" and skips its write — leaving the masonry counts in
+    // the DOM after masonry is turned off, and the grid stuck at one row.
+    const packed = this.applyRowFirstMasonryPacking(isMasonryGrid, grid, true);
+    if (packed) {
+      this._lastSyncRows = packed.rows;
+      this._lastSyncCols = packed.cols;
+    }
   }
 
   /**
@@ -412,6 +420,8 @@ export default class CFOB_Gallery {
    * @param {boolean} enabled
    * @param {HTMLElement} grid
    * @param {boolean} horizontal
+   * @returns {{ rows: number, cols: number } | null} the row/column counts written for a
+   *   horizontal layout, so the caller's cache can follow them; null for any other layout
    */
   applyRowFirstMasonryPacking(enabled, grid, horizontal) {
     const alreadyPacked = this._packingActive && this._packingHorizontal === horizontal;
@@ -423,7 +433,7 @@ export default class CFOB_Gallery {
       if (this._packingActive && this._packingHorizontal === horizontal) {
         this._clearPacking(grid, true);
       }
-      return;
+      return null;
     }
 
     if (!alreadyPacked) {
@@ -434,7 +444,7 @@ export default class CFOB_Gallery {
     }
 
     const cards = /** @type {HTMLElement[]} */ (Array.from(grid.querySelectorAll('.image-card')));
-    if (!cards.length) return;
+    if (!cards.length) return null;
 
     const fontSize = parseFloat(getComputedStyle(grid).fontSize) || 16;
     const gap = 0.4 * fontSize;
@@ -453,7 +463,7 @@ export default class CFOB_Gallery {
     // unlike 'dense' it can never reorder a card into an earlier column.
     grid.style.setProperty('grid-auto-flow', 'row');
 
-    /** @type {{ cols: number, colWidth: number } | null} */
+    /** @type {{ cols: number, colWidth: number, rows: number } | null} */
     let columns = null;
     if (horizontal) {
       const container = this.app.$("cfobMainContainer");
@@ -482,7 +492,7 @@ export default class CFOB_Gallery {
       // columns need rows sized by their content instead.
       grid.style.setProperty('grid-template-rows', 'none');
       grid.style.setProperty('align-content', 'start');
-      columns = { cols, colWidth };
+      columns = { cols, colWidth, rows };
     }
 
     for (let i = 0; i < cards.length; i++) {
@@ -496,6 +506,8 @@ export default class CFOB_Gallery {
     this._packingActive = true;
     this._packingHorizontal = horizontal;
     this._packingCards = cards;
+    // Only a horizontal layout writes the counts; the caller keeps its cache in step.
+    return columns ? { rows: columns.rows, cols: columns.cols } : null;
   }
 
   /**
