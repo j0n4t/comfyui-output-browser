@@ -146,15 +146,18 @@ export function findChrome() {
 }
 
 /**
- * Minimal PNG encoder, so fixtures need no image tooling. Only a solid colour is
- * ever needed here; the browser just has to decode something real.
+ * Writes a solid PNG. The default 8x8 is what a fixture needs to decode; pass `width`
+ * and `height` when a test depends on the image's own aspect ratio — the full view
+ * fits the picture to its box, so an 8x8 image gives a near-zero box and no meaningful
+ * geometry.
  * @param {string} path
  * @param {[number, number, number]} rgb
+ * @param {number} [width]
+ * @param {number} [height]
  */
-export function writeSolidPng(path, rgb) {
-  const w = 8, h = 8;
+export function writeSolidPng(path, rgb, width = 8, height = 8) {
   const raw = Buffer.concat(
-    Array.from({ length: h }, () => Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: w }, () => rgb).flat())]))
+    Array.from({ length: height }, () => Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: width }, () => rgb).flat())]))
   );
   const chunk = (/** @type {string} */ type, /** @type {Buffer} */ data) => {
     const body = Buffer.concat([Buffer.from(type, "latin1"), data]);
@@ -165,8 +168,8 @@ export function writeSolidPng(path, rgb) {
     return Buffer.concat([len, body, crc]);
   };
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8; ihdr[9] = 2; // 8-bit truecolour
   const png = Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),

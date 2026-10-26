@@ -227,7 +227,10 @@ export default class CFOB_ImageActions {
     if (targetImages.length !== 1) return;
 
     if (!fieldConfig) {
-      const btn = anchorEl || app.$("cfobActionSendChips");
+      // Anchor on the image, not on the button: `b` in the grid has no button under the
+      // pointer, and the full view's Chips button sits in the sidebar, away from the
+      // picture the field choice is about.
+      const btn = /** @type {HTMLElement | null} */ (anchorEl || this._chipsAnchor());
       if (btn) this.showFieldPicker(btn, images);
       return;
     }
@@ -272,18 +275,43 @@ export default class CFOB_ImageActions {
   }
 
   /**
+   * The element a chips popover should sit by: the image it is about. In full view that
+   * is the picture on screen; in the grid it is the focused card, since the picture and
+   * the card are the same thing to the user and the card is what they clicked.
+   * @returns {HTMLElement | null}
+   */
+  _chipsAnchor() {
+    const app = this.app;
+    if (app.$("cfobFullViewModal")?.classList.contains('active')) {
+      return app.$("cfobFullViewImg");
+    }
+    const cards = app.gallery.getOrderedCards();
+    return cards[app.lastSelectedIdx] || app.$("cfobActionSendChips");
+  }
+
+  /**
    * Shows a popover menu to pick which custom field to use for chips.
-   * @param {HTMLElement} anchorEl
+   *
+   * The popover is anchored to the image the chips come from and placed *beside* it —
+   * never centred over it, because a centred menu covers the picture the choice is
+   * about. When there is no room beside it (a grid card's preview is narrower than the
+   * menu, and the full-view picture can be too), it drops below instead.
+   *
+   * @param {HTMLElement | null} anchorEl
    * @param {string[] | null} images
    */
   showFieldPicker(anchorEl, images = null) {
     const app = this.app;
+    // Remember who owned focus, so dismissing the picker can give it back.
+    const previousFocus = /** @type {HTMLElement | null} */ (document.activeElement);
     if (app.settings.activePopover) app.settings.activePopover.remove();
 
-    const rect = anchorEl.getBoundingClientRect();
+    const rect = anchorEl?.getBoundingClientRect();
     const menu = document.createElement("div");
     menu.className = "popover-menu";
-    menu.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+    // A focusable container, so the arrow keys can move between the fields and Enter
+    // picks one — the picker is a choice, not a click target.
+    menu.tabIndex = -1;
 
     let html = `<div class="popover-header">Send Chips From Field:</div>`;
     app.settings.fieldConfigs.forEach((/** @type {CFOB_CardFieldSettings} */ cfg, /** @type {number} */ i) => {
@@ -294,22 +322,110 @@ export default class CFOB_ImageActions {
     app.root?.appendChild(menu);
 
     const menuHeight = menu.offsetHeight;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < menuHeight + 8) {
-      menu.style.top = `${Math.max(4, rect.top - menuHeight - 4)}px`;
+    const menuWidth = menu.offsetWidth;
+    const gap = 8;
+    const anchorLeft = rect?.left ?? 0;
+    const anchorRight = rect?.right ?? 0;
+    const anchorTop = rect?.top ?? 0;
+    const anchorBottom = rect?.bottom ?? 0;
+    const anchorWidth = rect?.width ?? 0;
+    const anchorHeight = rect?.height ?? 0;
+
+    // The popover is `position: fixed` inside #cfob-root, so its coordinates are viewport
+    // coordinates — but the root itself may be offset from the viewport (a panel docked
+    // to one side, or a floating launcher). Measure the root's box and clamp against
+    // what the root can actually show, so the menu is fully visible wherever it lives.
+    const rootRect = app.root?.getBoundingClientRect();
+    const rootLeft = rootRect?.left ?? 0;
+    const rootTop = rootRect?.top ?? 0;
+    const rootRight = rootRect?.right ?? window.innerWidth;
+    const rootBottom = rootRect?.bottom ?? window.innerHeight;
+    /** @param {number} v @param {number} size @param {number} min @param {number} max */
+    const clampIn = (v, size, min, max) => Math.max(min + gap, Math.min(v, max - size - gap));
+
+    // Horizontal: centred on the anchor is the preference (covering it a little is fine),
+    // then beside it on either side, then clamped inside the root. Fully visible wins,
+    // and when neither centring nor sitting beside fits, sitting beside still beats
+    // overlapping the anchor: a menu on top of the picture hides the thing the choice
+    // is about.
+    const centreLeft = anchorLeft + (anchorWidth - menuWidth) / 2;
+    const besideRight = anchorRight + gap;
+    const besideLeft = anchorLeft - menuWidth - gap;
+    if (centreLeft >= rootLeft + gap && centreLeft + menuWidth <= rootRight - gap) {
+      menu.style.left = `${centreLeft}px`;
+    } else if (besideRight + menuWidth <= rootRight - gap) {
+      menu.style.left = `${besideRight}px`;
+    } else if (besideLeft >= rootLeft + gap) {
+      menu.style.left = `${besideLeft}px`;
     } else {
-      menu.style.top = `${rect.bottom + 4}px`;
+      // Neither centring nor sitting beside fits. Slide the centred position as far as
+      // needed to stop overlapping the anchor, then clamp into the root. Keeping the
+      // centred position instead is what made a narrow picture get a menu on top of it.
+      const slideLeft = Math.min(centreLeft, besideLeft);
+      const slideRight = Math.max(centreLeft, besideRight);
+      const fitsLeft = slideLeft >= rootLeft + gap && slideLeft + menuWidth <= rootRight - gap;
+      const fitsRight = slideRight >= rootLeft + gap && slideRight + menuWidth <= rootRight - gap;
+      if (fitsLeft && (!fitsRight || Math.abs(slideLeft - centreLeft) <= Math.abs(slideRight - centreLeft))) {
+        menu.style.left = `${slideLeft}px`;
+      } else if (fitsRight) {
+        menu.style.left = `${slideRight}px`;
+      } else {
+        menu.style.left = `${clampIn(centreLeft, menuWidth, rootLeft, rootRight)}px`;
+      }
     }
+
+    // Vertical, the same rules.
+    const centreTop = anchorTop + (anchorHeight - menuHeight) / 2;
+    const belowTop = anchorBottom + gap;
+    const aboveTop = anchorTop - menuHeight - gap;
+    if (centreTop >= rootTop + gap && centreTop + menuHeight <= rootBottom - gap) {
+      menu.style.top = `${centreTop}px`;
+    } else if (belowTop + menuHeight <= rootBottom - gap) {
+      menu.style.top = `${belowTop}px`;
+    } else if (aboveTop >= rootTop + gap) {
+      menu.style.top = `${aboveTop}px`;
+    } else {
+      menu.style.top = `${clampIn(centreTop, menuHeight, rootTop, rootBottom)}px`;
+    }
+
     app.settings.activePopover = menu;
+    app.settings.popoverReturnFocus = previousFocus;
+    /** Dismisses the picker and hands focus back to whoever had it. */
+    const closePicker = () => app.settings.dismissPopover();
 
     menu.querySelectorAll(".popover-item").forEach(b => {
       b.addEventListener("click", () => {
         const field = app.settings.fieldConfigs[Number(/** @type {HTMLElement} */ (b).dataset.idx)];
-        app.settings.activePopover?.remove();
-        app.settings.activePopover = null;
+        closePicker();
         if (field) this.sendChipsToBasket(field, null, images);
       });
     });
+
+    /** @param {KeyboardEvent} e */
+    menu.addEventListener("keydown", (e) => {
+      const items = /** @type {HTMLElement[]} */ (Array.from(menu.querySelectorAll(".popover-item")));
+      const current = items.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        closePicker();
+      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        const next = e.key === "ArrowDown"
+          ? (current + 1) % items.length
+          : (current <= 0 ? items.length : current) - 1;
+        items[next]?.focus();
+      } else if ((e.key === "Enter" || e.key === " ") && current >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        items[current].click();
+      }
+    });
+
+    // The first field is the default; focusing the menu body would leave focus on a
+    // non-interactive element, so the choice itself is focused.
+    (/** @type {HTMLElement} */ (menu.querySelector(".popover-item")) ?? menu).focus();
   }
 
   _findPresetGalleryNode() {

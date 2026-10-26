@@ -79,6 +79,7 @@ function createMockApp(overrides = {}) {
     root,
     isUiVisible: overrides.isUiVisible ?? true,
     isFullView: overrides.isFullView ?? false,
+    uiHidden: false,
     selectedImages: new Set(),
     filteredImages: overrides.filteredImages ?? [{ name: 'test.png', url: 'test.png', prompt: null, workflow: null, isParsed: true }],
     loadedImages: [{ name: 'test.png', url: 'test.png', prompt: null, workflow: null, isParsed: true }],
@@ -146,6 +147,7 @@ function createMockApp(overrides = {}) {
       inspectSelected: () => calls.push('actions.inspectSelected'),
       deleteSelected: () => calls.push('actions.deleteSelected'),
       downloadSelected: () => calls.push('actions.downloadSelected'),
+      sendChipsToBasket: () => calls.push('actions.sendChipsToBasket'),
     },
     gallery: {
       getOrderedCards: () => [],
@@ -154,6 +156,8 @@ function createMockApp(overrides = {}) {
     handleFieldCopyKey: () => calls.push('handleFieldCopyKey'),
     focusFirstGridItem: () => calls.push('focusFirstGridItem'),
     hideWithTransition: () => calls.push('hideWithTransition'),
+    setChromeHidden: () => calls.push('setChromeHidden'),
+    toggleUi: () => calls.push('toggleUi'),
     $: (id) => {
       if (id === 'cfobSearchInput') return searchInput;
       if (id === 'cfobSearchSuggestions') return searchSuggestions;
@@ -163,6 +167,8 @@ function createMockApp(overrides = {}) {
       if (id === 'cfobConstrainStatus') return { textContent: '' };
       if (id === 'cfobFVActionInspect') return { click: () => calls.push('cfobFVActionInspect.click') };
       if (id === 'cfobFVActionDownload') return { click: () => calls.push('cfobFVActionDownload.click') };
+      if (id === 'cfobFVActionSendChips') return { click: () => calls.push('cfobFVActionSendChips.click') };
+      if (id === 'cfobActionSendChips') return { id: 'cfobActionSendChips' };
       return null;
     },
   };
@@ -738,6 +744,7 @@ function createMockFullView() {
       if (id === 'cfobConstrainStatus') return { textContent: '' };
       if (id === 'cfobFVActionInspect') return { click: () => calls.push('cfobFVActionInspect.click') };
       if (id === 'cfobFVActionDownload') return { click: () => calls.push('cfobFVActionDownload.click') };
+      if (id === 'cfobFVActionSendChips') return { click: () => calls.push('cfobFVActionSendChips.click') };
       return null;
     },
   };
@@ -932,6 +939,7 @@ function createMockSelection() {
     selectedImages: new Set(),
     lastSelectedIdx: 0,
     selectionAnchorIdx: -1,
+    uiHidden: false,
     settings: {
       modals: { getActive: () => null },
       cycleBrowserMode: () => calls.push('settings.cycleBrowserMode'),
@@ -953,6 +961,7 @@ function createMockSelection() {
       inspectSelected: () => calls.push('actions.inspectSelected'),
       deleteSelected: () => calls.push('actions.deleteSelected'),
       downloadSelected: () => calls.push('actions.downloadSelected'),
+      sendChipsToBasket: (...args) => { calls.push('actions.sendChipsToBasket'); sel.app.actions.sendChipsToBasket.lastImages = args[2]; },
     },
     fullView: {
       openFullView: () => calls.push('fullView.openFullView'),
@@ -1024,6 +1033,42 @@ test("real CFOB_Selection.handleKeydown: 'd' routes to downloadSelected", () => 
   const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
   assert.ok(handled, "should return true");
   assert.ok(calls.includes('actions.downloadSelected'), "actions.downloadSelected should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'b' sends the focused card to the basket", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('b', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(handled, "should return true");
+  assert.ok(calls.includes('actions.sendChipsToBasket'), "actions.sendChipsToBasket should be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'b' is always the focused card, never the multi-selection", () => {
+  const { sel } = createMockSelection();
+  sel.app.selectedImages = new Set(['other.png']);
+  sel.app.filteredImages = [{ name: 'focused.png', url: 'focused.png', prompt: null, workflow: null, isParsed: true }];
+  const e = createKeyEvent('b', { target: { closest: () => null, matches: () => false } });
+  CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  // The basket action received the focused card's own name, and did not add the
+  // selection to it: 'b' is a single-image gesture, like the full view's Chips button.
+  assert.deepEqual(sel.app.actions.sendChipsToBasket.lastImages, ['focused.png']);
+});
+
+test("real CFOB_Selection.handleKeydown: 'b' with no focused image does nothing", () => {
+  const { sel, calls } = createMockSelection();
+  sel.app.lastSelectedIdx = -1;
+  const e = createKeyEvent('b', { target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(!handled, "should return false when there is no focused image");
+  assert.ok(!calls.includes('actions.sendChipsToBasket'), "actions.sendChipsToBasket should NOT be called");
+});
+
+test("real CFOB_Selection.handleKeydown: 'b' is not swallowed by a modifier", () => {
+  const { sel, calls } = createMockSelection();
+  const e = createKeyEvent('b', { ctrlKey: true, target: { closest: () => null, matches: () => false } });
+  const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
+  assert.ok(!handled, "ctrl+b should fall through");
+  assert.ok(!calls.includes('actions.sendChipsToBasket'), "actions.sendChipsToBasket should NOT be called");
 });
 
 test("real CFOB_Selection.handleKeydown: 'Delete' routes to deleteSelected", () => {

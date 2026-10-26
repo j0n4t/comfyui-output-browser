@@ -142,6 +142,9 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .search-clear-btn:hover { color: var(--color-text-inverse); }
 
   #cfob-root .main-container { flex: 1; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 0.4em; position: relative; }
+  /* The container is what the toggle focuses so keystrokes have a home immediately.
+     Without this the focus ring would jump to whichever card happens to be under it. */
+  #cfob-root .main-container:focus { outline: none; }
 
   #cfob-root .image-card { position: relative; background: var(--color-bg-panel); border: 1px solid var(--color-border); border-radius: var(--radius-xl); overflow: hidden; display: flex; box-shadow: 0 0.25em 0.75em rgba(0,0,0,0.25); transition: border-color 0.15s, box-shadow 0.15s, transform 0.1 ; }
   #cfob-root .image-card.selected { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent), 0 0.5em 1em rgba(0,0,0,0.4); transform: translateY(-2px); }

@@ -346,6 +346,26 @@ export default class COB_Settings {
 
     /** @type {HTMLElement | null} */
     this.activePopover = null;
+    /** Who owned focus before the popover opened, so dismissing it can hand focus back. */
+    /** @type {HTMLElement | null} */
+    this.popoverReturnFocus = null;
+  }
+
+  /**
+   * Closes the open popover and returns focus to whoever had it. Every dismissal path —
+   * Escape, a click outside, picking an item — goes through here, so focus restoration
+   * cannot drift between them.
+   */
+  dismissPopover() {
+    if (!this.activePopover) return;
+    const menu = this.activePopover;
+    const returnFocus = this.popoverReturnFocus;
+    menu.remove();
+    this.activePopover = null;
+    this.popoverReturnFocus = null;
+    // Only focus something that is still on the page: a card the popover itself removed
+    // would be a focus target that no longer exists.
+    if (returnFocus instanceof HTMLElement && returnFocus.isConnected) returnFocus.focus();
   }
 
   loadConfig() {
@@ -661,8 +681,7 @@ export default class COB_Settings {
     document.addEventListener('click', (e) => {
       const target = /** @type {HTMLElement} */ (e.target);
       if (this.activePopover && !this.activePopover.contains(target) && !target.closest('#cfobMenuBtn')) {
-        this.activePopover.remove();
-        this.activePopover = null;
+        this.dismissPopover();
       }
     });
 
@@ -1230,6 +1249,8 @@ export default class COB_Settings {
     menu.innerHTML = html;
     this.app.root?.appendChild(menu);
     this.activePopover = menu;
+    // Click-opened and never focused, so there is no owner to hand focus back to.
+    this.popoverReturnFocus = null;
 
     menu.querySelectorAll('.append-path').forEach(b => {
       b.addEventListener('click', () => {

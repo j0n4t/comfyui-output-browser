@@ -132,6 +132,18 @@ export default class CFOB_Selection {
         return true;
       }
     }
+    if (key === 'b' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Always the focused card, like the full view's Chips button — never the
+      // multi-selection, so `b` is never a bulk action the user did not ask for.
+      const focusedImage = app.filteredImages[app.lastSelectedIdx];
+      if (focusedImage) {
+        e.preventDefault(); e.stopPropagation();
+        // No anchorEl: the picker is anchored to the focused card, not to the action
+        // bar button, which is far from the image the field choice is about.
+        app.actions.sendChipsToBasket(null, null, [focusedImage.name]);
+        return true;
+      }
+    }
     if (
       ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', 'home', 'end'].includes(key) &&
       !target.closest('button, a, [role="button"]')

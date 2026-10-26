@@ -28,7 +28,7 @@ or what the system does**, not when a test proves a function was called.
 
 Two consequences, both deliberate:
 
-- `keydown-dispatch.test.mjs` has 87 tests that assert `calls.includes("handleFieldCopyKey")`.
+- `keydown-dispatch.test.mjs` has 91 tests that assert `calls.includes("handleFieldCopyKey")`.
   That is routing, not behavior. It is counted as *partial* below.
 - Line-coverage percentages are a **signal, not the target**. The interesting finding of
   this audit is *why* coverage is uneven, not *how low* it is.
@@ -113,7 +113,7 @@ the blacklist interactions in `search-blacklist.test.mjs`.
 
 ### B. Keybindings (README §Keybindings Reference)
 
-27 documented behaviors. "Implemented" means present in `web/`. "Asserted" distinguishes
+29 documented behaviors. "Implemented" means present in `web/`. "Asserted" distinguishes
 two kinds of test honestly, because `keydown-dispatch.test.mjs` mixes them:
 
 - **yes** — the test calls the *real* production handler (`CFOB_Selection.handleKeydown`,
@@ -151,8 +151,10 @@ two kinds of test honestly, because `keydown-dispatch.test.mjs` mixes them:
 | `Space` toggle overlay | Full View | yes | yes |
 | `T` toggle sidebar | Full View | yes | yes |
 | `+` / `-` / `0` zoom | Full View | yes | yes |
+| `H` hide/show chrome | Grid + Full View | yes | yes (e2e `panel-keys.test.mjs`) |
+| `B` send focused image's chips | Grid + Full View | yes | yes |
 
-**Totals: 18 asserted, 4 routing-only, 5 untested.** None of the five is a missing
+**Totals: 20 asserted, 4 routing-only, 5 untested.** None of the five is a missing
 feature — every one is implemented. These are pure gaps.
 
 ### C. Settings (README §Core Operational Modes)
@@ -274,6 +276,54 @@ tier already boots it for real. Adding pytest for its own sake would be a new de
 in service of a number. Cover `/delete` and `/upload` through e2e instead (item 6).
 
 ## Follow-ups found while working
+
+**The panel's own chrome had no keyboard toggle — added (`h`).** The full view already
+hid its overlay with `Space`/`ArrowDown`; the grid had nothing equivalent, so the only way
+to get the chrome out of the way was to close the whole panel. `h` now toggles the top bar
+and the action bar in place, reclaiming the space they occupied (`display: none`, not a
+invisible flex child, which would have left a dead strip of background), marking them
+inert and `aria-hidden`, and bringing them back — including the action bar's own `show`
+state, so a selection made while hidden is not lost. `h` in full view drives the same
+shared state, and focusing the search input reveals the chrome, since the input is the one
+thing that can be focused while the bar around it is hidden.
+
+**`b` sends the focused image to the basket.** The Chips button existed in both the action
+bar and the full view's sidebar, but no key reached it. `b` now sends the *focused* card
+— deliberately not the multi-selection, matching the button's own single-image contract —
+and in full view it clicks the sidebar button, so both surfaces behave identically.
+
+**The chips field picker was unreachable by keyboard and anchored to the wrong thing.**
+It opened at the clicked button, so `b` in the grid put it at the action bar while the
+picture it is about is in the grid, and nothing was focused, so choosing a field needed a
+mouse. It now anchors to the image (the focused card in the grid, the picture in full
+view), opens with the first field focused, and supports `ArrowUp`/`ArrowDown`/`Enter`/
+`Space`/`Escape`. Escape dismisses the picker and nothing behind it — it was missing from
+the dismissal ladder, so Escape closed the panel instead. Dismissing it also returns focus
+to whoever owned it (via `settings.dismissPopover()`, which every dismissal path shares),
+so the keystrokes the picker interrupted continue where the user expects.
+
+Placement is centred on the anchor when that fits, beside it otherwise, and clamped fully
+inside the viewport — a menu must never run off screen. Two bugs were found here by
+testing at real sizes rather than the 764px headless default: `b` passed the action-bar
+button as the anchor (so the menu opened at the bar, not the card), and the full view's
+ArrowDown/ArrowUp were swallowing the picker's own arrow keys, because the dispatcher
+routed them to the view before the picker could see them. The picker now takes precedence
+for those keys while it is open.
+
+**The full view's bar covered the top of every image and cropped the bottom.** The bar was
+absolutely positioned over the picture, which is centred on the whole viewport, so the
+image's top edge sat under the bar and the fit maths measured a box the picture did not
+have — the bottom was clipped. The bar is now a real layout row above the image area
+(`.full-view-body` wraps the image and the sidebar), so it reserves its space instead of
+overlapping: no coverage, no cropping, and hiding it genuinely gives the image that height
+back. `setFullViewUIHidden` refits on the next frame, because hiding the bar changes the
+box the image is fitted to and refitting immediately would measure the old one. Measured
+across square, portrait, landscape, tall and wide fixtures in both states.
+
+**Clicking the full-view background did nothing.** The drag handler reset its state on
+`mouseup` before the click could be evaluated, so a click on the background was swallowed.
+It now toggles the UI exactly as clicking the image does, and a click on the overlay
+outside the pane is left alone so ComfyUI's click-outside is unaffected.
 
 **Masonry PageUp/PageDown moved sideways — fixed.** The masonry page branch scored every
 card by distance from `currentY +/- containerHeight`, with no directional constraint. Near

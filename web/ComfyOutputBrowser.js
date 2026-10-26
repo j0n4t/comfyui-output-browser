@@ -31,7 +31,7 @@ const BROWSER_HTML = `
   </div>
 </div>
 
-<div class="main-container" id="cfobMainContainer">
+<div class="main-container" id="cfobMainContainer" tabindex="-1">
   <div class="gallery-container view-grid" id="cfobGalleryGrid"></div>
   <div class="empty-state" id="cfobEmptyState">
     ${ICONS.picture}
@@ -98,6 +98,10 @@ export default class ComfyOutputBrowser {
     /** @type {(() => void) | null} */
     this._pickCleanup = null;
     this.isPickingElement = false;
+    /** True while the in-panel chrome (top bar, action bar) is hidden by the `h` key.
+     *  Full view keeps the same state under the same name, so a view opened from a
+     *  hidden panel starts hidden and `h` brings the chrome back after it closes. */
+    this.uiHidden = false;
     /** @type {{ uiVisible: boolean, placement: 'sidebar' | 'action-bar' | 'floating' | 'hook' } | null} */
     this._pickRestore = null;
     this._pickCommit = false;
@@ -232,6 +236,9 @@ export default class ComfyOutputBrowser {
       }
       this.$("cfobSearchInput").focus();
     } else {
+      // The container, not a card: a card can be scrolled out of view or be replaced
+      // by the next render, and focusing it is what made keystrokes appear to be lost
+      // after the toggle. A container is always there and is what the arrows expect.
       this.$("cfobMainContainer").focus();
     }
   }
@@ -261,6 +268,54 @@ export default class ComfyOutputBrowser {
     } else {
       this.hideWithTransition();
     }
+  }
+
+  /**
+   * Shows or hides the panel's own chrome (top bar, action bar) without closing the
+   * panel — `h`. The grid keeps its keyboard layer while the chrome is hidden, so the
+   * arrows still move focus and `h` brings the chrome back.
+   * @param {boolean} [hidden]
+   */
+  setChromeHidden(hidden = !this.uiHidden) {
+    if (!this.root) return;
+    this.uiHidden = hidden;
+    /** @type {[string, HTMLElement][]} */
+    const found = [];
+    for (const selector of ['.top-bar', '#cfobActionBar']) {
+      const el = /** @type {HTMLElement | null} */ (this.root.querySelector(selector));
+      if (!el) continue;
+      found.push([selector, el]);
+      el.classList.toggle('ui-hidden', hidden);
+      el.setAttribute('aria-hidden', String(hidden));
+    }
+    // Inert only after the loop: it must not be set on the element that still holds
+    // focus, and the action bar re-shows itself below, so it is not inert for long.
+    if (hidden) {
+      const active = /** @type {HTMLElement | null} */ (document.activeElement);
+      const activeIsInside = found.some(([, el]) => el === active || el.contains(active));
+      for (const [, el] of found) {
+        if (activeIsInside && el.contains(/** @type {HTMLElement} */ (active))) {
+          /** @type {HTMLElement} */ (this.root?.querySelector('.main-container'))?.focus();
+        }
+        el.inert = true;
+      }
+    } else {
+      for (const [, el] of found) el.inert = false;
+      // Re-showing must also restore the action bar's own shown state: hiding removed
+      // the class, so a selection made while the chrome was hidden would otherwise
+      // leave the bar invisible on the very keypress that brings it back.
+      if (this.selectedImages.size > 0) this.selection.updateActionBar();
+    }
+  }
+
+  /**
+   * Brings the chrome back. Focusing the search input is the one thing that can happen
+   * while the chrome is hidden (Tab reaches the now-inert input's neighbours, and the
+   * full view focuses the search bar itself), and an invisible bar around a focused
+   * input is the state this exists to prevent.
+   */
+  showChrome() {
+    if (this.uiHidden) this.setChromeHidden(false);
   }
 
   injectLauncherButton() {
@@ -696,6 +751,12 @@ export default class ComfyOutputBrowser {
       if (activeDialog) return;
       e.preventDefault();
       if (this.search.handleKeydown(e)) return;
+      // The chips field picker is a transient layer of its own: Escape dismisses it,
+      // not the panel behind it. It owns focus while it is open, so it is checked first.
+      if (this.settings.activePopover) {
+        this.settings.dismissPopover();
+        return;
+      }
       if (isFullView && noModalOpen) {
         e.preventDefault(); e.stopPropagation(); this.fullView.closeFullView();
       } else if (this.isUiVisible) {
@@ -719,6 +780,29 @@ export default class ComfyOutputBrowser {
     }
 
     if (isEditing) return;
+
+    // Panel-level chrome, before the per-domain branch: it is not a full-view key and it
+    // must still work while the chrome itself is hidden, so it cannot be routed through
+    // the domain handlers (their branch is skipped when the panel is closed).
+    //
+    // The chips field picker is a transient layer that owns focus and needs the arrow
+    // keys for itself. It must be checked BEFORE the per-domain routing, or full view's
+    // ArrowDown (toggle the UI) and ArrowUp (focus search) would swallow them and the
+    // picker could not be driven from the keyboard.
+    if (this.settings.activePopover && ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
+      return;
+    }
+
+    // In full view the same key drives the view's own ui-hidden, because that is the same
+    // "hide the chrome" gesture on the surface that is on screen. `setChromeHidden` is
+    // shared by both, so they can never disagree about whether the chrome is hidden.
+    if (key === 'h' && noModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isFullView) this.fullView.toggleFullViewUI();
+      else this.setChromeHidden();
+      return;
+    }
 
     if (noModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey && key >= '1' && key <= '9') {
       if (isFullView || (this.isUiVisible && !this.root?.classList.contains('cfob-hidden'))) {
@@ -764,7 +848,10 @@ export default class ComfyOutputBrowser {
         searchInputTimer = null;
       }, 150);
     });
-    searchInput.addEventListener('focus', () => this.search.refreshSearchSuggestionsIfOpen());
+    searchInput.addEventListener('focus', () => {
+      this.showChrome();
+      this.search.refreshSearchSuggestionsIfOpen();
+    });
     searchInput.addEventListener('blur', () => {
       this.search.addSearchHistory();
       this.search.hideSearchSuggestions();
@@ -789,7 +876,9 @@ export default class ComfyOutputBrowser {
     this.$("cfobActionMove").addEventListener('click', () => this.actions.moveSelected());
     this.$("cfobActionSendChips").addEventListener('click', (e) => {
       e.stopPropagation();
-      this.actions.sendChipsToBasket(null, /** @type {HTMLElement} */ (e.currentTarget));
+      // No anchorEl: the picker anchors to the focused card, not to this button in the
+      // action bar, which is away from the image the field choice is about.
+      this.actions.sendChipsToBasket(null, null);
     });
     this.$("cfobActionDownload").addEventListener('click', () => this.actions.downloadSelected());
     this.$("cfobActionOpen").addEventListener('click', () => this.actions.loadWorkflowSelected());

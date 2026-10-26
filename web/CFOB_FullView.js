@@ -3,60 +3,62 @@ import ICONS from "./assets/icons.js";
 export const CFOB_FULL_VIEW_HTML = `
   <div class="modal-overlay" id="cfobFullViewModal">
     <div class="full-view-layout">
-      <div class="full-view-main" tabindex="-1">
-        <div class="full-view-top-bar">
-          <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
-          <div class="full-view-browser-controls" id="cfobFullViewBrowserControls"></div>
-          <div style="display: flex; gap: 0.5em; align-items: center;">
-            <div class="full-view-more-wrap">
-              <button class="icon-btn" id="cfobFullViewMoreBtn" title="Zoom and view options" aria-label="Zoom and view options" aria-haspopup="true" aria-expanded="false">
-                ${ICONS.more}
-              </button>
-              <div class="full-view-more-menu" id="cfobFullViewMoreMenu" role="menu" aria-label="Zoom and view options">
-                <button class="icon-btn text-btn" id="cfobZoomFitBtn" title="Fit View (F)" role="menuitem">Fit</button>
-                <button class="icon-btn text-btn" id="cfobZoomWidthBtn" title="Fit Width (W)" role="menuitem">W</button>
-                <button class="icon-btn text-btn" id="cfobZoomHeightBtn" title="Fit Height (H)" role="menuitem">H</button>
-                <button class="icon-btn text-btn" id="cfobZoomOriginalBtn" title="Original Size (1 / O)" role="menuitem">1:1</button>
-                <div class="full-view-more-divider" role="separator"></div>
-                <button class="icon-btn" id="cfobZoomInBtn" title="Zoom In (+)" role="menuitem">${ICONS.zoomIn}</button>
-                <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out (-)" role="menuitem">${ICONS.zoomOut}</button>
-                <button class="icon-btn" id="cfobZoomResetBtn" title="Reset Zoom" role="menuitem">${ICONS.zoomReset}</button>
-              </div>
+      <div class="full-view-top-bar">
+        <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
+        <div class="full-view-browser-controls" id="cfobFullViewBrowserControls"></div>
+        <div style="display: flex; gap: 0.5em; align-items: center;">
+          <div class="full-view-more-wrap">
+            <button class="icon-btn" id="cfobFullViewMoreBtn" title="Zoom and view options" aria-label="Zoom and view options" aria-haspopup="true" aria-expanded="false">
+              ${ICONS.more}
+            </button>
+            <div class="full-view-more-menu" id="cfobFullViewMoreMenu" role="menu" aria-label="Zoom and view options">
+              <button class="icon-btn text-btn" id="cfobZoomFitBtn" title="Fit View (F)" role="menuitem">Fit</button>
+              <button class="icon-btn text-btn" id="cfobZoomWidthBtn" title="Fit Width (W)" role="menuitem">W</button>
+              <button class="icon-btn text-btn" id="cfobZoomHeightBtn" title="Fit Height (H)" role="menuitem">H</button>
+              <button class="icon-btn text-btn" id="cfobZoomOriginalBtn" title="Original Size (1 / O)" role="menuitem">1:1</button>
+              <div class="full-view-more-divider" role="separator"></div>
+              <button class="icon-btn" id="cfobZoomInBtn" title="Zoom In (+)" role="menuitem">${ICONS.zoomIn}</button>
+              <button class="icon-btn" id="cfobZoomOutBtn" title="Zoom Out (-)" role="menuitem">${ICONS.zoomOut}</button>
+              <button class="icon-btn" id="cfobZoomResetBtn" title="Reset Zoom" role="menuitem">${ICONS.zoomReset}</button>
             </div>
-            <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn" title="Cycle details pane position (T)" aria-label="Cycle details pane position (T)">${ICONS.pane}</button>
-            <button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button>
           </div>
-        </div>
-        <button class="nav-btn prev-btn" id="cfobPrevImgBtn" title="Previous (Left Arrow)">❮</button>
-        <img id="cfobFullViewImg" src="" alt="Full View" tabindex="0">
-        <button class="nav-btn next-btn" id="cfobNextImgBtn" title="Next (Right Arrow)">❯</button>
-        <div class="full-view-empty-state" id="cfobFullViewEmptyState" hidden>
-          ${ICONS.picture}
-          <h3>No Images Found</h3>
-          <p>No images match the current filter or hidden folder settings.</p>
+          <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn" title="Cycle details pane position (T)" aria-label="Cycle details pane position (T)">${ICONS.pane}</button>
+          <button class="icon-btn" id="cfobCloseFullViewBtn" title="Close (Esc)">${ICONS.close}</button>
         </div>
       </div>
-      <div class="full-view-sidebar-resizer" id="cfobFullViewSidebarResizer" role="separator" aria-label="Resize details pane" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="1200" tabindex="0"></div>
-      <div class="full-view-sidebar" id="cfobFullViewSidebar">
-        <div class="sidebar-header">
-          <h4 id="cfobFullViewTitle">Filename.png</h4>
-          <div class="sidebar-header-actions">
-            <div class="full-view-actions-more-wrap">
-              <div class="full-view-actions" id="cfobFullViewActions">
-                <button class="btn btn-primary" id="cfobFVActionOpen" title="Open workflow" aria-label="Open workflow">${ICONS.workflow}<span>Workflow</span></button>
-                <button class="btn" id="cfobFVActionInspect" title="Inspect metadata" aria-label="Inspect metadata">${ICONS.inspect}<span>Inspect</span></button>
-                <button class="btn" id="cfobFVActionDownload" title="Download" aria-label="Download">${ICONS.download}<span>Download</span></button>
-                <button class="btn" id="cfobFVActionRename" title="Rename" aria-label="Rename">${ICONS.rename}<span>Rename</span></button>
-                <button class="btn" id="cfobFVActionMove" title="Move" aria-label="Move">${ICONS.move}<span>Move</span></button>
-                <button class="btn" id="cfobFVActionSendChips" title="Send Chips to Preset Gallery" aria-label="Send Chips to Preset Gallery">${ICONS.basket}<span>Chips</span></button>
-                <button class="btn btn-danger" id="cfobFVActionDelete" title="Delete" aria-label="Delete">${ICONS.trash}<span>Delete</span></button>
-              </div>
-              <button class="icon-btn full-view-actions-more-btn" id="cfobFullViewActionsMoreBtn" title="Image actions" aria-label="Image actions" aria-haspopup="true" aria-expanded="false">${ICONS.more}</button>
-            </div>
-            <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn2" title="Toggle sidebar" aria-label="Toggle sidebar">${ICONS.pane}</button>
+      <div class="full-view-body">
+        <div class="full-view-main" tabindex="-1">
+          <button class="nav-btn prev-btn" id="cfobPrevImgBtn" title="Previous (Left Arrow)">❮</button>
+          <img id="cfobFullViewImg" src="" alt="Full View" tabindex="0">
+          <button class="nav-btn next-btn" id="cfobNextImgBtn" title="Next (Right Arrow)">❯</button>
+          <div class="full-view-empty-state" id="cfobFullViewEmptyState" hidden>
+            ${ICONS.picture}
+            <h3>No Images Found</h3>
+            <p>No images match the current filter or hidden folder settings.</p>
           </div>
         </div>
-        <div class="sidebar-body" id="cfobFullViewFields"></div>
+        <div class="full-view-sidebar-resizer" id="cfobFullViewSidebarResizer" role="separator" aria-label="Resize details pane" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="1200" tabindex="0"></div>
+        <div class="full-view-sidebar" id="cfobFullViewSidebar">
+          <div class="sidebar-header">
+            <h4 id="cfobFullViewTitle">Filename.png</h4>
+            <div class="sidebar-header-actions">
+              <div class="full-view-actions-more-wrap">
+                <div class="full-view-actions" id="cfobFullViewActions">
+                  <button class="btn btn-primary" id="cfobFVActionOpen" title="Open workflow" aria-label="Open workflow">${ICONS.workflow}<span>Workflow</span></button>
+                  <button class="btn" id="cfobFVActionInspect" title="Inspect metadata" aria-label="Inspect metadata">${ICONS.inspect}<span>Inspect</span></button>
+                  <button class="btn" id="cfobFVActionDownload" title="Download" aria-label="Download">${ICONS.download}<span>Download</span></button>
+                  <button class="btn" id="cfobFVActionRename" title="Rename" aria-label="Rename">${ICONS.rename}<span>Rename</span></button>
+                  <button class="btn" id="cfobFVActionMove" title="Move" aria-label="Move">${ICONS.move}<span>Move</span></button>
+                  <button class="btn" id="cfobFVActionSendChips" title="Send Chips to Preset Gallery" aria-label="Send Chips to Preset Gallery">${ICONS.basket}<span>Chips</span></button>
+                  <button class="btn btn-danger" id="cfobFVActionDelete" title="Delete" aria-label="Delete">${ICONS.trash}<span>Delete</span></button>
+                </div>
+                <button class="icon-btn full-view-actions-more-btn" id="cfobFullViewActionsMoreBtn" title="Image actions" aria-label="Image actions" aria-haspopup="true" aria-expanded="false">${ICONS.more}</button>
+              </div>
+              <button class="icon-btn toggle-sidebar-btn" id="cfobToggleSidebarBtn2" title="Toggle sidebar" aria-label="Toggle sidebar">${ICONS.pane}</button>
+            </div>
+          </div>
+          <div class="sidebar-body" id="cfobFullViewFields"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -64,12 +66,16 @@ export const CFOB_FULL_VIEW_HTML = `
 
 export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root #cfobFullViewModal.modal-overlay { padding: 0; z-index: var(--z-full-view); }
-  #cfob-root .full-view-layout { display: flex; width: 100vw; height: 100vh; background: var(--color-bg-full); }
+  #cfob-root .full-view-layout { display: flex; flex-direction: column; width: 100vw; height: 100vh; background: var(--color-bg-full); }
+  /* The bar is a real row above the image area, not an overlay on top of it. Reserving
+     its space up front is what keeps the picture from being covered and from shrinking
+     when the bar is hidden: hiding then genuinely gives the image more room. */
+  #cfob-root .full-view-body { flex: 1; display: flex; min-height: 0; min-width: 0; }
   #cfob-root.constrain-full-view #cfobFullViewModal.modal-overlay { position: absolute; }
   #cfob-root.constrain-full-view .full-view-layout { width: 100%; height: 100%; }
   #cfob-root .full-view-layout .field-value { max-height: 100%; resize: vertical; }
 
-  #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+  #cfob-root .full-view-main { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; min-height: 0; }
   #cfob-root .full-view-main:focus { outline: none; }
   #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; outline: none; }
   #cfob-root .full-view-main.has-no-images > img, #cfob-root .full-view-main.has-no-images > .nav-btn { display: none; }
@@ -78,7 +84,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-empty-state svg { width: 4em; height: 4em; margin-bottom: 1em; stroke: var(--color-bg-panel-active); }
   #cfob-root .full-view-empty-state h3 { color: var(--color-text-inverse); }
 
-  #cfob-root .full-view-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 0.4em; background: rgba(39, 39, 42, 0.94); display: flex; justify-content: space-between; align-items: center; gap: 0.75em; color: var(--color-text-primary); z-index: 10; }
+  #cfob-root .full-view-top-bar { padding: 0.4em; background: rgba(39, 39, 42, 0.94); display: flex; justify-content: space-between; align-items: center; gap: 0.75em; color: var(--color-text-primary); z-index: 10; }
   #cfob-root .full-view-browser-controls { display: flex; align-items: center; gap: 0.5em; flex: 1; min-width: 0; }
   #cfob-root .full-view-browser-controls .search-wrapper { max-width: 24em; min-width: 8em; }
   #cfob-root .full-view-browser-controls .btn { font-size: 0.75em; }
@@ -113,7 +119,7 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-sidebar-resizer.hidden { display: none; }
   #cfob-root .full-view-layout.resizing-sidebar .full-view-sidebar { transition: none; }
 
-  #cfob-root .full-view-layout.sidebar-below { flex-direction: column; }
+  #cfob-root .full-view-layout.sidebar-below .full-view-body { flex-direction: column; }
   #cfob-root .full-view-layout.sidebar-below .full-view-main { min-height: 0; }
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar { width: 100%; height: var(--full-view-sidebar-height, 50vh); border-left: none; border-top: 1px solid var(--color-border); }
   #cfob-root .full-view-layout.sidebar-below .full-view-sidebar-resizer { flex-basis: 7px; width: 100%; cursor: row-resize; }
@@ -139,6 +145,20 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .sidebar-body { padding: 0.4em; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75em; }
 
   #cfob-root .full-view-layout.ui-hidden .full-view-top-bar,  #cfob-root .full-view-layout.ui-hidden .nav-btn { opacity: 0; pointer-events: none; }
+  #cfob-root .full-view-layout.ui-hidden .full-view-top-bar { display: none; }
+  /* The bar is a layout row, not an overlay, so the image area is never covered by it
+     and hiding the bar gives the image that space. There is therefore no padding
+     correction to apply: the image simply gets the bar's height back. */
+
+  /* The panel's own chrome (h). Same visual contract as the full view's ui-hidden:
+     the bar fades out, stops taking the pointer, and gives its space back - a
+     display:flex child would keep its own box while invisible and leave a strip of
+     dead background, so the hidden class here means the grid really grows into it. */
+  #cfob-root .top-bar.ui-hidden { display: none; }
+  #cfob-root #cfobActionBar.ui-hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(6.25em); }
+  /* The action bar's normal show/hide is opacity plus a translateY on its show class,
+     and the base rule is more specific than the plain .ui-hidden above - hence the id. */
+  #cfob-root #cfobActionBar.ui-hidden.show { opacity: 0; transform: translateX(-50%) translateY(6.25em); }
   #cfob-root .full-view-layout .full-view-top-bar, #cfob-root .full-view-layout .nav-btn, #cfob-root .full-view-layout .full-view-sidebar { transition: opacity 0.2s ease, width 0.3s; }
 
   #cfob-root .full-view-main img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.1s ease-out; transform-origin: center; cursor: grab; }
@@ -184,6 +204,10 @@ export default class CFOB_FullView {
     this.actionsMoreClose = () => { };
     /** @type {{element: HTMLElement, placeholder: Comment}[] | null} */
     this.browserControlPlaceholders = null;
+    /** True while the in-panel chrome (top bar, action bar) is hidden. The whole panel
+     *  uses 'ui-hidden' on `.full-view-layout` for this, so the same name here keeps
+     *  the two modes' hidden state in one vocabulary. */
+    this.uiHidden = false;
   }
 
   /**
@@ -235,6 +259,7 @@ export default class CFOB_FullView {
     if (key === 'i') { e.preventDefault(); e.stopPropagation(); this.app.$("cfobFVActionInspect").click(); return true; }
     if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); this.deleteFullViewImage(); return true; }
     if (key === 'd') { e.preventDefault(); e.stopPropagation(); this.app.$("cfobFVActionDownload").click(); return true; }
+    if (key === 'b') { e.preventDefault(); e.stopPropagation(); this.app.$("cfobFVActionSendChips").click(); return true; }
     if (key === ' ') {
       if (target.closest('button, a, [role="button"]')) return false;
       e.preventDefault(); e.stopPropagation();
@@ -475,7 +500,20 @@ export default class CFOB_FullView {
       if (!this.fvIsDragging) return;
       this.fvIsDragging = false;
       fvImg.classList.remove('dragging');
+      // Only a click ON the image toggles. The drag is tracked on the image, so a
+      // press that starts on the background and ends anywhere must not be mistaken
+      // for a click on the picture - without this, clicking the background did
+      // nothing at all, because this handler ran first and reset the drag state.
       if (!this.fvHasDragged && e.target === fvImg) this.toggleFullViewUI();
+    });
+
+    // Clicking the background does what clicking the image does. A click on the image
+    // is the image's own handler's business, and a control is not the background.
+    fvMain.addEventListener('click', (e) => {
+      if (!(e.target instanceof Element)) return;
+      if (e.target === fvImg) return;
+      if (e.target.closest('button, a, [role="button"], .full-view-top-bar, .nav-btn')) return;
+      this.toggleFullViewUI();
     });
 
     fvImg.addEventListener('pointermove', (e) => {
@@ -571,10 +609,11 @@ export default class CFOB_FullView {
     this.app.$("cfobFVActionMove").addEventListener('click', () => this.moveFullViewImage());
     this.app.$("cfobFVActionSendChips").addEventListener('click', (e) => {
       e.stopPropagation();
-      const btn = /** @type {HTMLElement} */ (e.currentTarget);
       const img = this.app.filteredImages[this.currentImageIndex];
       const images = img ? [img.name] : null;
-      this.app.actions.sendChipsToBasket(null, btn, images);
+      // No anchorEl: the picker anchors to the picture on screen, not to this button in
+      // the sidebar, which is away from the image the field choice is about.
+      this.app.actions.sendChipsToBasket(null, null, images);
     });
     this.app.$("cfobFVActionDelete").addEventListener('click', () => this.deleteFullViewImage());
 
@@ -645,6 +684,32 @@ export default class CFOB_FullView {
     return {
       width: bounds?.width || window.innerWidth,
       height: bounds?.height || window.innerHeight
+    };
+  }
+
+  /**
+   * True when the image has real pixels to fit. Fitting a not-yet-loaded image would
+   * measure a zero box and pin the zoom at its clamp.
+   * @param {HTMLImageElement | null} img
+   * @returns {boolean}
+   */
+  imgLoaded(img) {
+    return Boolean(img && img.complete && img.naturalWidth);
+  }
+
+  /**
+   * The box the image is actually fitted into. The bar is a layout row now, so this is
+   * `.full-view-main` itself; measuring the whole layout would include the bar's height
+   * and fit the picture to a box it does not have.
+   * @returns {{width: number, height: number}}
+   */
+  getImageAreaDimensions() {
+    const main = /** @type {HTMLElement | null} */ (this.app.root?.querySelector('.full-view-main'));
+    const bounds = main?.getBoundingClientRect();
+    const full = this.getFullViewDimensions();
+    return {
+      width: bounds?.width || full.width,
+      height: bounds?.height || full.height
     };
   }
 
@@ -840,8 +905,10 @@ export default class CFOB_FullView {
         : null;
     }
     this.app.settings.activateFullViewMode();
-    const savedUIHidden = localStorage.getItem('cfob_full_view_ui_hidden') === 'true';
-    this.setFullViewUIHidden(savedUIHidden);
+    // `h` also hides the panel's own chrome, so the view inherits that: hiding chrome is
+    // one gesture, and a view opened from a panel whose chrome is already hidden must
+    // not bring it back.
+    this.setFullViewUIHidden(localStorage.getItem('cfob_full_view_ui_hidden') === 'true' || this.app.uiHidden);
     this.currentImageIndex = this.app.filteredImages.indexOf(img);
     this.updateFullViewUI();
     this.mountBrowserControls();
@@ -867,6 +934,7 @@ export default class CFOB_FullView {
     this.app.$("cfobFullViewMoreBtn")?.setAttribute('aria-expanded', 'false');
     const layout = this.app.root?.querySelector('.full-view-layout');
     if (layout) localStorage.setItem('cfob_full_view_ui_hidden', String(layout.classList.contains('ui-hidden')));
+    this.app.uiHidden = layout?.classList.contains('ui-hidden') ?? false;
     this.app.$("cfobFullViewModal").classList.remove('active');
     this.app.root?.classList.remove('full-view-active');
     this.restoreBrowserControls();
@@ -1024,6 +1092,9 @@ export default class CFOB_FullView {
   toggleFullViewUI() {
     const layout = this.app.root?.querySelector('.full-view-layout');
     if (layout) this.setFullViewUIHidden(!layout.classList.contains('ui-hidden'));
+    // The view and the panel share one chrome state, so a view closed with its UI hidden
+    // leaves the panel's chrome hidden too and `h` there is what brings it back.
+    this.app.uiHidden = layout?.classList.contains('ui-hidden') ?? false;
   }
 
   /** @param {boolean} hidden */
@@ -1046,6 +1117,13 @@ export default class CFOB_FullView {
     previousButton.setAttribute('aria-hidden', String(hidden));
     nextButton.inert = hidden;
     nextButton.setAttribute('aria-hidden', String(hidden));
+
+    // The bar is a layout row, so hiding it changes the height the image is fitted to.
+    // Refit on the next frame, once the browser has given the freed space to the image
+    // area; refitting immediately would measure the old box and keep the stale scale.
+    if (this.imgLoaded(/** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")))) {
+      requestAnimationFrame(() => this.reapplyCurrentFitMode());
+    }
   }
 
 }

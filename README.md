@@ -39,6 +39,7 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 | Operational Mode     | Key Combination                                | Action / Description                                                  |
 | -------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
 | **Global**           | **`Ctrl + Shift + ?`**                         | Toggle the browser interface (show/hide).                             |
+|                      | **`H`**                                        | Hide or show the panel's own chrome (top bar and action bar) while keeping the grid. |
 |                      | **`Ctrl + 1` – `Ctrl + 4`**                    | Switch to Compact, Grid, List, or Full View, respectively.            |
 | **Search**           | **`Enter` / `Tab`**                            | Complete the selected suggestion (or the first if none is selected).  |
 |                      | **`ArrowUp` / `ArrowDown`** (suggestions open) | Cycle through autocomplete suggestions.                               |
@@ -56,6 +57,7 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 |                      | **`Enter`**                                    | Toggle selection state for the focused item.                          |
 |                      | **`Delete`**                                   | Move selected item(s) to the trash.                                   |
 |                      | **`D`**                                        | Download selected file(s).                                            |
+|                      | **`B`**                                        | Send the focused image's chips to the Preset Gallery basket.          |
 |                      | **`Arrow Keys`**                               | Navigate the grid without changing selection.                         |
 |                      | **`PageUp` / `PageDown`**                      | Move up or down by about one grid page.                               |
 |                      | **`Home` / `End`**                             | Focus the first or last image in the grid.                            |
@@ -64,7 +66,9 @@ Use **Options → Sort By** to order images by server order, filename, modificat
 |                      | **`ArrowUp`**                                  | Focus the search bar from the image.                                  |
 |                      | **`M` / `R`**                                  | Move the image to a folder / rename the image.                        |
 |                      | **`G`**                                        | Go to an image by its position in the current results.                |
-|                      | **`Space`**                                    | Toggle overlay UI controls.                                           |
+| **`Space`**                                    | Toggle overlay UI controls.                                           |
+|                      | **`B`**                                        | Send this image's chips to the Preset Gallery basket.                 |
+|                      | **`H`**                                        | Hide or show the panel chrome (top bar, action bar).                  |
 |                      | **`T`**                                        | Collapse or expand the metadata sidebar.                              |
 |                      | **`+` / `-` / `0`**                            | Zoom In, Zoom Out, or Reset Zoom level.                               |
 
