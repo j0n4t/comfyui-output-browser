@@ -348,7 +348,7 @@ test("row-first masonry ArrowRight/ArrowLeft move between adjacent columns", () 
 // Real geometry and corrections captured with web/dev-grid-nav.html
 // (grid / masonry / row-first / 24 cards / seed 7). These are the user's judgements,
 // not a reconstruction: each entry means "pressing this key from this card should land
-// on that card". Raw export: docs/cfob-nav-examples-*.json; see docs/HANDOFF.md.
+// on that card". Raw export: docs/cfob-nav-examples-*.json.
 
 /**
  * One recorded case is deliberately not asserted. From card 15, ArrowDown: recorded as
@@ -434,8 +434,8 @@ test("ArrowUp from a top-row masonry card focuses the search box, not the card b
 });
 
 test("withdrawn correction is still reported as a disagreement, not silently passing", () => {
-  // Guards the guard above: if the heuristic ever starts picking 22 here, the note in
-  // docs/HANDOFF.md is stale and this test should be revisited.
+  // Guards the guard above: if the heuristic ever starts picking 22 here, the withdrawn
+  // correction was right after all and this test should be revisited.
   const app = makeUserLayoutApp();
   app.lastSelectedIdx = 15;
   assert.equal(navigate(app, "ArrowDown"), 15,

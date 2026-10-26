@@ -67,9 +67,6 @@ export const CFOB_FULL_VIEW_HTML = `
 export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root #cfobFullViewModal.modal-overlay { padding: 0; z-index: var(--z-full-view); }
   #cfob-root .full-view-layout { display: flex; flex-direction: column; width: 100vw; height: 100vh; background: var(--color-bg-full); }
-  /* The bar is a real row above the image area, not an overlay on top of it. Reserving
-     its space up front is what keeps the picture from being covered and from shrinking
-     when the bar is hidden: hiding then genuinely gives the image more room. */
   #cfob-root .full-view-body { flex: 1; display: flex; min-height: 0; min-width: 0; }
   #cfob-root.constrain-full-view #cfobFullViewModal.modal-overlay { position: absolute; }
   #cfob-root.constrain-full-view .full-view-layout { width: 100%; height: 100%; }
@@ -135,7 +132,6 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-actions-more-wrap .full-view-actions-more-btn { display: none; }
   #cfob-root .full-view-actions-more-wrap.open .full-view-actions { display: flex; }
 
-  /* Collapse the image actions behind the more button when the pane itself is narrow. */
   @container cfob-fv-sidebar (max-width: 320px) {
     #cfob-root .full-view-actions-more-wrap .full-view-actions-more-btn { display: inline-flex; }
     #cfob-root .full-view-actions-more-wrap .full-view-actions { display: none; position: absolute; top: calc(100% + 0.4em); right: 0; z-index: 20; width: max-content; padding: 0.4em; background: var(--color-bg-panel); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 0.5em 1.5em rgba(0,0,0,0.45); }
@@ -146,18 +142,9 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
 
   #cfob-root .full-view-layout.ui-hidden .full-view-top-bar,  #cfob-root .full-view-layout.ui-hidden .nav-btn { opacity: 0; pointer-events: none; }
   #cfob-root .full-view-layout.ui-hidden .full-view-top-bar { display: none; }
-  /* The bar is a layout row, not an overlay, so the image area is never covered by it
-     and hiding the bar gives the image that space. There is therefore no padding
-     correction to apply: the image simply gets the bar's height back. */
 
-  /* The panel's own chrome (h). Same visual contract as the full view's ui-hidden:
-     the bar fades out, stops taking the pointer, and gives its space back - a
-     display:flex child would keep its own box while invisible and leave a strip of
-     dead background, so the hidden class here means the grid really grows into it. */
   #cfob-root .top-bar.ui-hidden { display: none; }
   #cfob-root #cfobActionBar.ui-hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(6.25em); }
-  /* The action bar's normal show/hide is opacity plus a translateY on its show class,
-     and the base rule is more specific than the plain .ui-hidden above - hence the id. */
   #cfob-root #cfobActionBar.ui-hidden.show { opacity: 0; transform: translateX(-50%) translateY(6.25em); }
   #cfob-root .full-view-layout .full-view-top-bar, #cfob-root .full-view-layout .nav-btn, #cfob-root .full-view-layout .full-view-sidebar { transition: opacity 0.2s ease, width 0.3s; }
 
@@ -385,7 +372,6 @@ export default class CFOB_FullView {
       }
     }, { passive: true });
 
-    // Zoom and Fit Mode Buttons
     this.app.$("cfobZoomFitBtn").addEventListener('click', () => this.applyFitMode('fit'));
     this.app.$("cfobZoomWidthBtn").addEventListener('click', () => this.applyFitMode('width'));
     this.app.$("cfobZoomHeightBtn").addEventListener('click', () => this.applyFitMode('height'));
@@ -395,7 +381,6 @@ export default class CFOB_FullView {
     this.app.$("cfobZoomOutBtn").addEventListener('click', () => this.setFullViewZoom(this.fvZoom / 1.1));
     this.app.$("cfobZoomResetBtn").addEventListener('click', () => this.resetFullViewTransform());
 
-    // Three-dot popup menu for zoom and fit options
     const moreBtn = this.app.$("cfobFullViewMoreBtn");
     const moreMenu = this.app.$("cfobFullViewMoreMenu");
     /** @param {boolean} open */
@@ -416,7 +401,6 @@ export default class CFOB_FullView {
       if (!moreMenu.contains(target) && !moreBtn.contains(target)) closeMoreMenu();
     });
 
-    // Sidebar image-actions popup (mobile: actions collapse behind a more button)
     const actionsWrap = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-actions-more-wrap'));
     const actionsMoreBtn = this.app.$("cfobFullViewActionsMoreBtn");
     /** @param {boolean} open */
@@ -500,15 +484,9 @@ export default class CFOB_FullView {
       if (!this.fvIsDragging) return;
       this.fvIsDragging = false;
       fvImg.classList.remove('dragging');
-      // Only a click ON the image toggles. The drag is tracked on the image, so a
-      // press that starts on the background and ends anywhere must not be mistaken
-      // for a click on the picture - without this, clicking the background did
-      // nothing at all, because this handler ran first and reset the drag state.
       if (!this.fvHasDragged && e.target === fvImg) this.toggleFullViewUI();
     });
 
-    // Clicking the background does what clicking the image does. A click on the image
-    // is the image's own handler's business, and a control is not the background.
     fvMain.addEventListener('click', (e) => {
       if (!(e.target instanceof Element)) return;
       if (e.target === fvImg) return;
@@ -630,7 +608,6 @@ export default class CFOB_FullView {
     const main = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'));
     if (!img || !main || !img.naturalWidth) return;
 
-    // Temporarily clear active transforms to retrieve bounded base CSS dimensions
     const oldTransform = img.style.transform;
     const oldTransition = img.style.transition;
     img.style.transform = 'none';
@@ -644,7 +621,6 @@ export default class CFOB_FullView {
     this.fvPanY = 0;
 
     if (mode === 'fit') {
-      // Calculate the minimum scale needed to fit both dimensions perfectly
       targetZoom = Math.min(mainRect.width / imgRect.width, mainRect.height / imgRect.height);
     } else if (mode === 'width') {
       targetZoom = mainRect.width / imgRect.width;
@@ -654,12 +630,10 @@ export default class CFOB_FullView {
       targetZoom = img.naturalWidth / imgRect.width;
     }
 
-    // Restore transforms prior to the next frame to prevent flashing
     img.style.transform = oldTransform;
     img.offsetHeight; // Force DOM reflow
     img.style.transition = oldTransition;
 
-    // Constrain the target zoom factor and apply
     this.fvZoom = Math.max(0.1, Math.min(targetZoom, 15));
     this.updateFullViewTransform(true);
   }
@@ -915,7 +889,6 @@ export default class CFOB_FullView {
     modal.classList.add('active');
     this.app.root?.classList.add('full-view-active');
     this.applySidebarSize();
-    // Reapply the persisted fit mode
     const imgElement = /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg"));
     if (imgElement.complete && imgElement.naturalWidth) {
       this.reapplyCurrentFitMode();
@@ -944,7 +917,6 @@ export default class CFOB_FullView {
     }
     /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg")).src = "";
 
-    // Focus the last viewed image in the grid
     const img = this.app.filteredImages[this.currentImageIndex];
     if (img) {
       const idx = this.app.filteredImages.indexOf(img);
@@ -1005,10 +977,8 @@ export default class CFOB_FullView {
     if (this.currentImageIndex < 0) this.currentImageIndex = this.app.filteredImages.length - 1;
     if (this.currentImageIndex >= this.app.filteredImages.length) this.currentImageIndex = 0;
 
-    // Update UI and re-apply the current fit mode based on zoom state or default preference
     this.updateFullViewUI();
 
-    // If the user was using a specific zoom constraint (e.g., fit, width, height), re-apply it after the image loads
     const imgElement = /** @type {HTMLImageElement} */ (this.app.$("cfobFullViewImg"));
     if (imgElement.complete && imgElement.naturalWidth) {
       this.reapplyCurrentFitMode();
@@ -1092,8 +1062,6 @@ export default class CFOB_FullView {
   toggleFullViewUI() {
     const layout = this.app.root?.querySelector('.full-view-layout');
     if (layout) this.setFullViewUIHidden(!layout.classList.contains('ui-hidden'));
-    // The view and the panel share one chrome state, so a view closed with its UI hidden
-    // leaves the panel's chrome hidden too and `h` there is what brings it back.
     this.app.uiHidden = layout?.classList.contains('ui-hidden') ?? false;
   }
 

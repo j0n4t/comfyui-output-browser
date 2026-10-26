@@ -59,7 +59,6 @@ const makeIsBlocked = (entries, scope) => (nodeNames, props) => {
  * @returns {any}
  */
 const maskValue = (value, props, isBlocked) => {
-  // With no path yet (a node root), a property starts a fresh path; otherwise it extends.
   const childProps = (/** @type {string} */ key) =>
     props.length ? props.map(prop => (prop ? `${prop}.${key}` : key)) : [key];
 

@@ -607,8 +607,6 @@ export default class COB_Settings {
   revertLauncherPlacement(placement) {
     this.launcherPlacement = placement;
     localStorage.setItem('cfob_launcher_placement', placement);
-    // The options modal was only hidden while picking, so its controls still show
-    // the abandoned choice — put them back in step with the restored placement.
     const select = /** @type {HTMLSelectElement | null} */ (this.app.$("cfobLauncherPlacement"));
     if (select) select.value = placement;
     const hint = this.app.$("cfobHookHint");
@@ -626,8 +624,6 @@ export default class COB_Settings {
     localStorage.setItem('cfob_panel_offsets', String(this.panelOffsets));
     if (!this.app.root) return;
 
-    // A small margin on every side so the panel reads as detached, on top of the
-    // measured ComfyUI chrome offsets.
     const MARGIN = 8;
     /** @type {Record<string, string>} */
     const vars = {
@@ -653,8 +649,6 @@ export default class COB_Settings {
       const sidebar = m('.side-tool-bar-container') || m('[data-testid="side-toolbar"]');
       if (sidebar && sidebar.left <= 1) left += sidebar.right;
 
-      // The top bar is a floating strip near the top edge (top may be > 0); inset
-      // the panel below it whenever it occupies the top region of the viewport.
       const topBar = m('[data-testid="top-menu-actionbars"]') || m('[data-testid="action-bar-card"]');
       if (topBar && topBar.top < 100) top += topBar.bottom;
 
@@ -868,7 +862,6 @@ export default class COB_Settings {
       /** @type {HTMLSelectElement} */ (this.app.$("cfobModeSelect")).value = this.browserMode;
       /** @type {HTMLSelectElement} */ (this.app.$("cfobLauncherPlacement")).value = this.launcherPlacement;
       this.app.$("cfobHookHint").style.display = this.launcherPlacement === 'hook' ? '' : 'none';
-      // Standalone mode has no launcher button at all, so its settings are hidden.
       this.app.$("cfobLauncherSection").style.display = /** @type {any} */ (window).CFOB_STANDALONE ? 'none' : '';
       this.syncGridFillOrderControl();
       /** @type {HTMLSelectElement} */ (this.app.$("cfobScrollDirectionSelect")).value = this.scrollDir;
@@ -1249,7 +1242,6 @@ export default class COB_Settings {
     menu.innerHTML = html;
     this.app.root?.appendChild(menu);
     this.activePopover = menu;
-    // Click-opened and never focused, so there is no owner to hand focus back to.
     this.popoverReturnFocus = null;
 
     menu.querySelectorAll('.append-path').forEach(b => {

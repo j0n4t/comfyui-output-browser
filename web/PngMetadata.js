@@ -83,9 +83,7 @@ const PngMetadata = {
               const compressed = bytes.subarray(nullIdx + 2, dataEnd);
               const text = PngMetadata._zlibInflate(compressed);
               chunks.push({ keyword, text });
-            } catch {
-              // skip malformed zTXt chunk
-            }
+            } catch { /* malformed zTXt chunk */ }
           }
         }
       } else if (type === "iTXt") {
@@ -103,10 +101,8 @@ const PngMetadata = {
             const compressionFlag = bytes[pos];
             const compressionMethod = bytes[pos + 1];
             pos += 2;
-            // skip language tag
             while (pos < dataEnd && bytes[pos] !== 0) pos++;
             pos++;
-            // skip translated keyword
             while (pos < dataEnd && bytes[pos] !== 0) pos++;
             pos++;
             if (pos < dataEnd) {
@@ -209,23 +205,17 @@ const PngMetadata = {
     let promptJson = null;
     let workflowJson = null;
 
-    // ComfyUI stores prompt in "prompt" key and workflow in "workflow" key
     if (textChunks.prompt) {
       promptRaw = textChunks.prompt;
       try {
-        // ComfyUI sometimes embeds NaN which is not valid JSON
         const sanitized = textChunks.prompt.replace(/\bNaN\b/g, "null");
         promptJson = JSON.parse(sanitized);
-      } catch {
-        // not JSON, treat as plain text
-      }
+      } catch { /* not JSON */ }
     }
     if (textChunks.workflow) {
       try {
         workflowJson = JSON.parse(textChunks.workflow);
-      } catch {
-        // not JSON
-      }
+      } catch { /* not JSON */ }
     }
 
     return { textChunks, promptRaw, promptJson, workflowJson };
@@ -274,15 +264,11 @@ const PngMetadata = {
   getPromptText(metadata) {
     if (!metadata.promptRaw) return "";
 
-    // If it's plain text (not JSON), return as-is
     if (!metadata.promptJson) return metadata.promptRaw;
 
-    // If it's a JSON object, try to extract prompt text from nodes
     const json = metadata.promptJson;
     if (typeof json === "string") return json;
 
-    // ComfyUI prompt format: { "0": { "inputs": { "text": "..." }, ... }, ... }
-    // or { "0": { "inputs": { "prompt": "..." }, ... }, ... }
     /** @type {string[]} */
     const texts = [];
     for (const nodeId of Object.keys(json)) {
@@ -291,7 +277,6 @@ const PngMetadata = {
       const inputs = node.inputs;
       if (!inputs || typeof inputs !== "object") continue;
 
-      // Try common prompt input names
       for (const key of ["prompt", "text", "positive", "negative"]) {
         const val = inputs[key];
         if (typeof val === "string" && val.trim()) {
@@ -303,7 +288,6 @@ const PngMetadata = {
 
     if (texts.length > 0) return texts.join(", ");
 
-    // Fallback: try to find any string value that looks like a prompt
     for (const nodeId of Object.keys(json)) {
       const node = json[nodeId];
       if (!node || typeof node !== "object") continue;

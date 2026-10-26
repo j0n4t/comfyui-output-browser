@@ -35,7 +35,6 @@ export default class CFOB_Search {
       this.app.keywordDictionary.set(keyword, (this.app.keywordDictionary.get(keyword) || 0) + 1);
     }
 
-    // Update silently if background parsing happens while focused, without forcing the menu open
     const suggestions = this.app.$("cfobSearchSuggestions");
     if (refreshSuggestions && document.activeElement === this.app.$("cfobSearchInput") && suggestions && !suggestions.hidden) {
       this.updateSearchSuggestions();

@@ -16,7 +16,6 @@ export default class CFOB_Gallery {
     this.resizeObserver = null;
     /** @type {number | null} */
     this._resizeRafId = null;
-    // Cache last syncGridLayout result to skip redundant style writes
     this._lastSyncRows = -1;
     this._lastSyncCols = -1;
     this._lastSyncAvailableHeight = -1;
@@ -121,8 +120,7 @@ export default class CFOB_Gallery {
 
   /**
    * Updates app.lastSelectedIdx and toggles the 'focused' CSS class on only the
-   * previously-focused card and the newly-focused card. This replaces the old
-   * O(n) querySelectorAll+forEach broadcast that iterated the entire grid.
+   * previously-focused card and the newly-focused card.
    * @param {number} idx
    */
   _setFocusedIdx(idx) {
@@ -146,8 +144,6 @@ export default class CFOB_Gallery {
   getOrderedCards() {
     const grid = this.app.$("cfobGalleryGrid");
     if (!grid) return [];
-    // Thanks to replaceChildren pooling, visible cards are now naturally in the exact DOM order 
-    // without any hidden item gaps, entirely eliminating the need to parse and sort datasets in JS.
     return Array.from(grid.querySelectorAll('.image-card'));
   }
 
@@ -242,7 +238,6 @@ export default class CFOB_Gallery {
       }
     }
 
-    // Provision missing cards on load/refresh incrementally
     this.app.loadedImages.forEach((img) => {
       if (!this.cardCache.has(img.name)) {
         this.cardCache.set(img.name, this.createCard(img));
@@ -254,28 +249,22 @@ export default class CFOB_Gallery {
     const lastSelectedIdx = this.app.lastSelectedIdx;
     const selectedImages = this.app.selectedImages;
 
-    // Populate fragment strictly with filtered items.
-    // By keeping hidden items out of the flow entirely, CSS Masonry & Flex/Grid flow works flawlessly.
     this.app.filteredImages.forEach((img, idx) => {
       const card = this.cardCache.get(img.name);
       if (!card) return;
 
       const isSelected = selectedImages.has(img.name);
 
-      // Update state classes independently without wiping .expanded class
       card.classList.toggle('selected', isSelected);
       card.classList.toggle('focused', idx === lastSelectedIdx);
       card.dataset.index = String(loadedImageIndexes.get(img) ?? -1);
       card.dataset.filterIndex = String(idx);
 
-      // Use cached checkbox ref — avoids one querySelector per card per render
       const cb = /** @type {HTMLInputElement} */ (/** @type {any} */ (card)._cfobCheckbox);
       if (cb && cb.checked !== isSelected) cb.checked = isSelected;
 
-      // Parse metadata updates incrementally on-the-fly without destroying the main node
       if (img.isParsed && !card.dataset.parsed) {
         card.dataset.parsed = "true";
-        // Use cached body ref — avoids one querySelector per card per render
         const body = /** @type {HTMLElement | null} */ (/** @type {any} */ (card)._cfobBody);
         if (body) body.innerHTML = this.app.getCardFieldsHtml(img);
       }
@@ -283,7 +272,6 @@ export default class CFOB_Gallery {
       fragment.appendChild(card);
     });
 
-    // Single batch DOM swap (auto-removes cards no longer in the filtered fragment instantly)
     grid.replaceChildren(fragment);
     this.syncGridLayout();
 
@@ -316,11 +304,9 @@ export default class CFOB_Gallery {
 
     if (!this.resizeObserver && typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(() => {
-        // Debounce via rAF: coalesce rapid resize events into a single layout pass
         if (this._resizeRafId !== null) return;
         this._resizeRafId = requestAnimationFrame(() => {
           this._resizeRafId = null;
-          // Invalidate cached height so the next syncGridLayout recomputes
           this._lastSyncAvailableHeight = -1;
           this.syncGridLayout();
         });
@@ -346,11 +332,9 @@ export default class CFOB_Gallery {
         this._lastSyncIsHorizontalRow = false;
         grid.style.removeProperty('--cfob-col-count');
         grid.style.removeProperty('--cfob-row-count');
-        // Reset cached values so they are recomputed if layout switches back
         this._lastSyncRows = -1;
         this._lastSyncCols = -1;
       }
-      // Any earlier horizontal packing has to go, whatever the reason we left it.
       this.applyRowFirstMasonryPacking(false, grid, true);
       return;
     }
@@ -376,8 +360,6 @@ export default class CFOB_Gallery {
     const rows = Math.max(1, Math.floor((availableHeight + gap) / (itemSize + gap)));
     const cols = Math.max(1, Math.ceil(count / rows));
 
-    // The packing below replaces the fixed track list, so it must run even when the
-    // computed row/column counts are unchanged.
     const layoutUnchanged = this._lastSyncIsHorizontalRow === true
       && this._lastSyncRows === rows
       && this._lastSyncCols === cols
@@ -427,9 +409,6 @@ export default class CFOB_Gallery {
     const alreadyPacked = this._packingActive && this._packingHorizontal === horizontal;
 
     if (!enabled) {
-      // Only clear the packing when it was this layout's; the other orientation
-      // clears its own on its way in. The grid's own styles must go too: they are
-      // inline, so the stylesheet cannot take back over while they are set.
       if (this._packingActive && this._packingHorizontal === horizontal) {
         this._clearPacking(grid, true);
       }
@@ -437,8 +416,6 @@ export default class CFOB_Gallery {
     }
 
     if (!alreadyPacked) {
-      // Switching orientation: drop the other layout's packing and let the grid
-      // return to its natural sizing before the heights are measured.
       if (this._packingActive) this._clearPacking(grid, true);
       else if (horizontal) this._clearHorizontalPacking(grid);
     }
@@ -459,8 +436,6 @@ export default class CFOB_Gallery {
 
     grid.style.setProperty('grid-auto-rows', `${unit}px`);
     grid.style.setProperty('row-gap', '0px');
-    // Plain row flow: the spans already fill the holes a short card would leave, and
-    // unlike 'dense' it can never reorder a card into an earlier column.
     grid.style.setProperty('grid-auto-flow', 'row');
 
     /** @type {{ cols: number, colWidth: number, rows: number } | null} */
@@ -488,8 +463,6 @@ export default class CFOB_Gallery {
 
       grid.style.setProperty('--cfob-col-count', String(cols));
       grid.style.setProperty('--cfob-row-count', String(rows));
-      // The stylesheet pins the row count for horizontal scrolling; the packed
-      // columns need rows sized by their content instead.
       grid.style.setProperty('grid-template-rows', 'none');
       grid.style.setProperty('align-content', 'start');
       columns = { cols, colWidth, rows };
@@ -506,7 +479,6 @@ export default class CFOB_Gallery {
     this._packingActive = true;
     this._packingHorizontal = horizontal;
     this._packingCards = cards;
-    // Only a horizontal layout writes the counts; the caller keeps its cache in step.
     return columns ? { rows: columns.rows, cols: columns.cols } : null;
   }
 

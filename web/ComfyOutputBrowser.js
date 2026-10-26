@@ -59,8 +59,6 @@ ${CFOB_SETTINGS_MODALS_HTML}
 <div class="toast" id="cfobToastNotice"></div>
 `;
 
-
-
 export default class ComfyOutputBrowser {
   constructor() {
     /** @type {CFOB_Image[]} */
@@ -236,9 +234,6 @@ export default class ComfyOutputBrowser {
       }
       this.$("cfobSearchInput").focus();
     } else {
-      // The container, not a card: a card can be scrolled out of view or be replaced
-      // by the next render, and focusing it is what made keystrokes appear to be lost
-      // after the toggle. A container is always there and is what the arrows expect.
       this.$("cfobMainContainer").focus();
     }
   }
@@ -401,7 +396,6 @@ export default class ComfyOutputBrowser {
         launcherBtn.title = "Browse Outputs";
         launcherBtn.setAttribute("aria-label", "Browse Outputs");
         launcherBtn.onclick = () => {
-          // Ignore the click synthesized right after a drag ends
           if (launcherBtn._cfobDragEndedAt && Date.now() - launcherBtn._cfobDragEndedAt < 300) return;
           this.toggleUi();
         };
@@ -429,7 +423,6 @@ export default class ComfyOutputBrowser {
           }
           return;
         }
-        // Sidebar not available — fall through to floating
       }
 
       if (placement === 'action-bar') {
@@ -442,8 +435,6 @@ export default class ComfyOutputBrowser {
         };
         const loginAnchor = isVisible(/** @type {HTMLElement | null} */ (findLoginAnchor())) ? /** @type {HTMLElement | null} */ (findLoginAnchor()) : null;
         const tourAnchor = loginAnchor ? null : (isVisible(/** @type {HTMLElement | null} */ (document.querySelector('[aria-label="Take a tour of App Mode"]'))) ? /** @type {HTMLElement | null} */ (document.querySelector('[aria-label="Take a tour of App Mode"]')) : null);
-        // In app mode on mobile, fall back to the "More" menu button when login/tour are unavailable
-        // Detect app mode by the presence of the mobile workflow selector or the "Graph mode" button
         const isAppMode = !!document.querySelector('[data-testid="linear-mobile-workflows"]') || !!document.querySelector('[aria-label="Graph mode, workflow actions"]');
         const menuAnchor = (!loginAnchor && !tourAnchor && isAppMode && window.innerWidth < 768)
           ? (isVisible(document.querySelector('[aria-label="More"]')) ? document.querySelector('[aria-label="More"]') : null)
@@ -460,7 +451,6 @@ export default class ComfyOutputBrowser {
           if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
           launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
           if (anchor) {
-            // Sit immediately to the left of the login/current-user button, tour button, or menu button.
             if (launcherBtn.nextElementSibling !== anchor) {
               anchor.parentElement?.insertBefore(launcherBtn, anchor);
             }
@@ -469,7 +459,6 @@ export default class ComfyOutputBrowser {
           }
           return;
         }
-        // Action bar not available — fall through to floating
       }
 
       if (placement === 'hook') {
@@ -484,7 +473,6 @@ export default class ComfyOutputBrowser {
           launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
           const parent = hookTarget.parentElement;
           if (hook.side === 'after') {
-            // Sit right after the target: insert before whatever follows it.
             const next = hookTarget.nextElementSibling;
             if (launcherBtn.previousElementSibling !== hookTarget) {
               if (next && next !== launcherBtn) parent.insertBefore(launcherBtn, next);
@@ -495,10 +483,8 @@ export default class ComfyOutputBrowser {
           }
           return;
         }
-        // Hook target not found — fall through to floating
       }
 
-      // Floating placement (or fallback)
       if (launcherBtn.className !== "floating") launcherBtn.className = "floating";
       launcherBtn.style.border = "";
       if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
@@ -510,14 +496,12 @@ export default class ComfyOutputBrowser {
 
     updateButtonPlacement();
 
-    // Set up floating drag once (track via property to avoid re-adding listeners)
     const launcherBtn = /** @type {HTMLElement & { _dragSetup?: boolean; _cfobDragEndedAt?: number }} */ (document.getElementById("cfob-launcher-btn"));
     if (launcherBtn && !launcherBtn._dragSetup) {
       launcherBtn._dragSetup = true;
       setupFloatingDrag(launcherBtn);
     }
 
-    // Keep the floating launcher inside the viewport when the window resizes
     const clampFloatingToViewport = (/** @type {HTMLElement | null} */ btn) => {
       if (!btn || btn.className !== "floating") return;
       const rect = btn.getBoundingClientRect();
@@ -529,7 +513,6 @@ export default class ComfyOutputBrowser {
       const clampedTop = Math.min(Math.max(0, currentTop), maxTop);
       if (clampedLeft !== currentLeft) btn.style.left = `${clampedLeft}px`;
       if (clampedTop !== currentTop) btn.style.top = `${clampedTop}px`;
-      // Persist the clamped position so it survives subsequent placement updates
       const finalLeft = clampedLeft || 0;
       const finalTop = clampedTop || 0;
       localStorage.setItem('cfob_launcher_pos', JSON.stringify({ left: finalLeft, top: finalTop }));
@@ -547,7 +530,6 @@ export default class ComfyOutputBrowser {
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
         updateButtonPlacement();
-        // ComfyUI's chrome may mount after our init; recompute offsets when it appears.
         if (this.settings.panelOffsets) this.settings.setPanelOffsets(true);
         if (!canvasContObserved) {
           const canvasCont = document.getElementById('graph-canvas-container');
@@ -582,7 +564,6 @@ export default class ComfyOutputBrowser {
     if (this.isPickingElement) return;
     this.isPickingElement = true;
 
-    // Remember what to restore, then get the browser UI out of the way.
     this._pickRestore = {
       uiVisible: this.isUiVisible,
       placement: previousPlacement || this.settings.launcherPlacement,
@@ -608,8 +589,6 @@ export default class ComfyOutputBrowser {
     `;
     document.body.appendChild(banner);
 
-    // Live preview of where the launcher would land. Shown only after a click —
-    // tracking the pointer instead is too jittery to be readable.
     const preview = document.createElement('button');
     preview.id = 'cfob-launcher-preview';
     preview.type = 'button';
@@ -625,7 +604,6 @@ export default class ComfyOutputBrowser {
 
     /** Shows where the launcher would land — only ever called for a clicked element. */
     const showPreview = (/** @type {HTMLElement} */ target, /** @type {'before' | 'after'} */ side) => {
-      // Preview only where the launcher can actually go: a sibling of the target.
       const parent = target.parentElement;
       if (!parent) {
         preview.hidden = true;
@@ -661,7 +639,6 @@ export default class ComfyOutputBrowser {
     const onClick = (/** @type {MouseEvent} */ e) => {
       const target = e.target instanceof HTMLElement ? e.target : null;
       if (!target || banner.contains(target) || target === preview) return;
-      // Keep the click from reaching ComfyUI's own handlers while picking.
       e.preventDefault();
       e.stopPropagation();
       if (!generateSelector(target)) return;
@@ -696,8 +673,6 @@ export default class ComfyOutputBrowser {
       document.body.classList.remove('cfob-pick-mode');
       this.isPickingElement = false;
 
-      // Restore the UI exactly as the user left it — an open modal keeps its
-      // state because it was only hidden, never closed.
       const restore = this._pickRestore;
       this._pickRestore = null;
       const commit = this._pickCommit;
@@ -751,8 +726,6 @@ export default class ComfyOutputBrowser {
       if (activeDialog) return;
       e.preventDefault();
       if (this.search.handleKeydown(e)) return;
-      // The chips field picker is a transient layer of its own: Escape dismisses it,
-      // not the panel behind it. It owns focus while it is open, so it is checked first.
       if (this.settings.activePopover) {
         this.settings.dismissPopover();
         return;
@@ -781,9 +754,6 @@ export default class ComfyOutputBrowser {
 
     if (isEditing) return;
 
-    // Panel-level chrome, before the per-domain branch: it is not a full-view key and it
-    // must still work while the chrome itself is hidden, so it cannot be routed through
-    // the domain handlers (their branch is skipped when the panel is closed).
     //
     // The chips field picker is a transient layer that owns focus and needs the arrow
     // keys for itself. It must be checked BEFORE the per-domain routing, or full view's
@@ -793,9 +763,6 @@ export default class ComfyOutputBrowser {
       return;
     }
 
-    // In full view the same key drives the view's own ui-hidden, because that is the same
-    // "hide the chrome" gesture on the surface that is on screen. `setChromeHidden` is
-    // shared by both, so they can never disagree about whether the chrome is hidden.
     if (key === 'h' && noModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey) {
       e.preventDefault();
       e.stopPropagation();
@@ -876,8 +843,6 @@ export default class ComfyOutputBrowser {
     this.$("cfobActionMove").addEventListener('click', () => this.actions.moveSelected());
     this.$("cfobActionSendChips").addEventListener('click', (e) => {
       e.stopPropagation();
-      // No anchorEl: the picker anchors to the focused card, not to this button in the
-      // action bar, which is away from the image the field choice is about.
       this.actions.sendChipsToBasket(null, null);
     });
     this.$("cfobActionDownload").addEventListener('click', () => this.actions.downloadSelected());
@@ -933,7 +898,6 @@ export default class ComfyOutputBrowser {
       }
     });
 
-    // Keep panel offsets in sync with ComfyUI's chrome when the window resizes.
     window.addEventListener('resize', () => {
       if (this.settings.panelOffsets) this.settings.setPanelOffsets(true);
     });
@@ -1290,16 +1254,13 @@ if (window.CFOB_STANDALONE) {
   window.addEventListener('DOMContentLoaded', () => {
     browser.init();
 
-    // Lock view format for full-screen mode
     browser.settings.setBrowserMode('full');
     browser.showWithTransition();
 
-    // Hide resizer grip
     const resizer = document.getElementById("cfob-resizer");
     if (resizer) resizer.style.display = 'none';
   });
 } else {
-  // We are inside ComfyUI, safe to import app.js
   // @ts-ignore
   import("../../scripts/app.js").then((module) => {
     const app = module.app;

@@ -186,7 +186,6 @@ export default class CFOB_ImageActions {
     const app = this.app;
     if (!img || !app.root) return;
 
-    // Check if running in standalone mode by verifying the global ComfyUI app context
     // @ts-ignore
     if (!window.app || typeof window.app.loadGraphData !== 'function') {
       app.showToast("Load Workflow is disabled in standalone mode.");
@@ -302,15 +301,12 @@ export default class CFOB_ImageActions {
    */
   showFieldPicker(anchorEl, images = null) {
     const app = this.app;
-    // Remember who owned focus, so dismissing the picker can give it back.
     const previousFocus = /** @type {HTMLElement | null} */ (document.activeElement);
     if (app.settings.activePopover) app.settings.activePopover.remove();
 
     const rect = anchorEl?.getBoundingClientRect();
     const menu = document.createElement("div");
     menu.className = "popover-menu";
-    // A focusable container, so the arrow keys can move between the fields and Enter
-    // picks one — the picker is a choice, not a click target.
     menu.tabIndex = -1;
 
     let html = `<div class="popover-header">Send Chips From Field:</div>`;
@@ -343,11 +339,6 @@ export default class CFOB_ImageActions {
     /** @param {number} v @param {number} size @param {number} min @param {number} max */
     const clampIn = (v, size, min, max) => Math.max(min + gap, Math.min(v, max - size - gap));
 
-    // Horizontal: centred on the anchor is the preference (covering it a little is fine),
-    // then beside it on either side, then clamped inside the root. Fully visible wins,
-    // and when neither centring nor sitting beside fits, sitting beside still beats
-    // overlapping the anchor: a menu on top of the picture hides the thing the choice
-    // is about.
     const centreLeft = anchorLeft + (anchorWidth - menuWidth) / 2;
     const besideRight = anchorRight + gap;
     const besideLeft = anchorLeft - menuWidth - gap;
@@ -358,9 +349,6 @@ export default class CFOB_ImageActions {
     } else if (besideLeft >= rootLeft + gap) {
       menu.style.left = `${besideLeft}px`;
     } else {
-      // Neither centring nor sitting beside fits. Slide the centred position as far as
-      // needed to stop overlapping the anchor, then clamp into the root. Keeping the
-      // centred position instead is what made a narrow picture get a menu on top of it.
       const slideLeft = Math.min(centreLeft, besideLeft);
       const slideRight = Math.max(centreLeft, besideRight);
       const fitsLeft = slideLeft >= rootLeft + gap && slideLeft + menuWidth <= rootRight - gap;
@@ -374,7 +362,6 @@ export default class CFOB_ImageActions {
       }
     }
 
-    // Vertical, the same rules.
     const centreTop = anchorTop + (anchorHeight - menuHeight) / 2;
     const belowTop = anchorBottom + gap;
     const aboveTop = anchorTop - menuHeight - gap;
