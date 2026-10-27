@@ -56,7 +56,7 @@ the real app breaks, it proves nothing.
 
 ## The gaps, ranked by user-visible risk / effort
 
-### [ ] 1. Settings persist to localStorage and re-apply on reload
+### [x] 1. Settings persist to localStorage and re-apply on reload
 
 `CFOB_Settings` reads and writes `cfob_*` keys, but no setting test runs the real setter
 or checks the gallery the setting changes (only the mock store holds the key).
