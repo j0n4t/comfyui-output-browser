@@ -344,20 +344,27 @@ export default class CFOB_FullView {
     this.app.$("cfobNextImgBtn").addEventListener('click', () => this.navigateImage(1));
 
     let touchStartX = 0;
-    let touchImageInteraction = false;
+    let isPinch = false;
     const fvModal = this.app.$("cfobFullViewModal");
     const fvMain = /** @type {HTMLElement} */ (this.app.root?.querySelector('.full-view-main'));
 
     fvMain.addEventListener('touchstart', (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-      if (e.touches.length > 1) touchImageInteraction = true;
+      if (e.touches.length === 2) {
+        isPinch = true;
+        return;
+      }
+      if (e.touches.length === 1) {
+        touchStartX = e.changedTouches[0].screenX;
+      }
     }, { passive: true });
 
     fvMain.addEventListener('touchend', (e) => {
-      if (touchImageInteraction) {
-        if (e.touches.length === 0) touchImageInteraction = false;
+      if (isPinch) {
+        isPinch = false;
         return;
       }
+      if (e.touches.length > 0) return;
+
       const touchEndX = e.changedTouches[0].screenX;
 
       if (fvModal.classList.contains('active')) {
@@ -434,12 +441,10 @@ export default class CFOB_FullView {
 
     fvImg.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse') return;
-      if (e.pointerType === 'touch' && this.fvZoom > 1) touchImageInteraction = true;
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, pointerType: e.pointerType });
       fvImg.setPointerCapture(e.pointerId);
 
       if (activePointers.size >= 2) {
-        touchImageInteraction = true;
         const [first, second] = getPinchPoints();
         const midpointX = (first.x + second.x) / 2;
         const midpointY = (first.y + second.y) / 2;
