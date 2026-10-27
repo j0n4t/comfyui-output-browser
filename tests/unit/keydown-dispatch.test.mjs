@@ -32,7 +32,14 @@ globalThis.indexedDB = {
   }),
 };
 globalThis.document = {
-  createElement: () => ({ style: {}, classList: { add: () => {}, remove: () => {}, toggle: () => {} }, setAttribute: () => {}, appendChild: () => {} }),
+  createElement: () => ({
+    style: {},
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    setAttribute: () => {},
+    appendChild: () => {},
+    dataset: {},
+    addEventListener: () => {},
+  }),
   body: { appendChild: () => {} },
   getElementById: () => null,
   addEventListener: () => {},
@@ -1273,4 +1280,103 @@ test("digit key with no configured field is a no-op", async () => {
   await ComfyOutputBrowser.prototype.handleFieldCopyKey.call(app, '1');
 
   assert.equal(clipboard.lastValue, '', "no value should be written when the digit has no configured field");
+});
+
+// --- Search suggestion completion and cycling (item 3) ---
+
+function createMockAppForSearch(overrides = {}) {
+  const keywordDictionary = new Map(overrides.keywordDictionary ?? [
+    ['cat', 5],
+    ['catnip', 3],
+    ['catalog', 2],
+  ]);
+
+  const app = {
+    settings: {
+      searchBlacklist: [],
+      filterShortcuts: [],
+      ignoredAutocompleteKeywords: [],
+      fieldConfigs: [{ label: 'Seed', paths: '@prompt.inputs.seed' }],
+    },
+    serverImageFetchCount: 0,
+    isIdleParsing: false,
+    searchHistory: [],
+    searchHistoryIndex: 0,
+    activeSearchSuggestionIndex: -1,
+    keywordDictionary,
+    imageKeywordIndex: new Map(),
+    loadedImages: [],
+    gallery: { filterGallery: () => {} },
+    focusFirstGridItem: () => {},
+    _searchInput: {
+      value: 'cat',
+      setSelectionRange: () => {},
+      setAttribute: () => {},
+    },
+    _searchSuggestions: {
+      hidden: false,
+      replaceChildren: () => {},
+      scrollTop: 0,
+      clientHeight: 200,
+      scrollHeight: 300,
+      querySelectorAll: () => [],
+      addEventListener: () => {},
+      appendChild: () => {},
+    },
+    $ (id) {
+      if (id === 'cfobSearchInput') return this._searchInput;
+      if (id === 'cfobSearchSuggestions') return this._searchSuggestions;
+      return null;
+    },
+  };
+
+  return { app };
+}
+
+test("CFOB_Search: ArrowDown/ArrowUp cycle the active suggestion", async () => {
+  const { app } = createMockAppForSearch();
+  const search = new CFOB_Search(app);
+
+  // Populate the suggestion list from a real keyword dictionary.
+  const input = app.$("cfobSearchInput");
+  globalThis.document.activeElement = input;
+  search.updateSearchSuggestions(true);
+
+  assert.equal(app.activeSearchSuggestionIndex, -1, "starts with no active suggestion");
+
+  const down = { key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} };
+  search.handleSearchKeydown(down);
+  assert.equal(app.activeSearchSuggestionIndex, 0, "ArrowDown moves to first suggestion");
+
+  search.handleSearchKeydown({ key: 'ArrowDown', preventDefault: () => {}, stopPropagation: () => {} });
+  assert.equal(app.activeSearchSuggestionIndex, 1, "ArrowDown wraps to the next suggestion");
+
+  search.handleSearchKeydown({ key: 'ArrowUp', preventDefault: () => {}, stopPropagation: () => {} });
+  assert.equal(app.activeSearchSuggestionIndex, 0, "ArrowUp moves back to the previous suggestion");
+});
+
+test("CFOB_Search: Enter completes the active suggestion", () => {
+  const { app } = createMockAppForSearch();
+  const search = new CFOB_Search(app);
+
+  const input = app.$("cfobSearchInput");
+  globalThis.document.activeElement = input;
+  search.updateSearchSuggestions(true);
+
+  assert.equal(app.activeSearchSuggestionIndex, -1, "starts with no active suggestion");
+
+  search.handleSearchKeydown({ key: 'Enter', preventDefault: () => {}, stopPropagation: () => {} });
+  assert.equal(input.value, 'catnip ', "Enter completes the active suggestion into the input");
+});
+
+test("CFOB_Search: Tab completes the active suggestion", () => {
+  const { app } = createMockAppForSearch();
+  const search = new CFOB_Search(app);
+
+  const input = app.$("cfobSearchInput");
+  globalThis.document.activeElement = input;
+  search.updateSearchSuggestions(true);
+
+  search.handleSearchKeydown({ key: 'Tab', preventDefault: () => {}, stopPropagation: () => {} });
+  assert.equal(input.value, 'catnip ', "Tab completes the active suggestion into the input");
 });
