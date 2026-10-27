@@ -1213,3 +1213,64 @@ test("real CFOB_Search.handleKeydown: non-Escape key returns false", () => {
   const handled = CFOB_Search.prototype.handleKeydown.call(search, e);
   assert.ok(!handled, "should return false for non-Escape key");
 });
+
+// --- Metadata copy tests (item 2): digit keys must actually copy field values ---
+
+function createMockAppForFieldCopy(overrides = {}) {
+  const testImage = {
+    name: 'test.png',
+    url: 'test.png',
+    prompt: { inputs: { seed: 42 } },
+    workflow: { nodes: [] },
+    isParsed: true,
+  };
+
+  const settings = {
+    fieldConfigs: overrides.fieldConfigs ?? [
+      { label: 'Seed', paths: '@prompt.inputs.seed' },
+    ],
+    modals: { getActive: () => overrides.activeDialog ?? null },
+    showToast: () => {},
+  };
+
+  const app = {
+    selectedImages: new Set(),
+    lastSelectedIdx: 0,
+    isUiVisible: true,
+    uiHidden: false,
+    filteredImages: [testImage],
+    loadedImages: [testImage],
+    settings,
+    showToast: () => {},
+    $: (id) => (id === 'cfobFullViewModal' ? { classList: { contains: () => false } } : null),
+    resolveFieldValue(img, paths) {
+      return ComfyOutputBrowser.prototype.resolveFieldValue.call(app, img, paths);
+    },
+  };
+
+  return { app, testImage, settings };
+}
+
+test("digit keys copy configured metadata fields to the clipboard", async () => {
+  const clipboard = { lastValue: '', writeText: async (v) => { clipboard.lastValue = v; } };
+  Object.defineProperty(globalThis, 'navigator', { value: { clipboard }, configurable: true });
+  const { app } = createMockAppForFieldCopy();
+
+  // '1' resolves to fieldConfigs[0] = 'Seed', whose paths read prompt.inputs.seed = 42.
+  await ComfyOutputBrowser.prototype.handleFieldCopyKey.call(app, '1');
+
+  assert.equal(clipboard.lastValue, '42', "the configured field value is written to the clipboard");
+});
+
+test("digit key with no configured field is a no-op", async () => {
+  const clipboard = { lastValue: '', writeText: async (v) => { clipboard.lastValue = v; } };
+  Object.defineProperty(globalThis, 'navigator', { value: { clipboard }, configurable: true });
+  const { app } = createMockAppForFieldCopy({
+    fieldConfigs: [],
+  });
+
+  // No config matched, so nothing is written to the clipboard and no toast.
+  await ComfyOutputBrowser.prototype.handleFieldCopyKey.call(app, '1');
+
+  assert.equal(clipboard.lastValue, '', "no value should be written when the digit has no configured field");
+});
