@@ -5,8 +5,8 @@ import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { createServer } from "node:net";
 import { deflateSync } from "node:zlib";
-import { chromium } from "playwright";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "..", "..");
 
@@ -127,28 +127,6 @@ export function sweepStaleProfileDirs() {
     if (removeDirWithRetry(join(temp, name))) removed++;
   }
   return removed;
-}
-
-/** Absolute paths tried in order for a Chromium binary. */
-const CHROME_CANDIDATES = [
-  chromium.executablePath(),
-  join(process.env.LOCALAPPDATA || "", "ms-playwright", "chromium-1223", "chrome-win64", "chrome.exe"),
-  "C:/Program Files/Google/Chrome/Application/chrome.exe",
-  "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
-  "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
-  "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
-  "/usr/bin/google-chrome",
-  "/usr/bin/chromium",
-];
-let playwrightBrowserPromise = null;
-let browserCleanup = null;
-let browserIdleTimer = null;
-let activeContexts = 0;
-
-export function findChrome() {
-  const fromEnv = process.env.CFOB_CHROME;
-  const candidates = fromEnv ? [fromEnv, ...CHROME_CANDIDATES] : CHROME_CANDIDATES;
-  return candidates.find(p => p && existsSync(p)) || null;
 }
 
 /**
@@ -275,30 +253,24 @@ export async function waitForServer(url, timeoutMs = 30000) {
 /** @param {number} ms */
 export const delay = ms => new Promise(r => setTimeout(r, ms));
 
+export async function findAvailablePort() {
+  const server = createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Could not allocate a TCP port");
+  await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  return address.port;
+}
+
 /**
- * Launches a Playwright-managed Chromium instance with an isolated browser context.
- * @param {string} chromePath
+ * Adds the CDP session needed by input tests to Playwright's per-test page.
+ * @param {import("playwright").Page} page
+ * @param {import("playwright").BrowserContext} context
  */
-export async function launchChrome(chromePath) {
-  clearTimeout(browserIdleTimer);
-  browserIdleTimer = null;
-  if (!playwrightBrowserPromise) {
-    playwrightBrowserPromise = chromium.launch({
-      executablePath: chromePath,
-      headless: true,
-      args: ["--disable-gpu", "--no-first-run", "--no-default-browser-check", "--disable-extensions"],
-    }).then(browser => {
-      browserCleanup = registerCleanup(() => browser.close());
-      return browser;
-    }).catch(error => {
-      playwrightBrowserPromise = null;
-      throw error;
-    });
-  }
-  const browser = await playwrightBrowserPromise;
-  const context = await browser.newContext({ viewport: { width: 800, height: 600 } });
-  activeContexts++;
-  const page = await context.newPage();
+export async function attachPage(page, context) {
   const cdp = await context.newCDPSession(page);
   page.setDefaultTimeout(10000);
   const evaluate = expression => page.evaluate(expression);
@@ -312,29 +284,17 @@ export async function launchChrome(chromePath) {
     }
   };
 
-  /** Stops this isolated context. Idempotent. */
+  /** Detaches the optional CDP session. Playwright owns the page and context. */
   let stopped = false;
   const stop = async () => {
     if (stopped) return;
     stopped = true;
     unregisterCleanup();
-    await context.close();
-    activeContexts--;
-    if (activeContexts === 0) {
-      browserIdleTimer = setTimeout(async () => {
-        if (playwrightBrowserPromise !== browserPromise) return;
-        playwrightBrowserPromise = null;
-        browserCleanup?.();
-        browserCleanup = null;
-        await browser.close();
-      }, 250);
-    }
+    await cdp.detach();
   };
   const unregisterCleanup = registerCleanup(stop);
-  const browserPromise = playwrightBrowserPromise;
 
   return {
-    browser,
     context,
     page,
     cdp,

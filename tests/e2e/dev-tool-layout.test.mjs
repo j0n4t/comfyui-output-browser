@@ -30,24 +30,16 @@
  * /web/dev-grid-nav.html, so this runs against the real files with no fixture. The dev
  * tool draws its own SVG cards and never calls the API, so the output dir is a formality.
  *
- * Skips itself (rather than failing) when no Chromium is present, so the default test
- * command stays green on a machine without one.
+ * Requires Chromium installed by Playwright or a system browser.
  */
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "./fixtures.mjs";
 
 import {
-  findChrome,
-  findPython,
-  launchChrome,
-  startServer,
+  attachPage,
   sweepStaleProfileDirs,
-  waitForServer,
   waitUntil,
 } from "./helpers.mjs";
-
-const chromePath = findChrome();
-const pythonPath = findPython();
 
 // Sweep profile/fixture dirs from any run that died uncatchably before this one.
 sweepStaleProfileDirs();
@@ -130,7 +122,7 @@ const PANEL_JS = `(() => {
  * has to start on the grip, and a press at a negative or off-screen x would land on
  * nothing and silently not grab it.
  *
- * @param {ReturnType<typeof launchChrome>} browser
+ * @param {Awaited<ReturnType<typeof attachPage>>} browser
  * @param {{ fromX: number, toX: number, y: number }} drag
  */
 async function dragResizer(browser, { fromX, toX, y }) {
@@ -156,27 +148,20 @@ async function dragResizer(browser, { fromX, toX, y }) {
   await browser.page.mouse.up();
 }
 
-test("dev tool: the analysis panel can be resized and hidden", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8200 + (process.pid % 300);
-  const baseUrl = `http://127.0.0.1:${serverPort}`;
-
-  const server = startServer({ outputDir: process.cwd(), port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+test("dev tool: the analysis panel can be resized and hidden", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
-    await server.stop();
   });
 
-  await waitForServer(`${baseUrl}/comfyui-output-browser/images`);
-
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await page.setViewportSize({ width: 1280, height: 1000 });
 
-  await goto(`${baseUrl}/web/dev-grid-nav.html`);
+  await goto("/web/dev-grid-nav.html");
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
   await evaluate(`(() => { window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); return true; })()`);
 
@@ -333,27 +318,20 @@ test("dev tool: the analysis panel can be resized and hidden", { skip: chromePat
   assert.deepEqual(await evaluate("window.__errs"), [], "the tool must not throw while resizing or hiding the panel");
 });
 
-test("dev tool: clicking a card makes it the current one", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8200 + (process.pid % 300);
-  const baseUrl = `http://127.0.0.1:${serverPort}`;
-
-  const server = startServer({ outputDir: process.cwd(), port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+test("dev tool: clicking a card makes it the current one", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
-    await server.stop();
   });
 
-  await waitForServer(`${baseUrl}/comfyui-output-browser/images`);
-
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await page.setViewportSize({ width: 1280, height: 1000 });
 
-  await goto(`${baseUrl}/web/dev-grid-nav.html`);
+  await goto("/web/dev-grid-nav.html");
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
   // A click the tool swallows would leave the old card current, so the initial state is
   // read before the click and asserted afterwards: a no-op click on an already-current
@@ -462,27 +440,20 @@ test("dev tool: clicking a card makes it the current one", { skip: chromePath ? 
   assert.deepEqual(await evaluate("window.__errs"), [], "the tool must not throw while clicking a card");
 });
 
-test("dev tool: the landing arrows do not cover the image", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8200 + (process.pid % 300);
-  const baseUrl = `http://127.0.0.1:${serverPort}`;
-
-  const server = startServer({ outputDir: process.cwd(), port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+test("dev tool: the landing arrows do not cover the image", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
-    await server.stop();
   });
 
-  await waitForServer(`${baseUrl}/comfyui-output-browser/images`);
-
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await page.setViewportSize({ width: 1280, height: 1000 });
 
-  await goto(`${baseUrl}/web/dev-grid-nav.html`);
+  await goto("/web/dev-grid-nav.html");
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
 
   /**
@@ -527,27 +498,20 @@ test("dev tool: the landing arrows do not cover the image", { skip: chromePath ?
   }
 });
 
-test("dev tool: the current card survives a key press", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8200 + (process.pid % 300);
-  const baseUrl = `http://127.0.0.1:${serverPort}`;
-
-  const server = startServer({ outputDir: process.cwd(), port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+test("dev tool: the current card survives a key press", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
-    await server.stop();
   });
 
-  await waitForServer(`${baseUrl}/comfyui-output-browser/images`);
-
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await page.setViewportSize({ width: 1280, height: 1000 });
 
-  await goto(`${baseUrl}/web/dev-grid-nav.html`);
+  await goto("/web/dev-grid-nav.html");
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
   await evaluate(`(() => { window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); return true; })()`);
 
@@ -591,27 +555,20 @@ test("dev tool: the current card survives a key press", { skip: chromePath ? fal
   assert.deepEqual(await evaluate("window.__errs"), [], "the tool must not throw while pressing arrows");
 });
 
-test("dev tool: the controls keep focus while their value changes", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8200 + (process.pid % 300);
-  const baseUrl = `http://127.0.0.1:${serverPort}`;
-
-  const server = startServer({ outputDir: process.cwd(), port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+test("dev tool: the controls keep focus while their value changes", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
-    await server.stop();
   });
 
-  await waitForServer(`${baseUrl}/comfyui-output-browser/images`);
-
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await page.setViewportSize({ width: 1280, height: 1000 });
 
-  await goto(`${baseUrl}/web/dev-grid-nav.html`);
+  await goto("/web/dev-grid-nav.html");
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
   await evaluate(`(() => { window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); return true; })()`);
 
@@ -687,23 +644,15 @@ test("dev tool: the controls keep focus while their value changes", { skip: chro
   assert.deepEqual(await evaluate("window.__errs"), [], "the tool must not throw while editing a control");
 });
 
-test("dev tool: horizontal scrolling lays the grid out horizontally, like the app", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8200 + (process.pid % 300);
-  const baseUrl = `http://127.0.0.1:${serverPort}`;
-
-  const server = startServer({ outputDir: process.cwd(), port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+test("dev tool: horizontal scrolling lays the grid out horizontally, like the app", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
-    await server.stop();
   });
 
-  // waitForServer expects a JSON endpoint; the tool's own page is HTML.
-  await waitForServer(`${baseUrl}/comfyui-output-browser/images`);
-
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   // Headless Chromium defaults to an 800x600 window, which is too short for a second row
@@ -711,7 +660,7 @@ test("dev tool: horizontal scrolling lays the grid out horizontally, like the ap
   // meaningful rather than clamped to one by the viewport.
   await page.setViewportSize({ width: 1280, height: 1000 });
 
-  await goto(`${baseUrl}/web/dev-grid-nav.html`);
+  await goto("/web/dev-grid-nav.html");
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
 
   // A page error anywhere in the run means the tool is broken whatever the geometry says.

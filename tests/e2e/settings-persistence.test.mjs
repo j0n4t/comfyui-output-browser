@@ -19,15 +19,15 @@
  *   - Persistence: turning masonry OFF stores `false`; a reload leaves it OFF.
  *     Turning it ON stores `true`; a reload leaves it ON.
  *
- * Skips itself (rather than failing) when no Playwright Chromium is present.
+ * Requires Chromium installed by Playwright or a system browser.
  */
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "./fixtures.mjs";
 
 import {
-  findChrome,
+  findAvailablePort,
   findPython,
-  launchChrome,
+  attachPage,
   makeOutputDir,
   removeOutputDir,
   startServer,
@@ -42,7 +42,6 @@ const FIXTURE = {
   "gamma.png": [40, 40, 200],
 };
 
-const chromePath = findChrome();
 const pythonPath = findPython();
 
 // Sweep profile/fixture dirs from any run that died uncatchably before this one.
@@ -60,18 +59,16 @@ const masonryStateJs = `(() => {
   };
 })()`;
 
-test("settings: masonry persists to localStorage and re-applies on reload", {
-  skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)",
-}, async t => {
-  const serverPort = 8600 + (process.pid % 300);
+test("settings: masonry persists to localStorage and re-applies on reload", async ({ cleanup, page: testPage, context }) => {
+  const serverPort = await findAvailablePort();
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
   const server = startServer({ outputDir, port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
     await server.stop();
     removeOutputDir(root);
@@ -80,7 +77,7 @@ test("settings: masonry persists to localStorage and re-applies on reload", {
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await page.setViewportSize({ width: 1280, height: 1000 });

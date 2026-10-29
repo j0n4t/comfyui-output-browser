@@ -13,17 +13,16 @@
  * ComfyUI chrome), but every step of the picker itself is the real UI: real
  * Playwright clicks, listeners, and placement logic.
  *
- * Skips itself (rather than failing) when no Chromium is present, so the default
- * test command stays green on a machine without one.
+ * Requires Chromium installed by Playwright or a system browser.
  */
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "./fixtures.mjs";
 
 import {
   delay,
-  findChrome,
+  findAvailablePort,
   findPython,
-  launchChrome,
+  attachPage,
   makeOutputDir,
   removeOutputDir,
   startServer,
@@ -62,22 +61,21 @@ const centreOfJs = sel => `(() => {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 })()`;
 
-const chromePath = findChrome();
 const pythonPath = findPython();
 
 // Sweep profile/fixture dirs from any run that died uncatchably before this one.
 sweepStaleProfileDirs();
 
-test("pick element: hides the UI, then OK hooks the launcher and Cancel restores it", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8200 + (process.pid % 300);
+test("pick element: hides the UI, then OK hooks the launcher and Cancel restores it", async ({ cleanup, page: testPage, context }) => {
+  const serverPort = await findAvailablePort();
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
   const server = startServer({ outputDir, port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
     await server.stop();
     removeOutputDir(root);
@@ -86,7 +84,7 @@ test("pick element: hides the UI, then OK hooks the launcher and Cancel restores
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   /** Clicks a point with a real mouse event — proves the target is reachable, not just matched. */

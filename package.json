@@ -3,13 +3,14 @@
   "scripts": {
     "test": "node --test \"tests/unit/*.test.mjs\"",
     "test:mutation": "node tests/mutation/probe-grid-navigation.mjs",
-    "test:e2e": "node --test --test-concurrency=4 --test-timeout=180000 \"tests/e2e/*.test.mjs\"",
+    "test:e2e": "playwright test",
     "lint": "eslint web/**/*.js tests/**/*.mjs",
     "lint:fix": "eslint web/**/*.js tests/**/*.mjs --fix",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "playwright": "^1.64.1",

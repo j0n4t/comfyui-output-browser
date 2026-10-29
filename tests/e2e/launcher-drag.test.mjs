@@ -21,17 +21,16 @@
  * standalone shell deliberately hides it (`#cfob-launcher-btn { display: none
  * !important }`) because standalone mode has no launcher.
  *
- * Skips itself (rather than failing) when the toolchain is absent, so the
- * default test command stays green on a machine without Chromium.
+ * Requires Chromium installed by Playwright or a system browser.
  */
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "./fixtures.mjs";
 
 import {
   delay,
-  findChrome,
+  findAvailablePort,
   findPython,
-  launchChrome,
+  attachPage,
   makeOutputDir,
   removeOutputDir,
   startServer,
@@ -58,23 +57,21 @@ const SHOW_LAUNCHER_JS = `(() => {
   return true;
 })()`;
 
-const chromePath = findChrome();
 const pythonPath = findPython();
 
 // Sweep profile/fixture dirs from any run that died uncatchably before this one.
 sweepStaleProfileDirs();
 
-test("dragging the floating launcher works with mouse and touch", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  // Ports derived from the pid so concurrent runs do not collide.
-  const serverPort = 8200 + (process.pid % 300);
+test("dragging the floating launcher works with mouse and touch", async ({ cleanup, page: testPage, context }) => {
+  const serverPort = await findAvailablePort();
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
   const server = startServer({ outputDir, port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
     await server.stop();
     removeOutputDir(root);
@@ -83,7 +80,7 @@ test("dragging the floating launcher works with mouse and touch", { skip: chrome
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page, cdp } = browser;
 
   await goto(`${baseUrl}/`);

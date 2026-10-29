@@ -23,17 +23,16 @@
  *     drag handler reset its state on mouseup before the click could fire, so a
  *     background click did nothing at all.
  *
- * Skips itself (rather than failing) when no Chromium is present, so the default test
- * command stays green on a machine without one.
+ * Requires Chromium installed by Playwright or a system browser.
  */
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "./fixtures.mjs";
 
 import {
   delay,
-  findChrome,
+  findAvailablePort,
   findPython,
-  launchChrome,
+  attachPage,
   makeOutputDir,
   removeOutputDir,
   startServer,
@@ -45,22 +44,21 @@ import {
 
 const FIXTURE = { "alpha.png": [200, 40, 40], "beta.png": [40, 200, 40] };
 
-const chromePath = findChrome();
 const pythonPath = findPython();
 
 sweepStaleProfileDirs();
 
-test("panel keys: h toggles the chrome, b opens the focused picker, full view does not cover the image", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  const serverPort = 8400 + (process.pid % 200);
+test("panel keys: h toggles the chrome, b opens the focused picker, full view does not cover the image", async ({ cleanup, page: testPage, context }) => {
+  const serverPort = await findAvailablePort();
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
   writeSolidPng(`${outputDir}/big.png`, [200, 40, 40], 512, 512);
   const server = startServer({ outputDir, port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
     await server.stop();
     removeOutputDir(root);
@@ -69,7 +67,7 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await page.setViewportSize({ width: 1280, height: 1000 });

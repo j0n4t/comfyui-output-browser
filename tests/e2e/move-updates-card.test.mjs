@@ -10,19 +10,18 @@
  * It drives the real UI in a real browser against the real standalone server, so a
  * regression fails here rather than needing a manual click-through.
  *
- * Skips itself (rather than failing) when the toolchain is absent, so `npm test`
- * stays green on a machine without Chromium.
+ * Requires Chromium installed by Playwright or a system browser.
  */
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "./fixtures.mjs";
 
 import {
   delay,
-  findChrome,
+  findAvailablePort,
   findPython,
-  launchChrome,
+  attachPage,
   makeOutputDir,
   removeOutputDir,
   startServer,
@@ -46,23 +45,21 @@ const CARDS_JS = `(() => Array.from(document.querySelectorAll('.image-card')).ma
   checkbox: c.querySelector('.card-checkbox').value
 })))()`;
 
-const chromePath = findChrome();
 const pythonPath = findPython();
 
 // Sweep profile/fixture dirs from any run that died uncatchably before this one.
 sweepStaleProfileDirs();
 
-test("moving and renaming an image updates its card in place, with no reload", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
-  // Ports derived from the pid so concurrent runs do not collide.
-  const serverPort = 8200 + (process.pid % 300);
+test("moving and renaming an image updates its card in place, with no reload", async ({ cleanup, page: testPage, context }) => {
+  const serverPort = await findAvailablePort();
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
   const server = startServer({ outputDir, port: serverPort, python: pythonPath });
-  /** @type {Awaited<ReturnType<typeof launchChrome>> | null} */
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
 
-  t.after(async () => {
+  cleanup(async () => {
     if (browser) await browser.stop();
     await server.stop();
     removeOutputDir(root);
@@ -76,7 +73,7 @@ test("moving and renaming an image updates its card in place, with no reload", {
     "fixture not served"
   );
 
-  browser = await launchChrome(chromePath);
+  browser = await attachPage(testPage, context);
   const { evaluate, goto, page } = browser;
 
   await goto(`${baseUrl}/`);
