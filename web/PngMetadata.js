@@ -46,7 +46,7 @@ const PngMetadata = {
     let offset = 8; // skip signature
     while (offset + 8 <= bytes.length) {
       const view = new DataView(bytes.buffer, bytes.byteOffset + offset);
-      const length = view.getUint32(0);
+      const length = view.getUint32(0, false);
       const type = String.fromCharCode(
         bytes[offset + 4],
         bytes[offset + 5],

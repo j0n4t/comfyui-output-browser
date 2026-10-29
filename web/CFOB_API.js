@@ -6,6 +6,13 @@ export default class COB_API {
     this.app = app;
     this.dbPromise = this.initDB();
     this._idleParsingActive = false;
+
+    /** @type {Worker | null} */
+    this._metadataWorker = null;
+    /** @type {number} */
+    this._metadataToken = 0;
+    /** @type {Map<number, {resolve: Function, reject: Function, done: boolean}>} */
+    this._metadataPending = new Map();
   }
 
   async initDB() {
@@ -154,8 +161,79 @@ export default class COB_API {
   }
 
   /** @param {ArrayBuffer} arrayBuffer */
-  async parsePngBuffer(arrayBuffer) {
-    const bytes = new Uint8Array(arrayBuffer);
-    return PngMetadata.extract(bytes);
+  parsePngBuffer(arrayBuffer) {
+    if (!this._metadataWorker) this._metadataWorker = this._initMetadataWorker();
+    const worker = this._metadataWorker;
+    if (worker && typeof worker.postMessage === "function") {
+      return new Promise((resolve, reject) => {
+        const token = this._metadataToken++;
+        const pending = { resolve, reject, done: false };
+        this._metadataPending.set(token, pending);
+
+        /**
+         * @param {MessageEvent} e
+         */
+        const onMessage = (e) => {
+          if (e.data && e.data.token === token) {
+            worker.removeEventListener("message", onMessage);
+            worker.removeEventListener("error", onError);
+            this._metadataPending.delete(token);
+            if (pending.done) return;
+            pending.done = true;
+            if (e.data.type === "metadata") {
+              resolve(e.data.meta && e.data.meta !== null ? e.data.meta : { prompt: null, workflow: null });
+            } else {
+              reject(new Error(e.data.error || "PNG metadata parse failed"));
+            }
+          }
+        };
+        /**
+         * @param {Event} _e
+         */
+        const onError = (_e) => {
+          worker.removeEventListener("message", onMessage);
+          worker.removeEventListener("error", onError);
+          this._metadataPending.delete(token);
+          if (pending.done) return;
+          pending.done = true;
+          reject(new Error("Metadata worker error"));
+        };
+        worker.addEventListener("message", onMessage);
+        worker.addEventListener("error", onError);
+
+        try {
+          // Transfer the buffer so the parser runs on this worker thread with no copy.
+          worker.postMessage({ token, type: "parse", bytes: arrayBuffer }, [arrayBuffer]);
+        } catch {
+          worker.removeEventListener("message", onMessage);
+          worker.removeEventListener("error", onError);
+          this._metadataPending.delete(token);
+          if (!pending.done) pending.done = true;
+          // The buffer could not be transferred (e.g. cross-origin response).
+          // Parse on the main thread instead of blocking the worker path.
+          resolve(PngMetadata.extract(new Uint8Array(arrayBuffer)) || { prompt: null, workflow: null });
+        }
+      });
+    }
+    // Workers are unavailable in this environment (e.g. a restricted renderer).
+    // Parse on the main thread so the path stays correct.
+    return Promise.resolve(PngMetadata.extract(new Uint8Array(arrayBuffer)) || { prompt: null, workflow: null });
+  }
+
+  /** @private */
+  _initMetadataWorker() {
+    if (this._metadataWorker) return this._metadataWorker;
+    try {
+      // @ts-ignore
+      const WorkerCtor = self.Worker || (/** @type {any} */ (self).Worker);
+      if (!WorkerCtor) return null;
+      // Module workers resolve "./PngMetadata.js" relative to this file's URL.
+      const worker = new WorkerCtor(new URL("./CFOB_MetadataWorker.js", import.meta.url), { type: "module" });
+      this._metadataWorker = worker;
+      return worker;
+    } catch {
+      // Worker creation failed (e.g. restricted renderer); fall back to main-thread parse.
+      return null;
+    }
   }
 }
