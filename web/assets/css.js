@@ -183,7 +183,11 @@ export const CFOB_STYLES = /*css*/ `
 
   #cfob-root .main-container.scroll-horizontal { overflow-x: auto; overflow-y: hidden; }
   #cfob-root .main-container.scroll-horizontal .gallery-container.grid-column-first:not(.view-list):not(.masonry) { grid-auto-flow: column; grid-template-columns: none; grid-template-rows: repeat(auto-fill, minmax(var(--gallery-item-size), 1fr)); grid-auto-columns: var(--gallery-item-size); width: max-content; min-width: 100%; height: 100%; min-height: 100%; padding: 0 5em 1.25em 0; }
-  #cfob-root .main-container.scroll-horizontal .gallery-container:not(.grid-column-first):not(.view-list) { grid-auto-flow: row; grid-template-rows: repeat(var(--cfob-row-count, auto-fill), minmax(var(--gallery-item-size), 1fr)); grid-template-columns: repeat(var(--cfob-col-count, 1), var(--gallery-item-size)); width: max-content; min-width: 100%; height: 100%; min-height: 100%; padding: 0 5em 1.25em 0; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container:not(.grid-column-first):not(.view-list) { grid-auto-flow: row; grid-template-rows: repeat(var(--cfob-row-count, 1), minmax(var(--gallery-item-size), 1fr)); grid-template-columns: repeat(var(--cfob-col-count, 1), var(--gallery-item-size)); width: max-content; min-width: 100%; height: 100%; min-height: 100%; padding: 0 5em 1.25em 0; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container:not(.grid-column-first):not(.view-list):not(.masonry) .image-card { align-self: stretch; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container:not(.grid-column-first):not(.view-list):not(.masonry) .card-preview { flex: 1 1 auto; height: auto; min-height: 0; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.grid-column-first:not(.view-list):not(.masonry) .image-card { align-self: stretch; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.grid-column-first:not(.view-list):not(.masonry) .card-preview { flex: 1 1 auto; height: auto; min-height: 0; }
   #cfob-root .main-container:not(.scroll-horizontal) .gallery-container.grid-column-first:not(.masonry) { display: block; column-width: var(--gallery-item-size); column-gap: 0.4em; column-fill: balance; }
   #cfob-root .main-container:not(.scroll-horizontal) .gallery-container.grid-column-first:not(.masonry) .image-card { display: inline-flex; flex-direction: column; width: 100%; margin: 0 0 0.4em; break-inside: avoid; vertical-align: top; }
   #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.grid-column-first { height: 100%; min-height: 100%; column-fill: auto; padding: 0 5em 1.25em 0; }
@@ -193,10 +197,11 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .gallery-container.view-list .card-preview { width: 10em; background: var(--color-bg-input); object-fit: contain; cursor: pointer; border-right: 1px solid var(--color-border); }
   #cfob-root .gallery-container.view-list .card-body { display: flex; }
 
-  /* Image-only grid mode: hide filename + metadata, keep just the preview */
+  /* Image-only masonry mode keeps the preview's natural aspect ratio. A plain grid
+     retains its fixed preview size so cards line up without uneven vertical gaps. */
   #cfob-root .gallery-container.hide-card-info:not(.view-list) .card-content-wrapper { display: none; }
-  #cfob-root .gallery-container.hide-card-info.view-grid .card-preview,
-  #cfob-root .gallery-container.hide-card-info.view-compact .card-preview { height: auto; }
+  #cfob-root .gallery-container.masonry.hide-card-info.view-grid .card-preview,
+  #cfob-root .gallery-container.masonry.hide-card-info.view-compact .card-preview { height: auto; }
   #cfob-root .main-container.scroll-horizontal .gallery-container.view-list { grid-auto-flow: column; grid-template-columns: none; grid-template-rows: 1fr; grid-auto-columns: var(--gallery-item-size); width: max-content; min-width: 100%; height: 100%; min-height: 100%; padding: 0 5em 1.25em 0; }
 
   #cfob-root .action-bar { position: absolute; bottom: 1.25em; left: 50%; transform: translateX(-50%) translateY(6.25em); background: var(--color-bg-panel); border: 1px solid var(--color-accent); border-radius: var(--radius-lg); padding: 0.625em 1.25em; display: flex; align-items: center; gap: 0.9375em; box-shadow: 0 0.625em 1.875em rgba(0,0,0,0.8); z-index: var(--z-action-bar); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }

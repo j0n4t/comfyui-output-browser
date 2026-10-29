@@ -63,6 +63,19 @@ const LAYOUT_JS = `(() => {
     clientWidth: container.clientWidth,
     scrollHeight: container.scrollHeight,
     clientHeight: container.clientHeight,
+    rowGap: (() => {
+      const byTop = new Map();
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        const top = Math.round(rect.top);
+        if (!byTop.has(top)) byTop.set(top, rect.bottom);
+      }
+      const rows = [...byTop.entries()].sort((a, b) => a[0] - b[0]);
+      return rows.length > 1 ? rows[1][0] - rows[0][1] : 0;
+    })(),
+    gridHeight: grid.getBoundingClientRect().height,
+    lastRowBottom: Math.max(...cards.map(card => card.getBoundingClientRect().bottom)),
+    firstPreviewHeight: cards[0]?.querySelector('.card-preview').getBoundingClientRect().height ?? 0,
     display: cs.display,
     inline: grid.style.cssText
   };
@@ -695,13 +708,42 @@ test("dev tool: horizontal scrolling lays the grid out horizontally, like the ap
     horizontal.scrollHeight <= horizontal.clientHeight + 1,
     `a horizontal layout should not overflow vertically (scrollHeight ${horizontal.scrollHeight}, clientHeight ${horizontal.clientHeight})`
   );
+  assert.ok(
+    horizontal.rowGap <= 8,
+    `masonry-off horizontal rows should have only the normal grid gap (got ${horizontal.rowGap}px)`
+  );
+  assert.ok(
+    horizontal.lastRowBottom >= horizontal.clientHeight - 24,
+    `masonry-off rows should use the available panel height (last row ends at ${horizontal.lastRowBottom}px in a ${horizontal.clientHeight}px pane)`
+  );
+  assert.ok(
+    horizontal.firstPreviewHeight > 150,
+    `previews should grow with the horizontal row tracks instead of leaving empty panel space (height ${horizontal.firstPreviewHeight}px)`
+  );
+
+  // ------------------------------------------------- horizontal column-first, no masonry
+  await evaluate(SET_TOOL_JS({ order: "column", masonry: "0" }));
+  const horizontalColumnFirst = await evaluate(LAYOUT_JS);
+  assert.ok(horizontalColumnFirst.rows > 1, "column-first should have multiple horizontal rows");
+  assert.ok(
+    horizontalColumnFirst.rowGap <= 8,
+    `masonry-off column-first rows should have only the normal grid gap (got ${horizontalColumnFirst.rowGap}px)`
+  );
+  assert.ok(
+    horizontalColumnFirst.lastRowBottom >= horizontalColumnFirst.clientHeight - 24,
+    `column-first rows should use available panel height (last row ends at ${horizontalColumnFirst.lastRowBottom}px in a ${horizontalColumnFirst.clientHeight}px pane)`
+  );
+  assert.ok(
+    horizontalColumnFirst.firstPreviewHeight > 150,
+    `column-first previews should grow with the row tracks (height ${horizontalColumnFirst.firstPreviewHeight}px)`
+  );
 
   // ------------------------------------------------- the card-size control is live
   // The app sizes its rows from the card size, so shrinking the cards must fit more of
   // them in the pane. This is the control the tool was missing: with the app stylesheet
   // pinning --grid-size on #cfob-root, the old documentElement writes never took effect
   // and every layout ran at 380px cards.
-  await evaluate(SET_TOOL_JS({ size: "100" }));
+  await evaluate(SET_TOOL_JS({ size: "100", order: "row" }));
   const smaller = await evaluate(LAYOUT_JS);
 
   assert.ok(
@@ -753,6 +795,26 @@ test("dev tool: horizontal scrolling lays the grid out horizontally, like the ap
   assert.equal(vertical.colCount, "", "the horizontal column count must be cleared, not left stale");
   assert.equal(vertical.rowCount, "", "the horizontal row count must be cleared, not left stale");
   assert.ok(!/--cfob-col-count/.test(vertical.inline), "the grid should not keep the horizontal inline styles");
+
+  // ------------------------------------------------- image-only plain grids keep aligned card sizes
+  await evaluate(`document.querySelector('#cfobGalleryGrid').classList.add('hide-card-info')`);
+  const plainImageOnly = await evaluate(`(() => {
+    const cards = Array.from(document.querySelectorAll('.image-card'));
+    const heights = cards.map(card => card.querySelector('.card-preview').getBoundingClientRect().height);
+    const cardHeights = cards.map(card => card.getBoundingClientRect().height);
+    return {
+      previewHeightRange: Math.max(...heights) - Math.min(...heights),
+      cardHeightRange: Math.max(...cardHeights) - Math.min(...cardHeights)
+    };
+  })()`);
+  assert.ok(
+    plainImageOnly.previewHeightRange < 1,
+    `plain image-only previews should use the same height (range ${plainImageOnly.previewHeightRange}px)`
+  );
+  assert.ok(
+    plainImageOnly.cardHeightRange < 1,
+    `plain image-only cards should align without aspect-ratio gaps (range ${plainImageOnly.cardHeightRange}px)`
+  );
 
   assert.deepEqual(await evaluate("window.__errs"), [], "the tool must not throw while switching layouts");
 });
