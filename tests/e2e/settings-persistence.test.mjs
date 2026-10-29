@@ -19,8 +19,7 @@
  *   - Persistence: turning masonry OFF stores `false`; a reload leaves it OFF.
  *     Turning it ON stores `true`; a reload leaves it ON.
  *
- * Skips itself (rather than failing) when no Chromium is present, so the default
- * test command stays green on a machine without one.
+ * Skips itself (rather than failing) when no Playwright Chromium is present.
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -65,7 +64,6 @@ test("settings: masonry persists to localStorage and re-applies on reload", {
   skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)",
 }, async t => {
   const serverPort = 8600 + (process.pid % 300);
-  const cdpPort = 9700 + (process.pid % 300);
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
@@ -82,10 +80,10 @@ test("settings: masonry persists to localStorage and re-applies on reload", {
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath, { port: cdpPort });
-  const { evaluate, goto, send } = browser;
+  browser = await launchChrome(chromePath);
+  const { evaluate, goto, page } = browser;
 
-  await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await page.setViewportSize({ width: 1280, height: 1000 });
 
   await goto(`${baseUrl}/`);
   await waitUntil(
@@ -104,13 +102,13 @@ test("settings: masonry persists to localStorage and re-applies on reload", {
   // the storage key back. These are the real `setMasonryEnabled` observations,
   // not a mock-store re-read.
   // --------------------------------------------------------------------------
-  await evaluate(`document.getElementById('cfobMenuBtn').click(), true`);
+  await page.locator("#cfobMenuBtn").click();
   await waitUntil(
     evaluate,
     "Boolean(document.getElementById('cfobOptionsModal').classList.contains('active'))",
     "options modal to open"
   );
-  await evaluate(`document.getElementById('cfobToggleMasonryBtn').click(), true`);
+  await page.locator("#cfobToggleMasonryBtn").click();
   state = await evaluate(masonryStateJs);
   assert.equal(state.masonry, false, "grid must lose the masonry class when toggled off");
   assert.equal(state.status, "Off", "status badge must read Off when masonry is off");
@@ -120,8 +118,8 @@ test("settings: masonry persists to localStorage and re-applies on reload", {
   // Reload the store: a full reload must honour the stored "false" and leave
   // masonry off. This is the observable "the value comes back" check.
   // --------------------------------------------------------------------------
-  await evaluate("location.reload()");
-  await waitUntil(evaluate, "() => document.readyState === 'complete'", "page to finish reloading", 15000);
+  await browser.page.reload();
+  await waitUntil(evaluate, "document.readyState === 'complete'", "page to finish reloading", 15000);
   await evaluate(`(() => { window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); return true; })()`);
 
   state = await evaluate(masonryStateJs);
@@ -132,20 +130,20 @@ test("settings: masonry persists to localStorage and re-applies on reload", {
   // Repeat the setter pass in the other direction: toggle Masonry ON, then
   // reload again. The stored "true" must win on reload.
   // --------------------------------------------------------------------------
-  await evaluate(`document.getElementById('cfobMenuBtn').click(), true`);
+  await page.locator("#cfobMenuBtn").click();
   await waitUntil(
     evaluate,
     "Boolean(document.getElementById('cfobOptionsModal').classList.contains('active'))",
     "options modal to open"
   );
-  await evaluate(`document.getElementById('cfobToggleMasonryBtn').click(), true`);
+  await page.locator("#cfobToggleMasonryBtn").click();
   state = await evaluate(masonryStateJs);
   assert.equal(state.masonry, true, "grid must gain the masonry class when toggled on");
   assert.equal(state.status, "On", "status badge must read On when masonry is on");
   assert.equal(state.stored, "true", "masonry must be persisted to localStorage as true");
 
-  await evaluate("location.reload()");
-  await waitUntil(evaluate, "() => document.readyState === 'complete'", "page to finish reloading", 15000);
+  await browser.page.reload();
+  await waitUntil(evaluate, "document.readyState === 'complete'", "page to finish reloading", 15000);
   await evaluate(`(() => { window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); return true; })()`);
 
   state = await evaluate(masonryStateJs);

@@ -96,5 +96,4 @@ Autocomplete suggestions scroll-load in groups: filter starters first, then rece
 ## Development tips
 
 - Run the unit suite with `npm test` (Node.js 18 or newer; no dependencies required).
-- Run the end-to-end suite with `npm run test:e2e`. It boots the standalone server on a throwaway output directory and drives the real UI in headless Chromium over CDP, so it needs Python with `aiohttp` (the ComfyUI venv is detected automatically) and a Chromium/Chrome/Edge binary. Point `CFOB_PYTHON` / `CFOB_CHROME` at either if they are not found. The test skips itself, rather than failing, when no browser is available.
-
+- Run the end-to-end suite with `npm run test:e2e`. It boots the standalone server on a throwaway output directory and drives the real UI with Playwright in headless Chromium. Install the browser once with `npx playwright install chromium`; Python with `aiohttp` is also required (the ComfyUI venv is detected automatically). Point `CFOB_PYTHON` / `CFOB_CHROME` at custom binaries if needed. The tests skip when no Chromium binary is available.

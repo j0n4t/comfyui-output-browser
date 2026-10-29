@@ -52,7 +52,6 @@ sweepStaleProfileDirs();
 
 test("panel keys: h toggles the chrome, b opens the focused picker, full view does not cover the image", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
   const serverPort = 8400 + (process.pid % 200);
-  const cdpPort = 9800 + (process.pid % 200);
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
@@ -70,19 +69,18 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath, { port: cdpPort });
-  const { evaluate, goto, send } = browser;
+  browser = await launchChrome(chromePath);
+  const { evaluate, goto, page } = browser;
 
+  await page.setViewportSize({ width: 1280, height: 1000 });
   await goto(`${baseUrl}/`);
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 3", "cards to render");
   await evaluate(`(() => { window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); return true; })()`);
 
   // Focus inside the panel: the dispatcher is correct to ignore events whose target is
   // not a descendant of #cfob-root, so keys are dispatched on a real inner element.
-  await evaluate("document.querySelector('#cfob-root').focus(), true");
-  /** Dispatches a real keydown on an element inside the panel, so it reaches the dispatcher. */
-  const press = key => evaluate(
-    `document.querySelector('#cfobMainContainer').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true })), true`);
+  await page.locator("#cfob-root").focus();
+  const press = key => page.keyboard.press(key);
 
   // --- h: the chrome hides and gives its space back ----------------------------------
   const before = await evaluate(`(() => {
@@ -108,7 +106,7 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
   // --- h again: the chrome returns, with the action bar's own shown state ------------
   await press("h");
   await press("h");                                     // hidden again
-  await evaluate(`document.querySelector('.card-checkbox').click(), true`);
+  await page.locator(".card-checkbox").first().click();
   await press("h");                                     // reveal
   assert.equal(
     await evaluate(`document.querySelector('#cfobActionBar').classList.contains('show')`),
@@ -142,9 +140,9 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
   // owned it, and the checkbox click above left focus somewhere else.
   const ownerBefore = await evaluate(`(() => {
     const card = document.querySelector('.image-card[data-filter-index="0"]');
-    card.focus();
-    return document.activeElement?.dataset?.name || document.activeElement?.tagName;
+    return card.dataset.name || card.tagName;
   })()`);
+  await page.locator('.image-card[data-filter-index="0"]').focus();
   await press("b");
   assert.ok(await evaluate(`!!document.querySelector('.popover-menu')`), "the picker must still open");
   await press("Escape");
@@ -158,7 +156,7 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
     "Escape on the picker must not hide the panel behind it");
 
   // --- full view: the visible bar must not cover the image ---------------------------
-  await evaluate(`document.querySelector('.image-card .card-preview').click(), true`);
+  await page.locator(".image-card .card-preview").first().click();
   await waitUntil(evaluate, "document.querySelector('#cfobFullViewModal').classList.contains('active')", "full view");
 
   const shown = await evaluate(`(() => {
@@ -177,9 +175,8 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
     `the image must not be cropped by the pane (imgBottom ${shown.imgBottom}, paneBottom ${shown.mainH})`);
 
   // --- the bar is a layout row, so hiding it gives the image that space --------------
-  await evaluate(`document.querySelector('#cfobFullViewImg').focus(), true`);
-  await evaluate(
-    `document.querySelector('#cfobFullViewImg').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })), true`);
+  await page.locator("#cfobFullViewImg").focus();
+  await page.keyboard.press("Space");
   await delay(60);
   const uiHidden = await evaluate(`(() => {
     const main = document.querySelector('.full-view-main');
@@ -195,22 +192,27 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
     "the refit must not crop the image (it must be recomputed, not merely shifted)");
 
   // --- clicking the background does what clicking the image does ----------------------
-  await evaluate(
-    `document.querySelector('#cfobFullViewImg').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })), true`);
+  await page.keyboard.press("Space");
   await delay(30);
   const bgPoint = await evaluate(`(() => {
     const main = document.querySelector('.full-view-main');
-    const img = document.querySelector('#cfobFullViewImg').getBoundingClientRect();
     const r = main.getBoundingClientRect();
-    return { x: Math.max(r.left + 4, img.left - 24), y: r.top + r.height / 2 };
+    const img = document.querySelector('#cfobFullViewImg');
+    const image = img.getBoundingClientRect();
+    const points = [];
+    for (const y of [r.top + 4, r.top + r.height / 2, r.bottom - 4]) {
+      for (const x of [r.left + 4, image.left - 24, image.right + 24, r.right - 4]) {
+        const target = document.elementFromPoint(x, y);
+        points.push({ x, y, target: target?.className || target?.tagName });
+        if (target && main.contains(target) && target !== img && !target.closest('button, a, [role="button"], .full-view-top-bar, .nav-btn')) {
+          return { x, y, points };
+        }
+      }
+    }
+    return { points, main: { x: r.x, y: r.y, width: r.width, height: r.height }, image: { x: image.x, y: image.y, width: image.width, height: image.height } };
   })()`);
-  for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
-    // eslint-disable-next-line no-await-in-loop
-    await send("Input.dispatchMouseEvent", {
-      type, x: bgPoint.x, y: bgPoint.y, button: "left", clickCount: 1,
-      buttons: type === "mousePressed" ? 1 : 0,
-    });
-  }
+  assert.ok(bgPoint.x !== undefined, `the full-view pane must have a clickable background outside the image: ${JSON.stringify(bgPoint)}`);
+  await page.mouse.click(bgPoint.x, bgPoint.y);
   await delay(50);
   assert.equal(
     await evaluate(`document.querySelector('.full-view-layout').classList.contains('ui-hidden')`),
@@ -218,12 +220,10 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
     "clicking the full-view background must toggle the UI, the way clicking the image does");
 
   // --- in full view the picker is centred on the picture and arrow-driven ------------
-  await evaluate(
-    `document.querySelector('#cfobFullViewImg').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })), true`);
+  await page.keyboard.press("Space");
   await delay(40);
-  await evaluate(`document.querySelector('#cfobFullViewImg').focus(), true`);
-  await evaluate(
-    `document.querySelector('#cfobFullViewImg').dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true, cancelable: true })), true`);
+  await page.locator("#cfobFullViewImg").focus();
+  await page.keyboard.press("b");
   await delay(60);
   const fvPicker = await evaluate(`(() => {
     const menu = document.querySelector('.popover-menu');
@@ -246,15 +246,13 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
   assert.match(fvPicker.active, /popover-item/, "the full-view picker must be focused");
 
   // Arrow keys move between the fields, and Escape hands focus back to the picture.
-  await evaluate(
-    `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })), true`);
+  await page.keyboard.press("ArrowDown");
   await delay(40);
   assert.equal(
     await evaluate(`document.activeElement?.dataset?.idx`),
     "1",
     "ArrowDown must move to the second field");
-  await evaluate(
-    `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })), true`);
+  await page.keyboard.press("Escape");
   await delay(40);
   assert.equal(await evaluate(`!document.querySelector('.popover-menu')`), true, "Escape must close it");
   assert.equal(await evaluate(`document.activeElement?.id`), "cfobFullViewImg",

@@ -16,7 +16,7 @@
  * It also pins `touch-action: none`, without which the browser claims a touch
  * gesture as a scroll and the drag moves a fraction of the intended distance.
  *
- * Everything here is the real app: real Chromium, real CDP input events, real
+ * Everything here is the real app: real Chromium, real Playwright input events, real
  * CSS. The one piece of scaffolding is making the launcher visible — the
  * standalone shell deliberately hides it (`#cfob-launcher-btn { display: none
  * !important }`) because standalone mode has no launcher.
@@ -67,7 +67,6 @@ sweepStaleProfileDirs();
 test("dragging the floating launcher works with mouse and touch", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
   // Ports derived from the pid so concurrent runs do not collide.
   const serverPort = 8200 + (process.pid % 300);
-  const cdpPort = 9400 + (process.pid % 300);
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
@@ -84,8 +83,8 @@ test("dragging the floating launcher works with mouse and touch", { skip: chrome
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath, { port: cdpPort });
-  const { evaluate, goto, send } = browser;
+  browser = await launchChrome(chromePath);
+  const { evaluate, goto, page, cdp } = browser;
 
   await goto(`${baseUrl}/`);
   // Generous timeouts on the readiness waits: the e2e suite runs every file
@@ -119,33 +118,28 @@ test("dragging the floating launcher works with mouse and touch", { skip: chrome
   const dragLauncher = async (kind, dx, dy, steps) => {
     const start = await evaluate(launcherBox);
     if (kind === "mouse") {
-      await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: start.cx, y: start.cy, buttons: 0 });
-      await send("Input.dispatchMouseEvent", { type: "mousePressed", x: start.cx, y: start.cy, button: "left", clickCount: 1, buttons: 1 });
+      await page.mouse.move(start.cx, start.cy);
+      await page.mouse.down();
       for (let i = 1; i <= steps; i++) {
         // eslint-disable-next-line no-await-in-loop
-        await send("Input.dispatchMouseEvent", {
-          type: "mouseMoved", button: "left", buttons: 1,
-          x: start.cx + (dx * i) / steps, y: start.cy + (dy * i) / steps,
-        });
+        await page.mouse.move(start.cx + (dx * i) / steps, start.cy + (dy * i) / steps);
         // eslint-disable-next-line no-await-in-loop
         await delay(10);
       }
-      await send("Input.dispatchMouseEvent", {
-        type: "mouseReleased", button: "left", clickCount: 1, buttons: 0,
-        x: start.cx + dx, y: start.cy + dy,
-      });
+      await page.mouse.move(start.cx + dx, start.cy + dy);
+      await page.mouse.up();
     } else {
-      await send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: start.cx, y: start.cy, id: 1 }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: start.cx, y: start.cy, id: 1 }] });
       for (let i = 1; i <= steps; i++) {
         // eslint-disable-next-line no-await-in-loop
-        await send("Input.dispatchTouchEvent", {
+        await cdp.send("Input.dispatchTouchEvent", {
           type: "touchMove",
           touchPoints: [{ x: start.cx + (dx * i) / steps, y: start.cy + (dy * i) / steps, id: 1 }],
         });
         // eslint-disable-next-line no-await-in-loop
         await delay(10);
       }
-      await send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     }
     await delay(150);
     const after = await evaluate(`(() => {

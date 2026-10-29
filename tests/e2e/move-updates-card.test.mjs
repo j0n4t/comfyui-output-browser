@@ -46,23 +46,6 @@ const CARDS_JS = `(() => Array.from(document.querySelectorAll('.image-card')).ma
   checkbox: c.querySelector('.card-checkbox').value
 })))()`;
 
-/** Clicks the folder chip with exactly this label in the move dialog. */
-const pickFolderJs = label => `(() => {
-  const chips = Array.from(document.querySelectorAll('#cfobFolderList .folder-chip'));
-  const chip = chips.find(c => c.textContent.replace(/\\s+/g, ' ').trim() === ${JSON.stringify(label)});
-  if (!chip) throw new Error('no folder chip ${label}; saw ' + JSON.stringify(chips.map(c => c.textContent.replace(/\\s+/g, ' ').trim())));
-  chip.click();
-  return chip.textContent.replace(/\\s+/g, ' ').trim();
-})()`;
-
-/** Selects a card by its current name via its checkbox. */
-const selectCardJs = name => `(() => {
-  const card = Array.from(document.querySelectorAll('.image-card')).find(c => c.dataset.name === ${JSON.stringify(name)});
-  if (!card) throw new Error('no card named ${name}; saw ' + JSON.stringify(Array.from(document.querySelectorAll('.image-card')).map(c => c.dataset.name)));
-  card.querySelector('.card-checkbox').click();
-  return card.dataset.name;
-})()`;
-
 const chromePath = findChrome();
 const pythonPath = findPython();
 
@@ -72,7 +55,6 @@ sweepStaleProfileDirs();
 test("moving and renaming an image updates its card in place, with no reload", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
   // Ports derived from the pid so concurrent runs do not collide.
   const serverPort = 8200 + (process.pid % 300);
-  const cdpPort = 9400 + (process.pid % 300);
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
@@ -94,8 +76,8 @@ test("moving and renaming an image updates its card in place, with no reload", {
     "fixture not served"
   );
 
-  browser = await launchChrome(chromePath, { port: cdpPort });
-  const { evaluate, goto } = browser;
+  browser = await launchChrome(chromePath);
+  const { evaluate, goto, page } = browser;
 
   await goto(`${baseUrl}/`);
   await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 3", "3 cards to render");
@@ -110,20 +92,29 @@ test("moving and renaming an image updates its card in place, with no reload", {
     }
     return card;
   };
+  const selectCard = name => page.locator(`.image-card[data-name="${name}"] .card-checkbox`).click();
+  const pickFolder = async label => {
+    const chips = page.locator("#cfobFolderList .folder-chip");
+    const index = await chips.evaluateAll(
+      (elements, expected) => elements.findIndex(chip => chip.textContent.replace(/\s+/g, " ").trim() === expected),
+      label
+    );
+    assert.notEqual(index, -1, `no folder chip named ${label}`);
+    const chip = chips.nth(index);
+    await chip.click();
+    assert.ok((await chip.getAttribute("class")).split(/\s+/).includes("selected"), `folder ${label} should be selected`);
+  };
 
   // ---------------------------------------------------------------- move (selection bar)
-  await evaluate(selectCardJs("alpha.png"));
+  await selectCard("alpha.png");
   await waitUntil(evaluate, "document.querySelector('#cfobActionBar').classList.contains('show')", "action bar");
-  await evaluate("document.querySelector('#cfobActionMove').click()");
+  await page.locator("#cfobActionMove").click();
   await waitUntil(evaluate, "document.querySelector('#cfobPromptModal').classList.contains('active')", "move dialog");
-  await evaluate(pickFolderJs("dest"));
-  await evaluate("document.querySelector('#cfobPromptOkBtn').click()");
+  await pickFolder("dest");
+  await page.locator("#cfobPromptOkBtn").click();
 
-  await waitUntil(
-    evaluate,
-    "Array.from(document.querySelectorAll('.image-card')).some(c => c.dataset.name === 'dest/alpha.png')",
-    "the moved card to be renamed to dest/alpha.png"
-  );
+  await page.locator('.image-card[data-name="dest/alpha.png"]').waitFor();
+  await page.locator('.image-card[data-name="alpha.png"]').waitFor({ state: "detached" });
   // A stale card would still be sitting there under the old name.
   assert.equal(
     await evaluate("Array.from(document.querySelectorAll('.image-card')).filter(c => c.dataset.name === 'alpha.png').length"),
@@ -140,17 +131,14 @@ test("moving and renaming an image updates its card in place, with no reload", {
   assert.ok(existsSync(join(outputDir, "dest", "alpha.png")), "file should be on disk at the new path");
 
   // ------------------------------------------------------------------------- rename
-  await evaluate(selectCardJs("dest/alpha.png"));
-  await evaluate("document.querySelector('#cfobActionRename').click()");
+  await selectCard("dest/alpha.png");
+  await page.locator("#cfobActionRename").click();
   await waitUntil(evaluate, "document.querySelector('#cfobPromptModal').classList.contains('active')", "rename dialog");
-  await evaluate("(() => { document.querySelector('#cfobPromptInput').value = 'omega.png'; })()");
-  await evaluate("document.querySelector('#cfobPromptOkBtn').click()");
+  await page.locator("#cfobPromptInput").fill("omega.png");
+  await page.locator("#cfobPromptOkBtn").click();
 
-  await waitUntil(
-    evaluate,
-    "Array.from(document.querySelectorAll('.image-card')).some(c => c.dataset.name === 'dest/omega.png')",
-    "the renamed card"
-  );
+  await page.locator('.image-card[data-name="dest/omega.png"]').waitFor();
+  await page.locator('.image-card[data-name="dest/alpha.png"]').waitFor({ state: "detached" });
   const renamedCard = await assertCard("dest/omega.png", {
     file: "dest/omega.png",
     alt: "dest/omega.png",
@@ -161,21 +149,14 @@ test("moving and renaming an image updates its card in place, with no reload", {
   assert.ok(!existsSync(join(outputDir, "dest", "alpha.png")), "old filename should be gone from disk");
 
   // --------------------------------------------------------------- move (full view)
-  await evaluate(`(() => {
-    const card = Array.from(document.querySelectorAll('.image-card')).find(c => c.dataset.name === 'dest/omega.png');
-    card.querySelector('.card-preview').click();
-  })()`);
+  await page.locator('.image-card[data-name="dest/omega.png"] .card-preview').click();
   await waitUntil(evaluate, "document.querySelector('#cfobFullViewModal').classList.contains('active')", "full view to open");
-  await evaluate("document.querySelector('#cfobFVActionMove').click()");
+  await page.locator("#cfobFVActionMove").click();
   await waitUntil(evaluate, "document.querySelector('#cfobPromptModal').classList.contains('active')", "full-view move dialog");
-  await evaluate(pickFolderJs("Root (/)"));
-  await evaluate("document.querySelector('#cfobPromptOkBtn').click()");
+  await pickFolder("Root (/)");
+  await page.locator("#cfobPromptOkBtn").click();
 
-  await waitUntil(
-    evaluate,
-    "Array.from(document.querySelectorAll('.image-card')).some(c => c.dataset.name === 'omega.png')",
-    "the full-view-moved card to update"
-  );
+  await page.locator('.image-card[data-name="omega.png"]').waitFor();
   await assertCard("omega.png", { file: "omega.png", alt: "omega.png", checkbox: "omega.png" });
   const fvSrc = await evaluate("document.querySelector('#cfobFullViewImg')?.src || ''");
   assert.match(fvSrc, /filename=omega\.png/, "full view image should follow the move");

@@ -11,7 +11,7 @@
  *
  * The page element to pick is injected by the test (the standalone shell ships no
  * ComfyUI chrome), but every step of the picker itself is the real UI: real
- * clicks over CDP, real listeners, real placement logic.
+ * Playwright clicks, listeners, and placement logic.
  *
  * Skips itself (rather than failing) when no Chromium is present, so the default
  * test command stays green on a machine without one.
@@ -70,7 +70,6 @@ sweepStaleProfileDirs();
 
 test("pick element: hides the UI, then OK hooks the launcher and Cancel restores it", { skip: chromePath ? false : "no Chromium found (set CFOB_CHROME)" }, async t => {
   const serverPort = 8200 + (process.pid % 300);
-  const cdpPort = 9400 + (process.pid % 300);
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
   const { root, outputDir } = makeOutputDir(FIXTURE);
@@ -87,17 +86,13 @@ test("pick element: hides the UI, then OK hooks the launcher and Cancel restores
   await waitForServer(`${baseUrl}/comfyui-output-browser/images`)
     .catch(err => { throw new Error(`${err.message}\nServer output:\n${server.output}`); });
 
-  browser = await launchChrome(chromePath, { port: cdpPort });
-  const { evaluate, goto, send } = browser;
+  browser = await launchChrome(chromePath);
+  const { evaluate, goto, page } = browser;
 
   /** Clicks a point with a real mouse event — proves the target is reachable, not just matched. */
   const clickAt = async (/** @type {number} */ x, /** @type {number} */ y) => {
-    for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
-      // eslint-disable-next-line no-await-in-loop
-      await send("Input.dispatchMouseEvent", {
-        type, x, y, button: "left", clickCount: 1, buttons: type === "mousePressed" ? 1 : 0,
-      });
-    }
+    await page.mouse.move(x, y);
+    await page.mouse.click(x, y);
   };
 
   const clickElement = async (/** @type {string} */ sel) => {
@@ -134,12 +129,7 @@ test("pick element: hides the UI, then OK hooks the launcher and Cancel restores
   await waitUntil(evaluate, "!!document.querySelector('#cfob-launcher-btn')", "launcher button to be re-enabled");
 
   // Open Options and choose Pick Element through the real control.
-  await evaluate(`(() => {
-    const sel = document.querySelector('#cfobLauncherPlacement');
-    sel.value = 'hook';
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
-    return sel.value;
-  })()`);
+  await page.locator("#cfobLauncherPlacement").selectOption("hook", { force: true });
 
   // --- the UI must get out of the way so the host page is clickable ---
   await waitUntil(evaluate, "!!document.querySelector('#cfob-pick-banner')", "pick banner");
@@ -174,7 +164,7 @@ test("pick element: hides the UI, then OK hooks the launcher and Cancel restores
   );
   // Moving the pointer must not reveal the preview: hover tracking is too jittery.
   const oneCentre = await evaluate(centreOfJs("#host-btn-one"));
-  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: oneCentre.x, y: oneCentre.y, buttons: 0 });
+  await page.mouse.move(oneCentre.x, oneCentre.y);
   await delay(150);
   assert.equal(
     await evaluate("document.querySelector('#cfob-launcher-preview').hidden"),
@@ -279,12 +269,7 @@ test("pick element: hides the UI, then OK hooks the launcher and Cancel restores
   );
 
   // --- OK commits: the launcher becomes a previous sibling of the picked element ---
-  await evaluate(`(() => {
-    const sel = document.querySelector('#cfobLauncherPlacement');
-    sel.value = 'hook';
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
-    return sel.value;
-  })()`);
+  await page.locator("#cfobLauncherPlacement").selectOption("hook", { force: true });
   await waitUntil(evaluate, "!!document.querySelector('#cfob-pick-banner')", "pick banner again");
   await clickElement("#host-btn-two");
   await waitUntil(evaluate, "document.querySelector('.cfob-pick-ok').disabled === false", "OK to enable after the second pick");
@@ -339,12 +324,7 @@ test("pick element: hides the UI, then OK hooks the launcher and Cancel restores
   );
 
   // --- committing the "after" side places the launcher following the target ---
-  await evaluate(`(() => {
-    const sel = document.querySelector('#cfobLauncherPlacement');
-    sel.value = 'hook';
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
-    return sel.value;
-  })()`);
+  await page.locator("#cfobLauncherPlacement").selectOption("hook", { force: true });
   await waitUntil(evaluate, "!!document.querySelector('#cfob-pick-banner')", "pick banner for the after-side run");
   await clickElement("#host-btn-one");
   await waitUntil(evaluate, "document.querySelector('.cfob-pick-ok').disabled === false", "OK to enable");

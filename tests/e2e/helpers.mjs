@@ -6,6 +6,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { deflateSync } from "node:zlib";
+import { chromium } from "playwright";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "..", "..");
 
@@ -130,6 +131,7 @@ export function sweepStaleProfileDirs() {
 
 /** Absolute paths tried in order for a Chromium binary. */
 const CHROME_CANDIDATES = [
+  chromium.executablePath(),
   join(process.env.LOCALAPPDATA || "", "ms-playwright", "chromium-1223", "chrome-win64", "chrome.exe"),
   "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
@@ -138,6 +140,10 @@ const CHROME_CANDIDATES = [
   "/usr/bin/google-chrome",
   "/usr/bin/chromium",
 ];
+let playwrightBrowserPromise = null;
+let browserCleanup = null;
+let browserIdleTimer = null;
+let activeContexts = 0;
 
 export function findChrome() {
   const fromEnv = process.env.CFOB_CHROME;
@@ -270,177 +276,72 @@ export async function waitForServer(url, timeoutMs = 30000) {
 export const delay = ms => new Promise(r => setTimeout(r, ms));
 
 /**
- * Launches headless Chromium and attaches to it over CDP using Node's built-in
- * WebSocket — no puppeteer/playwright dependency required.
+ * Launches a Playwright-managed Chromium instance with an isolated browser context.
  * @param {string} chromePath
- * @param {{ port: number }} opts
  */
-export async function launchChrome(chromePath, { port }) {
-  const userDataDir = mkdtempSync(join(tmpdir(), "cfob-chrome-"));
-  const proc = spawn(chromePath, [
-    "--headless=new",
-    "--disable-gpu",
-    "--no-first-run",
-    "--no-default-browser-check",
-    "--disable-extensions",
-    `--user-data-dir=${userDataDir}`,
-    `--remote-debugging-port=${port}`,
-    "about:blank",
-  ], { stdio: ["ignore", "pipe", "pipe"] });
-  let output = "";
-  proc.stdout.on("data", d => { output += d; });
-  proc.stderr.on("data", d => { output += d; });
-
-  /** @type {Awaited<ReturnType<typeof connectCdp>> | null} */
-  let session = null;
-
-  /** Stops this browser and removes its profile. Idempotent. */
-  const stop = async () => {
-    unregisterCleanup();
-    // Ask nicely first so Chromium flushes and closes its own handles, then take
-    // the whole tree in case it did not.
-    try { await session?.send("Browser.close"); } catch { /* already gone */ }
-    await delay(300);
-    killTree(proc);
-    removeDirWithRetry(userDataDir);
-  };
-
-  // A killed run (Ctrl-C, an outer timeout) never reaches t.after, so without
-  // this the browser tree and its profile outlive the test process.
-  const unregisterCleanup = registerCleanup(stop);
-
-  let wsUrl = null;
-  const deadline = Date.now() + 20000;
-  while (Date.now() < deadline) {
+export async function launchChrome(chromePath) {
+  clearTimeout(browserIdleTimer);
+  browserIdleTimer = null;
+  if (!playwrightBrowserPromise) {
+    playwrightBrowserPromise = chromium.launch({
+      executablePath: chromePath,
+      headless: true,
+      args: ["--disable-gpu", "--no-first-run", "--no-default-browser-check", "--disable-extensions"],
+    }).then(browser => {
+      browserCleanup = registerCleanup(() => browser.close());
+      return browser;
+    }).catch(error => {
+      playwrightBrowserPromise = null;
+      throw error;
+    });
+  }
+  const browser = await playwrightBrowserPromise;
+  const context = await browser.newContext({ viewport: { width: 800, height: 600 } });
+  activeContexts++;
+  const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+  page.setDefaultTimeout(10000);
+  const evaluate = expression => page.evaluate(expression);
+  evaluate.waitForFunction = async (predicate, timeoutMs) => {
+    const fn = predicate.trim().startsWith("() =>") ? predicate : `() => (${predicate})`;
+    const handle = await page.waitForFunction(fn, undefined, { timeout: timeoutMs });
     try {
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
-       
-      if (res.ok) {
-        // eslint-disable-next-line no-await-in-loop
-        wsUrl = (await res.json()).webSocketDebuggerUrl;
-        break;
-      }
-    } catch { /* not up yet */ }
-    // eslint-disable-next-line no-await-in-loop
-    await delay(200);
-  }
-  if (!wsUrl) {
-    // Remove the profile on the failure path too, or each failed launch leaks one.
-    await stop();
-    throw new Error(`Chromium never exposed CDP on port ${port}.\n${output}`);
-  }
-
-  session = await connectCdp(wsUrl);
-  return { proc, ...session, stop };
-}
-
-/**
- * Speaks just enough CDP for the test: flat-mode sessions over one page target.
- * @param {string} wsUrl
- */
-async function connectCdp(wsUrl) {
-  const ws = new WebSocket(wsUrl);
-  await new Promise((resolve, reject) => {
-    ws.addEventListener("open", () => resolve(undefined), { once: true });
-    ws.addEventListener("error", e => reject(new Error(`CDP socket error: ${e.message || e.type}`)), { once: true });
-  });
-
-  let nextId = 1;
-  /** @type {Map<number, {resolve: (v: any) => void, reject: (e: Error) => void}>} */
-  const pending = new Map();
-  /** @type {Map<string, (params: any) => void>} */
-  const listeners = new Map();
-
-  // A CDP command that never gets an answer (browser died, socket half-closed)
-  // would otherwise leave its promise pending forever and hang the whole run with
-  // no output. Every command is bounded, and the error names the method.
-  const COMMAND_TIMEOUT_MS = 30000;
-
-  ws.addEventListener("close", () => {
-    for (const [, entry] of pending) entry.reject(new Error("CDP socket closed before the command answered"));
-    pending.clear();
-  });
-
-  ws.addEventListener("message", ev => {
-    const msg = JSON.parse(/** @type {string} */ (ev.data));
-    if (msg.id !== undefined) {
-      const entry = pending.get(msg.id);
-      if (!entry) return;
-      pending.delete(msg.id);
-      if (msg.error) entry.reject(new Error(`${msg.error.message} (${msg.error.code})`));
-      else entry.resolve(msg.result);
-      return;
+      return await handle.jsonValue();
+    } finally {
+      await handle.dispose();
     }
-    const handler = listeners.get(msg.method);
-    if (handler) handler(msg.params);
-  });
-
-  /** @param {string} method @param {any} [params] */
-  const send = (method, params = {}) => new Promise((resolve, reject) => {
-    const id = nextId++;
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`CDP command ${method} timed out after ${COMMAND_TIMEOUT_MS}ms`));
-    }, COMMAND_TIMEOUT_MS);
-    pending.set(id, {
-      resolve: v => { clearTimeout(timer); resolve(v); },
-      reject: e => { clearTimeout(timer); reject(e); },
-    });
-    ws.send(JSON.stringify({ id, method, params }));
-  });
-
-  /** @param {string} method @param {(params: any) => void} handler */
-  const _on = (method, handler) => { listeners.set(method, handler); };
-
-  const { targetId } = await send("Target.createTarget", { url: "about:blank" });
-  const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
-
-  const sessionSend = (/** @type {string} */ method, /** @type {any} */ params = {}) => new Promise((resolve, reject) => {
-    const id = nextId++;
-    pending.set(id, { resolve, reject });
-    ws.send(JSON.stringify({ id, method, params, sessionId }));
-  });
-  const sessionOn = (/** @type {string} */ method, /** @type {(params: any) => void} */ handler) => {
-    listeners.set(method, params => {
-      if (params.sessionId === sessionId) handler(params);
-    });
   };
 
-  await sessionSend("Page.enable");
-  await sessionSend("Runtime.enable");
-
-  /** @type {{id: number, resolve: (v: any) => void} | null} */
-  let loadWaiter = null;
-  sessionOn("Page.loadEventFired", () => {
-    if (loadWaiter) {
-      const { resolve } = loadWaiter;
-      loadWaiter = null;
-      resolve(undefined);
+  /** Stops this isolated context. Idempotent. */
+  let stopped = false;
+  const stop = async () => {
+    if (stopped) return;
+    stopped = true;
+    unregisterCleanup();
+    await context.close();
+    activeContexts--;
+    if (activeContexts === 0) {
+      browserIdleTimer = setTimeout(async () => {
+        if (playwrightBrowserPromise !== browserPromise) return;
+        playwrightBrowserPromise = null;
+        browserCleanup?.();
+        browserCleanup = null;
+        await browser.close();
+      }, 250);
     }
-  });
-
-  /** @param {string} url */
-  const goto = async url => {
-    const loaded = new Promise(resolve => { loadWaiter = { id: 0, resolve }; });
-    await sessionSend("Page.navigate", { url });
-    await Promise.race([loaded, delay(20000)]);
   };
+  const unregisterCleanup = registerCleanup(stop);
+  const browserPromise = playwrightBrowserPromise;
 
-  /** @param {string} expression */
-  const evaluate = async expression => {
-    const res = await sessionSend("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-    });
-    if (res.exceptionDetails) {
-      throw new Error(`JS threw: ${res.exceptionDetails.exception?.description || res.exceptionDetails.text}\n${expression}`);
-    }
-    return res.result.value;
+  return {
+    browser,
+    context,
+    page,
+    cdp,
+    evaluate,
+    goto: url => page.goto(url),
+    stop,
   };
-
-  return { send: sessionSend, on: sessionOn, goto, evaluate, close: () => ws.close() };
 }
 
 /**
@@ -451,16 +352,12 @@ async function connectCdp(wsUrl) {
  * @param {number} timeoutMs
  */
 export async function waitUntil(evaluate, expression, label, timeoutMs = 15000) {
-  const deadline = Date.now() + timeoutMs;
-  let last;
-  while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop
-    last = await evaluate(expression);
-    if (last) return last;
-    // eslint-disable-next-line no-await-in-loop
-    await delay(100);
+  try {
+    return await evaluate.waitForFunction(expression, timeoutMs);
+  } catch (error) {
+    if (error?.name !== "TimeoutError") throw error;
+    throw new Error(`Timed out waiting for ${label}`, { cause: error });
   }
-  throw new Error(`Timed out waiting for ${label} (last value: ${JSON.stringify(last)})`);
 }
 
 /**
