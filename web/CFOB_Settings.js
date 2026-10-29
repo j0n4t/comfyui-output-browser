@@ -111,6 +111,7 @@ export const CFOB_SETTINGS_MODALS_HTML = `
         <button class="options-tab" id="cfobLayoutTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsLayout" tabindex="-1" data-target="cfobOptionsLayout">Layout</button>
         <button class="options-tab" id="cfobFoldersTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsFolders" tabindex="-1" data-target="cfobOptionsFolders">Folders & Search</button>
         <button class="options-tab" id="cfobFieldsTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsFields" tabindex="-1" data-target="cfobOptionsFields">Custom Fields</button>
+        <button class="options-tab" id="cfobImportExportTab" type="button" role="tab" aria-selected="false" aria-controls="cfobOptionsImportExport" tabindex="-1" data-target="cfobOptionsImportExport">Import / Export</button>
       </div>
       <div class="modal-body options-modal-body">
         <section class="options-tab-panel active" id="cfobOptionsDisplay" role="tabpanel" aria-labelledby="cfobDisplayTab">
@@ -240,6 +241,18 @@ export const CFOB_SETTINGS_MODALS_HTML = `
                 <button class="btn btn-primary" id="cfobSaveConfigBtn" type="button">Save</button>
               </div>
             </div>
+          </div>
+        </section>
+        <section class="options-tab-panel" id="cfobOptionsImportExport" role="tabpanel" aria-labelledby="cfobImportExportTab">
+          <div class="options-section">
+            <h4 class="options-section-title">Import / Export</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0 0 1em;">Export your current settings to a JSON file, or import a previously exported file to restore them.</p>
+            <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
+              <button class="btn btn-primary" id="cfobExportSettingsBtn" type="button">Export Settings</button>
+              <button class="btn btn-primary" id="cfobImportSettingsBtn" type="button">Import Settings</button>
+              <input type="file" id="cfobImportFileInput" accept=".json" style="display: none;">
+            </div>
+            <p id="cfobImportStatus" style="margin: 0.5em 0 0; font-size: 0.75em; color: var(--color-text-muted);"></p>
           </div>
         </section>
       </div>
@@ -442,8 +455,143 @@ export default class COB_Settings {
   }
 
   /**
-   * @param {string | number} scale
+   * Collects all current settings into a serializable object.
+   * @returns {{version: number, settings: Object}}
    */
+  serializeSettings() {
+    const settings = {};
+    settings['cfob_sort'] = this.currentSort;
+    settings['comfy_folder_browser_fields'] = this.fieldConfigs;
+    settings['comfy_folder_browser_hidden_folders'] = this.hiddenFolders;
+    settings['cfob_ignored_autocomplete_keywords'] = this.ignoredAutocompleteKeywords;
+    settings['cfob_filter_shortcuts'] = this.filterShortcuts;
+    settings['cfob_search_blacklist'] = this.searchBlacklist;
+    settings['comfy_folder_browser_show_hidden'] = this.showHiddenFolders;
+    settings['comfy_folder_browser_mode'] = this.browserMode;
+    settings['comfy_folder_browser_view'] = this.fullViewMode ? 'full' : 'grid';
+    settings['cfob_constrain_full_view'] = this.constrainFullView;
+    settings['comfy_folder_browser_width'] = this.sidebarWidth;
+    settings['comfy_folder_browser_height'] = this.sidebarHeight;
+    settings['comfy_folder_browser_auto_hide'] = this.autoHide;
+    settings['cfob_panel_offsets'] = this.panelOffsets;
+    settings['cfob_launcher_placement'] = this.launcherPlacement;
+    settings['cfob_grid_size'] = this.gridSize;
+    settings['cfob_masonry_enabled'] = this.masonryEnabled;
+    settings['cfob_hide_card_info'] = this.hideCardInfo;
+    settings['cfob_scroll_dir'] = this.scrollDir;
+    settings['cfob_grid_fill_order'] = this.gridFillOrder;
+    settings['cfob_ui_scale'] = this.uiScale;
+    settings['cfob_compact_offset'] = this.compactSizeOffset;
+    return { version: 1, settings };
+  }
+
+  /**
+   * Applies an imported settings object to localStorage and the instance state.
+   * Only the keys present in the import are changed; keys not present are left as-is
+   * so newer app versions keep their own defaults.
+   * @param {any} data
+   */
+  deserializeSettings(data) {
+    if (!data || typeof data !== 'object' || !data.settings) return;
+    const settings = data.settings;
+    if (typeof settings !== 'object') return;
+
+    const set = (/** @type {string} */ key, /** @type {any} */ value) => {
+      if (value === undefined || value === null) return;
+      if (Array.isArray(value)) localStorage.setItem(key, JSON.stringify(value));
+      else if (typeof value === 'boolean') localStorage.setItem(key, value ? 'true' : 'false');
+      else if (typeof value === 'number' || typeof value === 'string') localStorage.setItem(key, String(value));
+    };
+
+    set('cfob_sort', settings['cfob_sort']);
+    set('comfy_folder_browser_fields', settings['comfy_folder_browser_fields']);
+    set('comfy_folder_browser_hidden_folders', settings['comfy_folder_browser_hidden_folders']);
+    set('cfob_ignored_autocomplete_keywords', settings['cfob_ignored_autocomplete_keywords']);
+    set('cfob_filter_shortcuts', settings['cfob_filter_shortcuts']);
+    set('cfob_search_blacklist', settings['cfob_search_blacklist']);
+    set('comfy_folder_browser_show_hidden', settings['comfy_folder_browser_show_hidden']);
+    set('comfy_folder_browser_mode', settings['comfy_folder_browser_mode']);
+    set('comfy_folder_browser_view', settings['comfy_folder_browser_view']);
+    set('cfob_constrain_full_view', settings['cfob_constrain_full_view']);
+    set('comfy_folder_browser_width', settings['comfy_folder_browser_width']);
+    set('comfy_folder_browser_height', settings['comfy_folder_browser_height']);
+    set('comfy_folder_browser_auto_hide', settings['comfy_folder_browser_auto_hide']);
+    set('cfob_panel_offsets', settings['cfob_panel_offsets']);
+    set('cfob_launcher_placement', settings['cfob_launcher_placement']);
+    set('cfob_grid_size', settings['cfob_grid_size']);
+    set('cfob_masonry_enabled', settings['cfob_masonry_enabled']);
+    set('cfob_hide_card_info', settings['cfob_hide_card_info']);
+    set('cfob_scroll_dir', settings['cfob_scroll_dir']);
+    set('cfob_grid_fill_order', settings['cfob_grid_fill_order']);
+    set('cfob_ui_scale', settings['cfob_ui_scale']);
+    set('cfob_compact_offset', settings['cfob_compact_offset']);
+
+    const has = (/** @type {string} */ key) => Object.prototype.hasOwnProperty.call(settings, key);
+
+    if (has('cfob_sort')) this.currentSort = settings['cfob_sort'] || 'default';
+    if (has('comfy_folder_browser_show_hidden')) this.showHiddenFolders = settings['comfy_folder_browser_show_hidden'] === 'true';
+    if (has('comfy_folder_browser_view')) this.fullViewMode = settings['comfy_folder_browser_view'] === 'full';
+    if (has('cfob_constrain_full_view')) this.constrainFullView = settings['cfob_constrain_full_view'] === 'true';
+    if (has('comfy_folder_browser_auto_hide')) this.autoHide = settings['comfy_folder_browser_auto_hide'] === 'true';
+    if (has('cfob_panel_offsets')) this.panelOffsets = settings['cfob_panel_offsets'] === 'true';
+    if (has('cfob_launcher_placement')) this.launcherPlacement = settings['cfob_launcher_placement'] || 'sidebar';
+    if (has('cfob_masonry_enabled')) this.masonryEnabled = settings['cfob_masonry_enabled'] === 'true';
+    if (has('cfob_hide_card_info')) this.hideCardInfo = settings['cfob_hide_card_info'] === 'true';
+    if (has('cfob_scroll_dir')) this.scrollDir = settings['cfob_scroll_dir'] === 'horizontal' ? 'horizontal' : 'vertical';
+    if (has('cfob_grid_fill_order')) this.gridFillOrder = settings['cfob_grid_fill_order'] === 'column' ? 'column' : 'row';
+    if (has('cfob_ui_scale')) this.uiScale = Number(settings['cfob_ui_scale'] || 1.0);
+    if (has('cfob_compact_offset')) this.compactSizeOffset = Number(settings['cfob_compact_offset'] || 180);
+    if (has('comfy_folder_browser_width')) this.sidebarWidth = Number(settings['comfy_folder_browser_width'] || 450);
+    if (has('comfy_folder_browser_height')) this.sidebarHeight = Number(settings['comfy_folder_browser_height'] || 350);
+    if (has('comfy_folder_browser_mode')) this.browserMode = settings['comfy_folder_browser_mode'] || 'full';
+
+    if (has('comfy_folder_browser_fields')) this.fieldConfigs = settings['comfy_folder_browser_fields'];
+    if (has('comfy_folder_browser_hidden_folders')) this.hiddenFolders = settings['comfy_folder_browser_hidden_folders'];
+    if (has('cfob_ignored_autocomplete_keywords')) this.ignoredAutocompleteKeywords = settings['cfob_ignored_autocomplete_keywords'];
+    if (has('cfob_filter_shortcuts')) this.filterShortcuts = settings['cfob_filter_shortcuts'];
+    if (has('cfob_search_blacklist')) this.searchBlacklist = settings['cfob_search_blacklist'];
+
+    this.app.applySort();
+    this.app.gallery.filterGallery();
+  }
+
+  /**
+   * Downloads the current settings as a JSON file.
+   */
+  exportSettings() {
+    const data = this.serializeSettings();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'comfyui-output-browser-settings.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+    this.app.showToast('Settings exported');
+  }
+
+  /**
+   * Applies a settings file the user selected.
+   * @param {File} file
+   */
+  importSettingsFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        this.deserializeSettings(data);
+        this.app.showToast('Settings imported');
+      } catch {
+        this.app.showToast('Failed to parse settings file');
+      }
+    };
+    reader.onerror = () => this.app.showToast('Failed to read settings file');
+    reader.readAsText(file);
+  }
+
+  /**
+   * @param {string | number} scale
+*/
   setUiScale(scale) {
     this.uiScale = Math.max(0.7, Math.min(1.5, Number(scale) || 1.0));
     localStorage.setItem('cfob_ui_scale', String(this.uiScale));
@@ -967,6 +1115,18 @@ export default class COB_Settings {
       this.setConstrainFullView(!this.constrainFullView);
       setStatus("cfobConstrainStatus", this.constrainFullView);
     });
+
+    const importInput = /** @type {HTMLInputElement} */ (this.app.$("cfobImportFileInput"));
+    this.app.$("cfobExportSettingsBtn").addEventListener('click', () => this.exportSettings());
+    this.app.$("cfobImportSettingsBtn").addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', (event) => {
+      const { files } = /** @type {HTMLInputElement} */ (event.target);
+      if (files && files.length > 0) {
+        this.importSettingsFile(/** @type {File} */ (files[0]));
+        /** @type {HTMLInputElement} */ (event.target).value = '';
+      }
+    });
+
     modal.addEventListener('show-options', syncOptions);
   }
 
