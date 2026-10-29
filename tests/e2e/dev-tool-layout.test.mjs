@@ -580,6 +580,34 @@ test("dev tool: spatial predictions match masonry navigation in every layout", a
   assert.deepEqual(mismatches, [], `the displayed spatial prediction must match masonry navigation (${mismatches.join(", ")})`);
 });
 
+test("dev tool: fixed image size mode randomly uses the preset dimensions", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
+  let browser = null;
+
+  cleanup(async () => {
+    if (browser) await browser.stop();
+  });
+
+  browser = await attachPage(testPage, context);
+  const { evaluate, goto, page } = browser;
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await goto("/web/dev-grid-nav.html");
+  await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
+  await evaluate(SET_TOOL_JS({ imageSizeMode: "fixed", count: "60", seed: "7" }));
+
+  const sizes = await evaluate(`Array.from(document.querySelectorAll(".card-preview"), image =>
+    image.getAttribute("width") + "x" + image.getAttribute("height"))`);
+  const allowed = new Set(["512x512", "512x768", "768x512"]);
+  assert.equal(sizes.length, 60, "the fixed size mode must still build the requested card count");
+  assert.ok(sizes.every(size => allowed.has(size)), `each card must use a preset size (got ${[...new Set(sizes)].join(", ")})`);
+  assert.deepEqual([...new Set(sizes)].sort(), [...allowed].sort(), "the seeded cards should exercise all three presets");
+
+  await evaluate(SET_TOOL_JS({ seed: "7" }));
+  const repeatedSizes = await evaluate(`Array.from(document.querySelectorAll(".card-preview"), image =>
+    image.getAttribute("width") + "x" + image.getAttribute("height"))`);
+  assert.deepEqual(repeatedSizes, sizes, "the seed must reproduce the fixed preset assignment");
+});
+
 test("dev tool: the landing arrows do not cover the image", async ({ cleanup, page: testPage, context }) => {
   /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;

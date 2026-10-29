@@ -218,6 +218,12 @@
   <label>Compact offset <input type="number" id="compactOffset" value="80" min="0" max="600" step="10"></label>
   <label class="pair">Image width <input type="number" id="minW" value="100" min="20" max="800" step="10"><span class="sep">&ndash;</span><input type="number" id="maxW" value="300" min="20" max="800" step="10"></label>
   <label class="pair">Image height <input type="number" id="minH" value="100" min="20" max="1200" step="10"><span class="sep">&ndash;</span><input type="number" id="maxH" value="300" min="20" max="1200" step="10"></label>
+  <label>Image sizes
+    <select id="imageSizeMode">
+      <option value="random">Random ranges</option>
+      <option value="fixed">Fixed presets</option>
+    </select>
+  </label>
   <label>Seed <input type="number" id="seed" value="7"></label>
   <span class="spacer"></span>
   <button id="toggleAside" type="button" title="Hide the analysis panel (the grid takes the space)">Hide panel</button>
@@ -378,6 +384,7 @@ function rebuild() {
   const compactOffset = Math.max(0, Math.min(600, Number($("compactOffset").value) || 180));
   const imgW = sizeRange("minW", "maxW", 100, 200, 800);
   const imgH = sizeRange("minH", "maxH", 100, 500, 1200);
+  const imageSizeMode = $("imageSizeMode").value;
   const rand = rng(Number($("seed").value) || 1);
 
   const itemSize = size;
@@ -405,12 +412,17 @@ function rebuild() {
   settings.gridSize = size;
 
   images = [];
+  const fixedImageSizes = [[512, 512], [512, 768], [768, 512]];
   for (let i = 0; i < count; i++) {
     // Width and height are drawn independently inside their ranges, so the aspect ratios
     // vary as much as the ranges allow — that spread is what makes a layout worth
     // studying. The height is the one the app's masonry packing measures.
-    const w = Math.round(imgW.min + rand() * (imgW.max - imgW.min));
-    const h = Math.round(imgH.min + rand() * (imgH.max - imgH.min));
+    const [w, h] = imageSizeMode === "fixed"
+      ? fixedImageSizes[Math.floor(rand() * fixedImageSizes.length)]
+      : [
+        Math.round(imgW.min + rand() * (imgW.max - imgW.min)),
+        Math.round(imgH.min + rand() * (imgH.max - imgH.min))
+      ];
     const card = document.createElement("div");
     card.className = "image-card";
     card.dataset.idx = String(i);
@@ -628,6 +640,7 @@ function layoutIdentity() {
     compactOffset: Number($("compactOffset").value) || 80,
     imgW: sizeRange("minW", "maxW", 100, 200, 800),
     imgH: sizeRange("minH", "maxH", 100, 500, 1200),
+    imageSizeMode: $("imageSizeMode").value,
     seed: Number($("seed").value) || 1
   };
 }
@@ -681,6 +694,7 @@ function renderExamples() {
       + " / scroll " + ex.layout.scroll
       + " / " + ex.layout.count + " cards"
       + " / " + ex.layout.size + "px"
+      + " / " + ex.layout.imageSizeMode + " image sizes"
       + " / img " + ex.layout.imgW.min + "-" + ex.layout.imgW.max + "x"
       + ex.layout.imgH.min + "-" + ex.layout.imgH.max
       + " / seed " + ex.layout.seed;
@@ -838,7 +852,7 @@ document.addEventListener("keydown", e => {
 // Live: the grid follows the controls as they change, so there is no Rebuild step. The
 // selects report `change`; the number fields report `input`, which fires per keystroke and
 // per spinner click, not only on blur.
-for (const id of ["view", "scroll", "order", "masonry"]) {
+for (const id of ["view", "scroll", "order", "masonry", "imageSizeMode"]) {
   $(id).addEventListener("change", rebuild);
 }
 for (const id of ["count", "size", "compactOffset", "minW", "maxW", "minH", "maxH", "seed"]) {
