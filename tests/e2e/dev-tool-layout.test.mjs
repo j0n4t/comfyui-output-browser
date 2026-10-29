@@ -76,6 +76,68 @@ const LAYOUT_JS = `(() => {
     gridHeight: grid.getBoundingClientRect().height,
     lastRowBottom: Math.max(...cards.map(card => card.getBoundingClientRect().bottom)),
     firstPreviewHeight: cards[0]?.querySelector('.card-preview').getBoundingClientRect().height ?? 0,
+    masonryColumnEnds: (() => {
+      const byLeft = new Map();
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        const left = Math.round(rect.left);
+        const column = byLeft.get(left) ?? { bottom: 0, count: 0 };
+        column.bottom = Math.max(column.bottom, rect.bottom);
+        column.count++;
+        byLeft.set(left, column);
+      }
+      return [...byLeft.values()];
+    })(),
+    columnOverlaps: (() => {
+      const byLeft = new Map();
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        const left = Math.round(rect.left);
+        const column = byLeft.get(left) ?? [];
+        column.push({ top: rect.top, bottom: rect.bottom, index: Number(card.dataset.idx) });
+        byLeft.set(left, column);
+      }
+      return [...byLeft.values()].flatMap(column => {
+        column.sort((a, b) => a.top - b.top);
+        return column.slice(1).flatMap((card, index) => {
+          const previous = column[index];
+          return previous.bottom > card.top + 1
+            ? [String(previous.index) + "->" + String(card.index) + ":" + Math.round(previous.bottom - card.top) + "px"]
+            : [];
+        });
+      });
+    })(),
+    masonryColumns: (() => {
+      const byLeft = new Map();
+      for (const [index, card] of cards.entries()) {
+        const rect = card.getBoundingClientRect();
+        const left = Math.round(rect.left);
+        const entry = byLeft.get(left) ?? { bottom: 0, indexes: [] };
+        entry.bottom = Math.max(entry.bottom, rect.bottom);
+        entry.indexes.push(String(index) + (card.style.breakBefore ? "!" : ""));
+        byLeft.set(left, entry);
+      }
+      return [...byLeft.entries()].map(([left, entry]) => String(left) + ":" + entry.indexes.join(",") + "@" + Math.round(entry.bottom));
+    })(),
+    forcedColumnBreaks: cards.filter(card => card.style.breakBefore === 'column').length,
+    forcedColumnCounts: (() => {
+      const counts = [];
+      let current = 0;
+      for (const card of cards) {
+        if (card.style.breakBefore === 'column' && current) {
+          counts.push(current);
+          current = 0;
+        }
+        current++;
+      }
+      if (current) counts.push(current);
+      return counts;
+    })(),
+    masonryVisualOrder: cards
+      .slice()
+      .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left ||
+        a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+      .map(card => Number(card.dataset.idx)),
     display: cs.display,
     inline: grid.style.cssText
   };
@@ -737,13 +799,47 @@ test("dev tool: horizontal scrolling lays the grid out horizontally, like the ap
     horizontalColumnFirst.firstPreviewHeight > 150,
     `column-first previews should grow with the row tracks (height ${horizontalColumnFirst.firstPreviewHeight}px)`
   );
+  await evaluate(SET_TOOL_JS({ masonry: "1" }));
+  const columnFirstMasonry = await evaluate(LAYOUT_JS);
+  assert.ok(
+    columnFirstMasonry.masonryColumnEnds.length > 1,
+    `column-first masonry should create multiple columns (got ${columnFirstMasonry.masonryColumnEnds.length})`
+  );
+  assert.ok(
+    columnFirstMasonry.forcedColumnBreaks > 0,
+    `column-first masonry should explicitly balance its columns (got ${columnFirstMasonry.forcedColumnBreaks} breaks)`
+  );
+  assert.ok(
+    Math.min(...columnFirstMasonry.masonryColumnEnds.map(column => column.count)) >= 2,
+    `column-first masonry should avoid singleton columns when there are enough cards (counts ${columnFirstMasonry.masonryColumnEnds.map(column => column.count).join(", ")})`
+  );
+  assert.deepEqual(
+    columnFirstMasonry.masonryVisualOrder,
+    Array.from({ length: 24 }, (_, index) => index),
+    "column balancing must preserve the reading order"
+  );
+  assert.ok(
+    Math.min(...columnFirstMasonry.masonryColumnEnds.map(column => column.bottom)) >= columnFirstMasonry.clientHeight * 0.65,
+    `balanced column-first masonry should use most of the vertical space (columns ${columnFirstMasonry.masonryColumns.join(" | ")}, pane ${columnFirstMasonry.clientHeight}px)`
+  );
+  const mismatchedColumnSeeds = [];
+  for (let seed = 1; seed <= 20; seed++) {
+    await evaluate(SET_TOOL_JS({ seed: String(seed) }));
+    const layout = await evaluate(LAYOUT_JS);
+    const actualCounts = layout.masonryColumnEnds.map(column => column.count);
+    if (JSON.stringify(actualCounts) !== JSON.stringify(layout.forcedColumnCounts)) {
+      mismatchedColumnSeeds.push(String(seed) + ":" + actualCounts.join("-") + " vs " + layout.forcedColumnCounts.join("-"));
+    }
+  }
+  assert.deepEqual(mismatchedColumnSeeds, [],
+    `column-first masonry should follow its balanced breaks (seeds ${mismatchedColumnSeeds.join(", ")})`);
 
   // ------------------------------------------------- the card-size control is live
   // The app sizes its rows from the card size, so shrinking the cards must fit more of
   // them in the pane. This is the control the tool was missing: with the app stylesheet
   // pinning --grid-size on #cfob-root, the old documentElement writes never took effect
   // and every layout ran at 380px cards.
-  await evaluate(SET_TOOL_JS({ size: "100", order: "row" }));
+  await evaluate(SET_TOOL_JS({ size: "100", order: "row", masonry: "0" }));
   const smaller = await evaluate(LAYOUT_JS);
 
   assert.ok(
@@ -761,6 +857,7 @@ test("dev tool: horizontal scrolling lays the grid out horizontally, like the ap
   assert.equal(Number(masonry.colCount), masonry.columns, "masonry columns should match the app's column count");
   assert.ok(masonry.cards === 24, "masonry must not drop any card");
   assert.notEqual(masonry.colCount, "", "masonry must publish its own column count");
+  assert.deepEqual(masonry.columnOverlaps, [], `row-first masonry cards must not overlap (${masonry.columnOverlaps.join(", ")})`);
   // A masonry column stacks its cards at its own offsets, so distinct top positions are
   // not a row count here — only the columns line up. What matters is that the counts the
   // app wrote are the ones the browser used, which the column count above shows.

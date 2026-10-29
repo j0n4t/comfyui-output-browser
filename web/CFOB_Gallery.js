@@ -28,6 +28,10 @@ export default class CFOB_Gallery {
     this._packingHorizontal = false;
     /** @type {HTMLElement[]} */
     this._packingCards = [];
+    /** @type {boolean} */
+    this._columnMasonryActive = false;
+    /** @type {HTMLElement[]} */
+    this._columnMasonryCards = [];
     /** @type {number | null} */
     this._packingRafId = null;
   }
@@ -339,8 +343,14 @@ export default class CFOB_Gallery {
     const viewMode = settings.getGalleryViewMode();
     const isHorizontal = settings.scrollDir === 'horizontal';
     const isRowOrder = settings.gridFillOrder === 'row';
+    const isHorizontalColumnMasonry = settings.masonryEnabled && isHorizontal && !isRowOrder
+      && (viewMode === 'grid' || viewMode === 'compact');
     const isMasonryGrid = settings.masonryEnabled && isRowOrder
       && (viewMode === 'grid' || viewMode === 'compact');
+
+    if (!isHorizontalColumnMasonry && this._columnMasonryActive) {
+      this.applyColumnFirstHorizontalMasonry(false, grid);
+    }
 
     // Vertical row-first masonry can pack right away; the horizontal case needs
     // the column count computed below, so it packs after that instead.
@@ -357,6 +367,7 @@ export default class CFOB_Gallery {
         this._lastSyncCols = -1;
       }
       this.applyRowFirstMasonryPacking(false, grid, true);
+      this.applyColumnFirstHorizontalMasonry(isHorizontalColumnMasonry, grid);
       return;
     }
 
@@ -370,6 +381,7 @@ export default class CFOB_Gallery {
         grid.style.setProperty('--cfob-row-count', '1');
       }
       this.applyRowFirstMasonryPacking(isMasonryGrid, grid, true);
+      this.applyColumnFirstHorizontalMasonry(false, grid);
       return;
     }
 
@@ -403,6 +415,7 @@ export default class CFOB_Gallery {
     // plain pass reads "unchanged" and skips its write — leaving the masonry counts in
     // the DOM after masonry is turned off, and the grid stuck at one row.
     const packed = this.applyRowFirstMasonryPacking(isMasonryGrid, grid, true);
+    this.applyColumnFirstHorizontalMasonry(false, grid);
     if (packed) {
       this._lastSyncRows = packed.rows;
       this._lastSyncCols = packed.cols;
@@ -427,6 +440,7 @@ export default class CFOB_Gallery {
    *   horizontal layout, so the caller's cache can follow them; null for any other layout
    */
   applyRowFirstMasonryPacking(enabled, grid, horizontal) {
+    if (horizontal && this._packingActive) this._clearPacking(grid, true);
     const alreadyPacked = this._packingActive && this._packingHorizontal === horizontal;
 
     if (!enabled) {
@@ -444,8 +458,36 @@ export default class CFOB_Gallery {
     const cards = /** @type {HTMLElement[]} */ (Array.from(grid.querySelectorAll('.image-card')));
     if (!cards.length) return null;
 
+    const container = this.app.$("cfobMainContainer");
     const fontSize = parseFloat(getComputedStyle(grid).fontSize) || 16;
     const gap = 0.4 * fontSize;
+    /** @type {{ cols: number, colWidth: number, rows: number } | null} */
+    let columns = null;
+    let horizontalAvailableHeight = 0;
+    let horizontalColumnWidth = 0;
+    if (horizontal) {
+      const gridStyle = getComputedStyle(grid);
+      const itemSize = parseFloat(gridStyle.getPropertyValue('--gallery-item-size'))
+        || this.app.settings.gridSize || 380;
+      const paddingRight = parseFloat(gridStyle.paddingRight) || 0;
+      const paddingBottom = parseFloat(gridStyle.paddingBottom) || 0;
+      const availableWidth = Math.max(1, (container ? container.clientWidth : grid.clientWidth) - paddingRight);
+      horizontalAvailableHeight = Math.max(1, (container ? container.clientHeight : grid.clientHeight) - paddingBottom);
+      const visible = Math.max(1, Math.floor((availableWidth + gap) / (itemSize + gap)));
+      const colWidth = Math.round(((availableWidth - (visible - 1) * gap) / visible) * 100) / 100;
+      horizontalColumnWidth = colWidth;
+
+      // Measure at the actual masonry column width. The nominal grid size can be
+      // narrower than these columns, and the taller measured cards otherwise get
+      // spans that are too short and overlap later in the same column.
+      grid.style.setProperty('grid-template-rows', 'none');
+      grid.style.setProperty('grid-auto-rows', 'auto');
+      grid.style.setProperty('row-gap', `${gap}px`);
+      grid.style.setProperty('grid-auto-flow', 'row');
+      grid.style.setProperty('grid-template-columns', `repeat(${cards.length}, ${colWidth}px)`);
+      columns = { cols: 1, colWidth, rows: 1 };
+    }
+
     // One row unit per pixel (with row-gap zeroed, the gap is baked into each
     // span). Row tracks are then as tall as the cards, never shorter: a span that
     // under-counts its card makes the card overflow and overlap the next one.
@@ -459,34 +501,19 @@ export default class CFOB_Gallery {
     grid.style.setProperty('row-gap', '0px');
     grid.style.setProperty('grid-auto-flow', 'row');
 
-    /** @type {{ cols: number, colWidth: number, rows: number } | null} */
-    let columns = null;
     if (horizontal) {
-      const container = this.app.$("cfobMainContainer");
-      const gridStyle = getComputedStyle(grid);
-      const itemSize = parseFloat(gridStyle.getPropertyValue('--gallery-item-size'))
-        || this.app.settings.gridSize || 380;
-      const paddingRight = parseFloat(gridStyle.paddingRight) || 0;
-      const paddingBottom = parseFloat(gridStyle.paddingBottom) || 0;
-      const availableWidth = Math.max(1, (container ? container.clientWidth : grid.clientWidth) - paddingRight);
-      const availableHeight = Math.max(1, (container ? container.clientHeight : grid.clientHeight) - paddingBottom);
-
       // The stylesheet sizes rows from the nominal item size, but a masonry card is
       // as tall as its image, so that row count puts a card past the bottom edge.
       // Fit the rows to the measured heights instead: a card that cannot fit above
       // the bottom moves into the next column, the way column-first behaves.
-      const rows = this._fitMasonryRows(heights, availableHeight, gap);
+      const rows = this._fitMasonryRows(heights, horizontalAvailableHeight, gap);
       const cols = Math.max(1, Math.ceil(heights.length / rows));
-      // Resolve the column width the way CSS multi-column does, so row-first and
-      // column-first end up with the same card width instead of 380 vs 386.
-      const visible = Math.max(1, Math.floor((availableWidth + gap) / (itemSize + gap)));
-      const colWidth = Math.round(((availableWidth - (visible - 1) * gap) / visible) * 100) / 100;
 
       grid.style.setProperty('--cfob-col-count', String(cols));
       grid.style.setProperty('--cfob-row-count', String(rows));
       grid.style.setProperty('grid-template-rows', 'none');
       grid.style.setProperty('align-content', 'start');
-      columns = { cols, colWidth, rows };
+      columns = { cols, colWidth: horizontalColumnWidth, rows };
     }
 
     for (let i = 0; i < cards.length; i++) {
@@ -536,6 +563,114 @@ export default class CFOB_Gallery {
   }
 
   /**
+   * Splits horizontal, column-first masonry into balanced contiguous columns.
+   * Forced column breaks preserve the original reading order while avoiding the
+   * large unused areas that multicol's automatic fragmentation can leave behind.
+   * @param {boolean} enabled
+   * @param {HTMLElement} grid
+   */
+  applyColumnFirstHorizontalMasonry(enabled, grid) {
+    if (!enabled) {
+      if (this._columnMasonryActive) {
+        for (const card of this._columnMasonryCards) card.style.removeProperty('break-before');
+        this._columnMasonryCards = [];
+        this._columnMasonryActive = false;
+      }
+      return;
+    }
+
+    const cards = /** @type {HTMLElement[]} */ (Array.from(grid.querySelectorAll('.image-card')));
+    if (!cards.length) return;
+
+    const gridStyle = getComputedStyle(grid);
+    const fontSize = parseFloat(gridStyle.fontSize) || 16;
+    const gap = 0.4 * fontSize;
+    const paddingTop = parseFloat(gridStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(gridStyle.paddingBottom) || 0;
+    const availableHeight = Math.max(1, grid.clientHeight - paddingTop - paddingBottom);
+    const heights = cards.map(card => card.getBoundingClientRect().height + gap);
+
+    const breakIndexes = this._getBalancedColumnBreaks(heights, availableHeight);
+
+    for (const card of this._columnMasonryCards) card.style.removeProperty('break-before');
+    for (const index of breakIndexes) cards[index]?.style.setProperty('break-before', 'column');
+    this._columnMasonryCards = cards;
+    this._columnMasonryActive = true;
+  }
+
+  /**
+   * Partitions cards into balanced contiguous columns, preferring at least two
+   * cards per column when that is feasible within the available height.
+   * @param {number[]} heights
+   * @param {number} availableHeight
+   * @returns {Set<number>}
+   */
+  _getBalancedColumnBreaks(heights, availableHeight) {
+    const count = heights.length;
+    /** @type {{ singletons: number, columns: number }[]} */
+    const best = new Array(count + 1);
+    best[count] = { singletons: 0, columns: 0 };
+
+    for (let start = count - 1; start >= 0; start--) {
+      let height = 0;
+      for (let end = start; end < count; end++) {
+        height += heights[end];
+        if (height > availableHeight && end > start) break;
+        const suffix = best[end + 1];
+        if (!suffix) continue;
+
+        const candidate = {
+          singletons: suffix.singletons + (end === start ? 1 : 0),
+          columns: suffix.columns + 1,
+        };
+        if (!best[start] || candidate.singletons < best[start].singletons ||
+          (candidate.singletons === best[start].singletons && candidate.columns < best[start].columns)) {
+          best[start] = candidate;
+        }
+      }
+    }
+
+    if (!best[0]) return new Set();
+
+    const breaks = new Set();
+    let start = 0;
+    let remainingHeight = heights.reduce((sum, height) => sum + height, 0);
+    let remaining = best[0];
+    while (remaining.columns > 1) {
+      const targetHeight = remainingHeight / remaining.columns;
+      let height = 0;
+      let bestEnd = -1;
+      let bestHeight = 0;
+      let bestDistance = Infinity;
+
+      for (let end = start; end < count - 1; end++) {
+        height += heights[end];
+        if (height > availableHeight && end > start) break;
+        const suffix = best[end + 1];
+        if (!suffix) continue;
+        const candidateSingletons = suffix.singletons + (end === start ? 1 : 0);
+        const candidateColumns = suffix.columns + 1;
+        if (candidateSingletons !== remaining.singletons || candidateColumns !== remaining.columns) continue;
+
+        const distance = Math.abs(height - targetHeight);
+        if (distance < bestDistance) {
+          bestEnd = end;
+          bestHeight = height;
+          bestDistance = distance;
+        }
+      }
+
+      if (bestEnd < start) return new Set();
+      start = bestEnd + 1;
+      breaks.add(start);
+      remainingHeight -= bestHeight;
+      remaining = best[start];
+    }
+
+    return breaks;
+  }
+
+  /**
    * Drops the packing styles. The cards' spans are always removed; the grid's own
    * properties only when asked, since the incoming layout may have already set them.
    * @param {HTMLElement} grid
@@ -569,9 +704,17 @@ export default class CFOB_Gallery {
     if (this._packingRafId !== null) return;
     this._packingRafId = requestAnimationFrame(() => {
       this._packingRafId = null;
-      if (!this._packingActive) return;
       const grid = this.app.$("cfobGalleryGrid");
       if (!grid) return;
+      if (this._columnMasonryActive) {
+        const settings = this.app.settings;
+        if (settings.masonryEnabled && settings.scrollDir === 'horizontal' &&
+          settings.gridFillOrder === 'column') {
+          this.applyColumnFirstHorizontalMasonry(true, grid);
+        }
+        return;
+      }
+      if (!this._packingActive) return;
       // Heights are measured while the spans are still applied, so clear them
       // first and let the grid return to its natural sizing.
       const horizontal = this._packingHorizontal;

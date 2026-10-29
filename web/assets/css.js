@@ -191,6 +191,7 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root .main-container:not(.scroll-horizontal) .gallery-container.grid-column-first:not(.masonry) { display: block; column-width: var(--gallery-item-size); column-gap: 0.4em; column-fill: balance; }
   #cfob-root .main-container:not(.scroll-horizontal) .gallery-container.grid-column-first:not(.masonry) .image-card { display: inline-flex; flex-direction: column; width: 100%; margin: 0 0 0.4em; break-inside: avoid; vertical-align: top; }
   #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.grid-column-first { height: 100%; min-height: 100%; column-fill: auto; padding: 0 5em 1.25em 0; }
+  #cfob-root .main-container.scroll-horizontal .gallery-container.masonry.grid-column-first .image-card { display: flex; }
 
   #cfob-root .gallery-container.view-list { grid-template-columns: 1fr; }
   #cfob-root .gallery-container.view-list .image-card { flex-direction: row; max-height: 200px; }
