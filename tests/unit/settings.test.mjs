@@ -25,6 +25,7 @@ test("serializeSettings returns version and every key with the correct type", ()
       JSON.stringify([{ label: "Prompt", paths: "Positive Prompt.text" }])
     );
     store.set("cfob_masonry_enabled", "true");
+    store.set("cfob_show_selection_checkboxes", "false");
     store.set("comfy_folder_browser_width", "520");
     store.set("cfob_ui_scale", "1.1");
     store.set(
@@ -40,6 +41,7 @@ test("serializeSettings returns version and every key with the correct type", ()
     assert.equal(serialized.settings.cfob_sort, "name_asc");
     assert.equal(serialized.settings.comfy_folder_browser_fields[0].label, "Prompt");
     assert.equal(serialized.settings.cfob_masonry_enabled, true);
+    assert.equal(serialized.settings.cfob_show_selection_checkboxes, false);
     assert.equal(serialized.settings.comfy_folder_browser_width, 520);
     assert.equal(serialized.settings.cfob_ui_scale, 1.1);
     assert.equal(serialized.settings.cfob_filter_shortcuts[0].keyword, "animals");
@@ -71,6 +73,7 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
       settings: {
         cfob_sort: "name_desc",
         cfob_masonry_enabled: false,
+        cfob_show_selection_checkboxes: false,
         // Real exports store arrays (not JSON strings); parse defensively anyway.
         comfy_folder_browser_fields: [{ label: "Prompt", paths: "Positive Prompt.text" }],
         // cfob_hide_card_info is omitted -> must keep its existing value.
@@ -81,10 +84,12 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
 
     assert.equal(settings.currentSort, "name_desc");
     assert.equal(settings.masonryEnabled, false);
+    assert.equal(settings.showSelectionCheckboxes, false);
     assert.equal(settings.hideCardInfo, true);
     assert.equal(settings.fieldConfigs[0].paths, "Positive Prompt.text");
     assert.equal(store.get("cfob_sort"), "name_desc");
     assert.equal(store.get("cfob_masonry_enabled"), "false");
+    assert.equal(store.get("cfob_show_selection_checkboxes"), "false");
     // Not present in the import: untouched.
     assert.equal(store.get("cfob_hide_card_info"), "true");
   } finally {
@@ -100,6 +105,42 @@ test("options modal contains the Import / Export tab and all its controls", () =
   assert.ok(html.includes('id="cfobExportSettingsBtn"'), "Export Settings button");
   assert.ok(html.includes('id="cfobImportSettingsBtn"'), "Import Settings button");
   assert.ok(html.includes('id="cfobImportFileInput"'), "Import file input");
+  assert.ok(html.includes('id="cfobToggleSelectionCheckboxesBtn"'), "selection checkbox toggle");
+});
+
+test("selection checkbox visibility persists and updates the gallery class", () => {
+  const store = new Map();
+  const classes = new Set();
+  globalThis.localStorage = {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => store.set(key, String(value)),
+    removeItem: (key) => store.delete(key),
+    clear: () => store.clear(),
+  };
+  const app = {
+    ...mockApp,
+    $: () => ({
+      classList: {
+        toggle: (className, enabled) => enabled ? classes.add(className) : classes.delete(className),
+      },
+    }),
+  };
+  try {
+    const settings = new CFOB_Settings(app);
+    assert.equal(settings.showSelectionCheckboxes, true);
+
+    settings.setShowSelectionCheckboxes(false);
+    assert.equal(settings.showSelectionCheckboxes, false);
+    assert.equal(store.get("cfob_show_selection_checkboxes"), "false");
+    assert.ok(classes.has("hide-selection-checkboxes"));
+
+    settings.setShowSelectionCheckboxes(true);
+    assert.equal(settings.showSelectionCheckboxes, true);
+    assert.equal(store.get("cfob_show_selection_checkboxes"), "true");
+    assert.ok(!classes.has("hide-selection-checkboxes"));
+  } finally {
+    globalThis.localStorage = null;
+  }
 });
 
 test("CFOB_Settings exposes export/import methods", () => {

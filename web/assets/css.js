@@ -154,6 +154,7 @@ export const CFOB_STYLES = /*css*/ `
 
   #cfob-root .checkbox-wrapper { position: absolute; top: 0.5em; left: 0.5em; z-index: 5; background: rgba(0,0,0,0.6); border-radius: var(--radius-sm); padding: 0.25em; display: flex; }
   #cfob-root .card-checkbox { width: 1em; height: 1em; cursor: pointer; accent-color: var(--color-accent); margin: 0; }
+  #cfob-root .gallery-container.hide-selection-checkboxes .checkbox-wrapper { display: none; }
   #cfob-root .card-content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   #cfob-root .card-header { padding: 0.2em; background: var(--color-bg-header); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s, color 0.15s; }
   #cfob-root .card-header:hover { background: var(--color-bg-panel-hover); color: var(--color-text-inverse); }

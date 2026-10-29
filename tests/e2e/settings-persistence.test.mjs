@@ -6,18 +6,15 @@
  * `cfob_*` keys would show up only as a silent default.
  *
  * A real `CFOB_Settings` instance is proven by routing every assertion through
- * the DOM the app owns: the masonry grid class, the masonry status badge, and the
- * `cfob_masonry_enabled` key in `localStorage`. No mock store, no call counts.
+ * the DOM the app owns: gallery classes, option status badges, and localStorage.
  *
  * What this covers:
  *   - The real setter wiring: clicking the Options -> Masonry Grid toggle toggles
  *     the gallery's `masonry` class, flips the `cfobMasonryStatus` badge, and
  *     writes the key.
- *   - Re-apply on reload: a fresh load with an empty store starts masonry ON
- *     (the default is applied by `setViewMode` during `init`), so the stored
- *     value must win on every subsequent reload.
- *   - Persistence: turning masonry OFF stores `false`; a reload leaves it OFF.
- *     Turning it ON stores `true`; a reload leaves it ON.
+ *   - Re-apply on reload: fresh defaults are applied during `init`, and stored
+ *     values must win on subsequent reloads.
+ *   - Persistence: both settings survive reloads in either direction.
  *
  * Requires Chromium installed by Playwright or a system browser.
  */
@@ -55,11 +52,14 @@ const masonryStateJs = `(() => {
   return {
     masonry: grid.classList.contains('masonry'),
     status: status.textContent,
-    stored: localStorage.getItem('cfob_masonry_enabled')
+    stored: localStorage.getItem('cfob_masonry_enabled'),
+    checkboxesVisible: getComputedStyle(grid.querySelector('.checkbox-wrapper')).display !== 'none',
+    checkboxStatus: document.getElementById('cfobSelectionCheckboxesStatus').textContent,
+    storedCheckboxes: localStorage.getItem('cfob_show_selection_checkboxes')
   };
 })()`;
 
-test("settings: masonry persists to localStorage and re-applies on reload", async ({ cleanup, page: testPage, context }) => {
+test("settings: masonry and checkbox visibility persist across reloads", async ({ cleanup, page: testPage, context }) => {
   const serverPort = await findAvailablePort();
   const baseUrl = `http://127.0.0.1:${serverPort}`;
 
@@ -93,6 +93,8 @@ test("settings: masonry persists to localStorage and re-applies on reload", asyn
   let state = await evaluate(masonryStateJs);
   assert.equal(state.masonry, true, "masonry should start ON by default on a fresh profile");
   assert.equal(state.stored, null, "fresh profile should not have a stored masonry value");
+  assert.equal(state.checkboxesVisible, true, "selection checkboxes should start visible by default");
+  assert.equal(state.storedCheckboxes, "true", "checkbox visibility should initialize to its default");
 
   // --------------------------------------------------------------------------
   // One real setter pass: open Options, toggle Masonry OFF, read the DOM and
@@ -110,6 +112,11 @@ test("settings: masonry persists to localStorage and re-applies on reload", asyn
   assert.equal(state.masonry, false, "grid must lose the masonry class when toggled off");
   assert.equal(state.status, "Off", "status badge must read Off when masonry is off");
   assert.equal(state.stored, "false", "masonry must be persisted to localStorage as false");
+  await page.locator("#cfobToggleSelectionCheckboxesBtn").click();
+  state = await evaluate(masonryStateJs);
+  assert.equal(state.checkboxesVisible, false, "gallery must hide selection checkboxes when toggled off");
+  assert.equal(state.checkboxStatus, "Off", "checkbox status badge must read Off when hidden");
+  assert.equal(state.storedCheckboxes, "false", "checkbox visibility must be persisted as false");
 
   // --------------------------------------------------------------------------
   // Reload the store: a full reload must honour the stored "false" and leave
@@ -122,6 +129,8 @@ test("settings: masonry persists to localStorage and re-applies on reload", asyn
   state = await evaluate(masonryStateJs);
   assert.equal(state.masonry, false, "masonry must NOT come back on reload: the stored false must win");
   assert.equal(state.stored, "false", "stored value must come back on reload");
+  assert.equal(state.checkboxesVisible, false, "selection checkboxes must remain hidden after reload");
+  assert.equal(state.storedCheckboxes, "false", "checkbox setting must come back on reload");
 
   // --------------------------------------------------------------------------
   // Repeat the setter pass in the other direction: toggle Masonry ON, then
@@ -138,6 +147,11 @@ test("settings: masonry persists to localStorage and re-applies on reload", asyn
   assert.equal(state.masonry, true, "grid must gain the masonry class when toggled on");
   assert.equal(state.status, "On", "status badge must read On when masonry is on");
   assert.equal(state.stored, "true", "masonry must be persisted to localStorage as true");
+  await page.locator("#cfobToggleSelectionCheckboxesBtn").click();
+  state = await evaluate(masonryStateJs);
+  assert.equal(state.checkboxesVisible, true, "gallery must show selection checkboxes when toggled on");
+  assert.equal(state.checkboxStatus, "On", "checkbox status badge must read On when visible");
+  assert.equal(state.storedCheckboxes, "true", "checkbox visibility must be persisted as true");
 
   await browser.page.reload();
   await waitUntil(evaluate, "document.readyState === 'complete'", "page to finish reloading", 15000);
@@ -146,6 +160,8 @@ test("settings: masonry persists to localStorage and re-applies on reload", asyn
   state = await evaluate(masonryStateJs);
   assert.equal(state.masonry, true, "masonry must re-apply on reload from the stored true");
   assert.equal(state.stored, "true", "stored value must come back on reload");
+  assert.equal(state.checkboxesVisible, true, "selection checkboxes must remain visible after reload");
+  assert.equal(state.storedCheckboxes, "true", "checkbox setting must come back on reload");
 
   assert.deepEqual(await evaluate("window.__errs"), [], "the page must not throw during any of this");
 });
