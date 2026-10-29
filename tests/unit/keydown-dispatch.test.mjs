@@ -745,6 +745,7 @@ function createMockFullView() {
   const searchInput = { focus: () => calls.push('searchInput.focus') };
   const app = {
     root: { querySelector: () => null },
+    showChrome: () => calls.push('app.showChrome'),
     settings: { modals: { getActive: () => null }, constrainFullView: false, setConstrainFullView: () => calls.push('settings.setConstrainFullView') },
     $: (id) => {
       if (id === 'cfobSearchInput') return searchInput;
@@ -794,6 +795,7 @@ test("real CFOB_FullView.handleKeydown: '/' focuses search input", () => {
   const e = createKeyEvent('/');
   const handled = CFOB_FullView.prototype.handleKeydown.call(fv, e);
   assert.ok(handled, "should return true");
+  assert.ok(calls.includes('app.showChrome'), "showChrome should be called");
   assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
 });
 
@@ -947,6 +949,7 @@ function createMockSelection() {
     lastSelectedIdx: 0,
     selectionAnchorIdx: -1,
     uiHidden: false,
+    showChrome: () => calls.push('app.showChrome'),
     settings: {
       modals: { getActive: () => null },
       cycleBrowserMode: () => calls.push('settings.cycleBrowserMode'),
@@ -1007,6 +1010,7 @@ test("real CFOB_Selection.handleKeydown: '/' focuses search input", () => {
   const e = createKeyEvent('/');
   const handled = CFOB_Selection.prototype.handleKeydown.call(sel, e);
   assert.ok(handled, "should return true");
+  assert.ok(calls.includes('app.showChrome'), "showChrome should be called");
   assert.ok(calls.includes('searchInput.focus'), "searchInput.focus should be called");
 });
 

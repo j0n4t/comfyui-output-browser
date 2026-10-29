@@ -77,7 +77,7 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
 
   // Focus inside the panel: the dispatcher is correct to ignore events whose target is
   // not a descendant of #cfob-root, so keys are dispatched on a real inner element.
-  await page.locator("#cfob-root").focus();
+  await page.locator("#cfobMainContainer").focus();
   const press = key => page.keyboard.press(key);
 
   // --- h: the chrome hides and gives its space back ----------------------------------
@@ -100,6 +100,19 @@ test("panel keys: h toggles the chrome, b opens the focused picker, full view do
   assert.ok(
     Math.abs(hidden.gridTop - before.gridTop + before.barH) < 2,
     `the grid must grow into the space the bar gave up (gridTop ${before.gridTop} -> ${hidden.gridTop}, barH ${before.barH})`);
+
+  // --- / reveals hidden chrome before focusing search ---------------------------------
+  await press("/");
+  const searchChrome = await evaluate(`(() => ({
+    display: getComputedStyle(document.querySelector('.top-bar')).display,
+    inert: document.querySelector('.top-bar').inert,
+    focused: document.activeElement.id === 'cfobSearchInput'
+  }))()`);
+  assert.notEqual(searchChrome.display, "none", "/ must reveal the top bar");
+  assert.equal(searchChrome.inert, false, "/ must make the search control interactive");
+  assert.equal(searchChrome.focused, true, "/ must focus search after revealing chrome");
+  await page.locator("#cfobMainContainer").focus();
+  await press("h");                                     // return to the hidden state
 
   // --- h again: the chrome returns, with the action bar's own shown state ------------
   await press("h");

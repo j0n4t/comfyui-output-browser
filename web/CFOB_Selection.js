@@ -43,6 +43,7 @@ export default class CFOB_Selection {
     }
     if (key === '/' && !e.ctrlKey) {
       e.preventDefault(); e.stopPropagation();
+      app.showChrome();
       app.$("cfobSearchInput").focus();
       return true;
     }

@@ -214,6 +214,7 @@ export default class CFOB_FullView {
       if (layout?.classList.contains('ui-hidden')) {
         this.setFullViewUIHidden(false);
       }
+      this.app.showChrome();
       searchInput.focus();
       return true;
     }
