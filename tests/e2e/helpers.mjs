@@ -1,7 +1,7 @@
 // E2E-only helpers: the unit suite must stay runnable with zero dependencies,
 // so nothing here may be imported from tests/unit.
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -111,20 +111,26 @@ export function sweepStaleProfileDirs() {
   if (!entries.length) return 0;
 
   // One query for every process command line, rather than one per dir.
-  let commandLines;
+  let processInfo;
   try {
-    commandLines = execFileSync("powershell", [
+    processInfo = execFileSync("powershell", [
       "-NoProfile", "-Command",
-      "(Get-CimInstance Win32_Process | Select-Object -ExpandProperty CommandLine) -join \"`n\"",
+      "(Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId)|$($_.CommandLine)\" }) -join \"`n\"",
     ], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 20000 });
   } catch {
     return 0; // Cannot tell what is live; leave everything alone.
   }
 
+  const livePids = new Set(processInfo.split(/\r?\n/).map(line => Number(line.split("|", 1)[0])));
   let removed = 0;
   for (const name of entries) {
-    if (commandLines.includes(name)) continue; // A live process owns it.
-    if (removeDirWithRetry(join(temp, name))) removed++;
+    const dir = join(temp, name);
+    if (processInfo.includes(name)) continue; // A live browser process owns its profile.
+    try {
+      const ownerPid = Number(readFileSync(join(dir, ".cfob-owner"), "utf8"));
+      if (livePids.has(ownerPid)) continue; // A live test worker owns its output fixture.
+    } catch { /* Older fixtures and browser profiles do not have an owner marker. */ }
+    if (removeDirWithRetry(dir)) removed++;
   }
   return removed;
 }
@@ -181,6 +187,7 @@ function crc32(buf) {
  */
 export function makeOutputDir(layout) {
   const root = mkdtempSync(join(tmpdir(), "cfob-e2e-"));
+  writeFileSync(join(root, ".cfob-owner"), String(process.pid));
   const outputDir = join(root, "output");
   mkdirSync(outputDir, { recursive: true });
   for (const [rel, rgb] of Object.entries(layout)) {
