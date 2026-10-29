@@ -440,7 +440,7 @@ export default class CFOB_Gallery {
    *   horizontal layout, so the caller's cache can follow them; null for any other layout
    */
   applyRowFirstMasonryPacking(enabled, grid, horizontal) {
-    if (horizontal && this._packingActive) this._clearPacking(grid, true);
+    if (horizontal && this._packingActive && this._packingHorizontal) this._clearPacking(grid, true);
     const alreadyPacked = this._packingActive && this._packingHorizontal === horizontal;
 
     if (!enabled) {

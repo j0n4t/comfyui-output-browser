@@ -107,6 +107,20 @@ const LAYOUT_JS = `(() => {
         });
       });
     })(),
+    columnGaps: (() => {
+      const byLeft = new Map();
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        const left = Math.round(rect.left);
+        const column = byLeft.get(left) ?? [];
+        column.push({ top: rect.top, bottom: rect.bottom });
+        byLeft.set(left, column);
+      }
+      return [...byLeft.values()].flatMap(column => {
+        column.sort((a, b) => a.top - b.top);
+        return column.slice(1).map((card, index) => card.top - column[index].bottom);
+      });
+    })(),
     masonryColumns: (() => {
       const byLeft = new Map();
       for (const [index, card] of cards.entries()) {
@@ -893,7 +907,13 @@ test("dev tool: horizontal scrolling lays the grid out horizontally, like the ap
   assert.equal(vertical.rowCount, "", "the horizontal row count must be cleared, not left stale");
   assert.ok(!/--cfob-col-count/.test(vertical.inline), "the grid should not keep the horizontal inline styles");
 
+  await evaluate(SET_TOOL_JS({ masonry: "1" }));
+  const verticalMasonry = await evaluate(LAYOUT_JS);
+  assert.ok(verticalMasonry.columnGaps.every(gap => gap <= 8),
+    `vertical row-first masonry should keep only the normal card gap (gaps ${verticalMasonry.columnGaps.map(Math.round).join(", ")})`);
+
   // ------------------------------------------------- image-only plain grids keep aligned card sizes
+  await evaluate(SET_TOOL_JS({ masonry: "0" }));
   await evaluate(`document.querySelector('#cfobGalleryGrid').classList.add('hide-card-info')`);
   const plainImageOnly = await evaluate(`(() => {
     const cards = Array.from(document.querySelectorAll('.image-card'));
