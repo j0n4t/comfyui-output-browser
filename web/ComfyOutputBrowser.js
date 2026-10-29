@@ -239,7 +239,7 @@ export default class ComfyOutputBrowser {
   }
 
   hideWithTransition() {
-    if (!this.root) return;
+    if (!this.root || /** @type {any} */ (window).CFOB_STANDALONE) return;
     const launcher = document.getElementById("cfob-launcher-btn");
     if (launcher) launcher.classList.remove('side-bar-button-selected');
     if (this.root.contains(document.activeElement)) {
@@ -1259,6 +1259,9 @@ if (window.CFOB_STANDALONE) {
 
     const resizer = document.getElementById("cfob-resizer");
     if (resizer) resizer.style.display = 'none';
+    
+    const closeButton = document.getElementById("cfobCloseBrowserBtn");
+    if (closeButton) closeButton.style.display = 'none';
   });
 } else {
   // @ts-ignore
