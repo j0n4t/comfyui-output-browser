@@ -117,6 +117,7 @@ export default class COB_API {
       this.app.search.indexImageKeywords(img);
     } finally {
       img.isParsing = false;
+      this.app.gallery?.updatePreviewTooltip(img);
     }
   }
 

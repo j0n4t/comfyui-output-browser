@@ -70,6 +70,7 @@ export default class CFOB_Gallery {
     cb.addEventListener('click', (e) => this.app.selection.handleCheckboxClick(e, img.name));
 
     const previewImg = /** @type {HTMLImageElement} */ (card.querySelector('.card-preview'));
+    previewImg.title = this.getPreviewTitle(img);
     previewImg.addEventListener('click', () => {
       const idx = Number(card.dataset.filterIndex);
       this._setFocusedIdx(idx);
@@ -108,6 +109,26 @@ export default class CFOB_Gallery {
     if (this.app.observer) this.app.observer.observe(card);
 
     return card;
+  }
+
+  /** @param {CFOB_Image} img */
+  getPreviewTitle(img) {
+    const fields = this.app.settings.fieldConfigs.slice(0, 3);
+    if (!img.isParsed) return img.name;
+    return [
+      img.name,
+      ...fields.map((/** @type {CFOB_CardFieldSettings} */ field) => {
+        const value = this.app.resolveFieldValue(img, field.paths);
+        return `${field.label}: ${value === null || value === undefined || value === '' ? '—' : String(value)}`;
+      }),
+    ].join('\n');
+  }
+
+  /** @param {CFOB_Image} img */
+  updatePreviewTooltip(img) {
+    const card = this.cardCache.get(img.name);
+    const preview = /** @type {HTMLImageElement | null} */ (card?.querySelector('.card-preview') ?? null);
+    if (preview) preview.title = this.getPreviewTitle(img);
   }
 
   /** @param {string} name */
