@@ -455,16 +455,18 @@ function rebuild() {
 const centre = r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
 
 /**
- * The spatial branch's own metric, mirrored so the panel can show what it scored.
- * off-axis = gap on the cross axis (0 when the rects overlap), along-axis = distance
- * along the direction of travel.
+ * The spatial branch's metric, mirrored so the panel can show what it scored.
+ * Off-axis and along-axis are displayed for context; destination ranking uses centre
+ * distance, just like CFOB_Selection.
  *
- * The mirror must match web/CFOB_Selection.js: a vertical move only considers cards in
- * the same column, so a neighbouring column is never offered as the "spatial best".
+ * In masonry, vertical moves are restricted to the same column. Regular grids still show
+ * the nearest visual candidate as a comparison to their index-based navigation.
  */
 function score(rects, from, key) {
   const isVertical = key === "ArrowDown" || key === "ArrowUp";
   const isBackward = key === "ArrowLeft" || key === "ArrowUp";
+  const isMasonry = grid.classList.contains("masonry")
+    && (grid.classList.contains("view-grid") || grid.classList.contains("view-compact"));
   const cur = rects[from];
   const a = centre(cur);
   return rects.map((r, i) => {
@@ -479,7 +481,7 @@ function score(rects, from, key) {
       off: cross,
       dist: Math.hypot(b.x - a.x, b.y - a.y),
       inDirection: (isBackward ? primary < 0 : primary > 0)
-        && (!isVertical || Math.abs(r.left - cur.left) <= 6)
+        && (!isVertical || !isMasonry || Math.abs(r.left - cur.left) <= 6)
     };
   });
 }
@@ -771,7 +773,7 @@ function paint(from, key) {
   const before = from;
   const scored = score(rects, before, key);
   const inDir = scored.filter(s => s.i !== before && s.inDirection)
-    .sort((x, y) => x.off - y.off || x.along - y.along);
+    .sort((x, y) => x.dist - y.dist);
   const spatial = inDir[0] || null;
 
   const cards2 = app.gallery.getOrderedCards();

@@ -529,6 +529,57 @@ test("dev tool: clicking a card makes it the current one", async ({ cleanup, pag
   assert.deepEqual(await evaluate("window.__errs"), [], "the tool must not throw while clicking a card");
 });
 
+test("dev tool: spatial predictions match masonry navigation in every layout", async ({ cleanup, page: testPage, context }) => {
+  /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
+  let browser = null;
+
+  cleanup(async () => {
+    if (browser) await browser.stop();
+  });
+
+  browser = await attachPage(testPage, context);
+  const { evaluate, goto, page } = browser;
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await goto("/web/dev-grid-nav.html");
+  await waitUntil(evaluate, "document.querySelectorAll('.image-card').length === 24", "the tool to build its grid");
+
+  const mismatches = await evaluate(`(() => {
+    const mismatches = [];
+    const set = (id, value) => {
+      const control = document.getElementById(id);
+      control.value = value;
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+      control.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    for (const layout of [
+      { scroll: "vertical", order: "row" },
+      { scroll: "vertical", order: "column" },
+      { scroll: "horizontal", order: "row" },
+      { scroll: "horizontal", order: "column" }
+    ]) {
+      set("view", "grid");
+      set("scroll", layout.scroll);
+      set("order", layout.order);
+      set("masonry", "1");
+      set("seed", "7");
+      const cards = Array.from(document.querySelectorAll(".image-card"));
+      for (let from = 0; from < cards.length; from++) {
+        cards[from].click();
+        for (const key of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]) {
+          document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+          if (document.getElementById("verdict").classList.contains("drift")) {
+            mismatches.push(layout.scroll + "/" + layout.order + " " + from + ":" + key
+              + "->" + cards.findIndex(card => card.classList.contains("focused")));
+          }
+        }
+      }
+    }
+    return mismatches;
+  })()`);
+
+  assert.deepEqual(mismatches, [], `the displayed spatial prediction must match masonry navigation (${mismatches.join(", ")})`);
+});
+
 test("dev tool: the landing arrows do not cover the image", async ({ cleanup, page: testPage, context }) => {
   /** @type {Awaited<ReturnType<typeof attachPage>> | null} */
   let browser = null;
@@ -836,15 +887,35 @@ test("dev tool: horizontal scrolling lays the grid out horizontally, like the ap
     Math.min(...columnFirstMasonry.masonryColumnEnds.map(column => column.bottom)) >= columnFirstMasonry.clientHeight * 0.65,
     `balanced column-first masonry should use most of the vertical space (columns ${columnFirstMasonry.masonryColumns.join(" | ")}, pane ${columnFirstMasonry.clientHeight}px)`
   );
-  const mismatchedColumnSeeds = [];
-  for (let seed = 1; seed <= 20; seed++) {
-    await evaluate(SET_TOOL_JS({ seed: String(seed) }));
-    const layout = await evaluate(LAYOUT_JS);
-    const actualCounts = layout.masonryColumnEnds.map(column => column.count);
-    if (JSON.stringify(actualCounts) !== JSON.stringify(layout.forcedColumnCounts)) {
-      mismatchedColumnSeeds.push(String(seed) + ":" + actualCounts.join("-") + " vs " + layout.forcedColumnCounts.join("-"));
+  const mismatchedColumnSeeds = await evaluate(`(() => {
+    const mismatches = [];
+    const seedControl = document.getElementById("seed");
+    for (let seed = 1; seed <= 20; seed++) {
+      seedControl.value = String(seed);
+      seedControl.dispatchEvent(new Event("input", { bubbles: true }));
+      const cards = Array.from(document.querySelectorAll(".image-card"));
+      const columns = new Map();
+      for (const card of cards) {
+        const left = Math.round(card.getBoundingClientRect().left);
+        columns.set(left, (columns.get(left) ?? 0) + 1);
+      }
+      const actualCounts = [...columns.values()];
+      const forcedCounts = [];
+      let current = 0;
+      for (const card of cards) {
+        if (card.style.breakBefore === "column" && current) {
+          forcedCounts.push(current);
+          current = 0;
+        }
+        current++;
+      }
+      if (current) forcedCounts.push(current);
+      if (JSON.stringify(actualCounts) !== JSON.stringify(forcedCounts)) {
+        mismatches.push(String(seed) + ":" + actualCounts.join("-") + " vs " + forcedCounts.join("-"));
+      }
     }
-  }
+    return mismatches;
+  })()`);
   assert.deepEqual(mismatchedColumnSeeds, [],
     `column-first masonry should follow its balanced breaks (seeds ${mismatchedColumnSeeds.join(", ")})`);
 
