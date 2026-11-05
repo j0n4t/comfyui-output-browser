@@ -317,7 +317,7 @@ export default class ComfyOutputBrowser {
   injectLauncherButton() {
     // No launcher button where there is nothing for it to open.
     if (this.launcherDisabled) {
-      document.getElementById("cfob-launcher-btn")?.remove();
+      document.querySelectorAll("#cfob-launcher-btn").forEach(button => button.remove());
       return;
     }
 
@@ -391,6 +391,9 @@ export default class ComfyOutputBrowser {
 
     const updateButtonPlacement = () => {
       let launcherBtn = /** @type {HTMLElement & { _cfobDragEndedAt?: number, _dragSetup?: boolean }} */ (document.getElementById("cfob-launcher-btn"));
+      document.querySelectorAll("#cfob-launcher-btn").forEach(button => {
+        if (button !== launcherBtn) button.remove();
+      });
       if (!launcherBtn) {
         launcherBtn = document.createElement("button");
         launcherBtn.id = "cfob-launcher-btn";

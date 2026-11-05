@@ -91,6 +91,14 @@ test("dragging the floating launcher works with mouse and touch", async ({ clean
   await evaluate(SHOW_LAUNCHER_JS);
   await waitUntil(evaluate, "!!document.querySelector('#cfob-launcher-btn')", "launcher button", 30000);
 
+  const launcherCountAfterReattach = await evaluate(`(() => {
+    const launcher = document.querySelector('#cfob-launcher-btn');
+    document.body.appendChild(launcher.cloneNode(true));
+    window.__cfob.injectLauncherButton();
+    return document.querySelectorAll('#cfob-launcher-btn').length;
+  })()`);
+  assert.equal(launcherCountAfterReattach, 1, "reattaching the launcher must remove any duplicate buttons");
+
   const launcherBox = `(() => {
     const r = document.querySelector('#cfob-launcher-btn').getBoundingClientRect();
     if (r.width === 0 || r.height === 0) throw new Error('launcher has no box');
