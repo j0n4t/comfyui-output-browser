@@ -106,13 +106,17 @@ export const CFOB_STYLES = /*css*/ `
   #cfob-root.mode-down.cfob-hidden { transform: translateY(100%); }
   #cfob-root.mode-up.cfob-hidden { transform: translateY(-100%); }
 
-  #cfob-resizer { position: absolute; z-index: var(--z-resizer); display: none; background: transparent; transition: background 0.2s; }
-  #cfob-resizer:hover, #cfob-resizer.dragging { background: var(--color-accent); }
-  #cfob-root.mode-right #cfob-resizer { display: block; top: 0; left: 0; bottom: 0; width: 0.375em; cursor: ew-resize; }
-  #cfob-root.mode-left #cfob-resizer { display: block; top: 0; right: 0; bottom: 0; width: 0.375em; cursor: ew-resize; }
-  #cfob-root.mode-down #cfob-resizer { display: block; top: 0; left: 0; right: 0; height: 0.375em; cursor: ns-resize; }
-  #cfob-root.mode-up #cfob-resizer { display: block; bottom: 0; left: 0; right: 0; height: 0.375em; cursor: ns-resize; }
-  #cfob-root.full-view-active.constrain-full-view #cfob-resizer { z-index: var(--z-popover); }
+  #cfob-root .cfob-resizer { position: absolute; z-index: var(--z-resizer); display: none; background: transparent; transition: background 0.2s; touch-action: none; }
+  #cfob-root .cfob-resizer:hover, #cfob-root .cfob-resizer.dragging { background: var(--color-accent); }
+  #cfob-root.mode-right .cfob-resizer, #cfob-root.mode-left .cfob-resizer,
+  #cfob-root.mode-down .cfob-resizer, #cfob-root.mode-up .cfob-resizer { display: block; }
+  #cfob-root .cfob-resizer[data-edge="top"], #cfob-root .cfob-resizer[data-edge="bottom"] { left: 0.375em; right: 0.375em; height: 0.375em; cursor: ns-resize; }
+  #cfob-root .cfob-resizer[data-edge="left"], #cfob-root .cfob-resizer[data-edge="right"] { top: 0.375em; bottom: 0.375em; width: 0.375em; cursor: ew-resize; }
+  #cfob-root .cfob-resizer[data-edge="top"] { top: 0; }
+  #cfob-root .cfob-resizer[data-edge="right"] { right: 0; }
+  #cfob-root .cfob-resizer[data-edge="bottom"] { bottom: 0; }
+  #cfob-root .cfob-resizer[data-edge="left"] { left: 0; }
+  #cfob-root.full-view-active.constrain-full-view .cfob-resizer { z-index: var(--z-popover); }
 
   #cfob-root .top-bar { background: var(--color-bg-panel); border-bottom: 1px solid var(--color-border); padding: 0.3125em; display: flex; justify-content: space-between; align-items: center; gap: 0.9375em; flex-wrap: wrap; }
   #cfob-root .logo-group { display: flex; align-items: center; gap: 0.625em; }

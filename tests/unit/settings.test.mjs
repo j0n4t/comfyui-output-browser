@@ -33,6 +33,9 @@ test("serializeSettings returns version and every key with the correct type", ()
       JSON.stringify([{ keyword: "animals", filter: "dog, cat" }])
     );
     store.set("cfob_search_blacklist", JSON.stringify(["KSampler.seed"]));
+    store.set("cfob_panel_insets", JSON.stringify({
+      right: { top: 24, right: 12, bottom: null, left: null },
+    }));
 
     const settings = new CFOB_Settings(mockApp);
     const serialized = settings.serializeSettings();
@@ -46,6 +49,7 @@ test("serializeSettings returns version and every key with the correct type", ()
     assert.equal(serialized.settings.cfob_ui_scale, 1.1);
     assert.equal(serialized.settings.cfob_filter_shortcuts[0].keyword, "animals");
     assert.deepEqual(serialized.settings.cfob_search_blacklist, ["KSampler.seed"]);
+    assert.equal(serialized.settings.cfob_panel_insets.right.top, 24);
   } finally {
     globalThis.localStorage = null;
   }
@@ -74,6 +78,9 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
         cfob_sort: "name_desc",
         cfob_masonry_enabled: false,
         cfob_show_selection_checkboxes: false,
+        cfob_panel_insets: {
+          right: { top: 36, right: 18, bottom: null, left: null },
+        },
         // Real exports store arrays (not JSON strings); parse defensively anyway.
         comfy_folder_browser_fields: [{ label: "Prompt", paths: "Positive Prompt.text" }],
         // cfob_hide_card_info is omitted -> must keep its existing value.
@@ -87,6 +94,10 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
     assert.equal(settings.showSelectionCheckboxes, false);
     assert.equal(settings.hideCardInfo, true);
     assert.equal(settings.fieldConfigs[0].paths, "Positive Prompt.text");
+    assert.equal(settings.panelInsets.right.top, 36);
+    assert.equal(store.get("cfob_panel_insets"), JSON.stringify({
+      right: { top: 36, right: 18, bottom: null, left: null },
+    }));
     assert.equal(store.get("cfob_sort"), "name_desc");
     assert.equal(store.get("cfob_masonry_enabled"), "false");
     assert.equal(store.get("cfob_show_selection_checkboxes"), "false");

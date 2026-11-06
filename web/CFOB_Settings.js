@@ -165,7 +165,7 @@ export const CFOB_SETTINGS_MODALS_HTML = `
               <div class="options-slider-heading"><label for="cfobPanelHeightSlider">Panel Height</label><span class="options-slider-value" id="cfobPanelHeightVal"></span></div>
               <input type="range" class="options-slider" id="cfobPanelHeightSlider" min="200" step="10" aria-describedby="cfobPanelSizeHint">
             </div>
-            <p id="cfobPanelSizeHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">Width applies to left and right drawers; height applies to top and bottom drawers.</p>
+            <p id="cfobPanelSizeHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">Width applies to left and right drawers; height applies to top and bottom drawers. Drag any drawer edge to resize it or set its offset.</p>
             <button class="options-setting options-toggle" id="cfobTogglePanelOffsetsBtn" type="button"><span>Avoid ComfyUI Borders (Panel Offsets)</span><span class="options-toggle-status" id="cfobPanelOffsetsStatus"></span></button>
             <p id="cfobPanelOffsetsHint" style="margin: 0; color: var(--color-text-muted); font-size: 0.75em;">When on, drawers are inset from the sidebar and top bar so they don't cover ComfyUI controls.</p>
             <button class="options-setting options-toggle" id="cfobToggleAutoHideBtn" type="button"><span>Auto-Hide Panel</span><span class="options-toggle-status" id="cfobAutoHideStatus"></span></button>
@@ -343,6 +343,7 @@ export default class COB_Settings {
     this.constrainFullView = localStorage.getItem('cfob_constrain_full_view') === 'true';
     this.sidebarWidth = Number(localStorage.getItem('comfy_folder_browser_width') || 450);
     this.sidebarHeight = Number(localStorage.getItem('comfy_folder_browser_height') || 350);
+    this.panelInsets = this.loadPanelInsets();
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
     this.panelOffsets = localStorage.getItem('cfob_panel_offsets') === 'true';
     /** @type {'sidebar' | 'action-bar' | 'floating' | 'hook'} */
@@ -386,6 +387,34 @@ export default class COB_Settings {
   loadConfig() {
     const saved = localStorage.getItem('comfy_folder_browser_fields');
     return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_FIELDS));
+  }
+
+  /** @returns {Record<'right' | 'left' | 'up' | 'down', {top: number | null, right: number | null, bottom: number | null, left: number | null}>} */
+  loadPanelInsets() {
+    const defaults = {
+      right: { top: null, right: null, bottom: null, left: null },
+      left: { top: null, right: null, bottom: null, left: null },
+      up: { top: null, right: null, bottom: null, left: null },
+      down: { top: null, right: null, bottom: null, left: null },
+    };
+    const saved = localStorage.getItem('cfob_panel_insets');
+    if (!saved) return defaults;
+    try {
+      const parsed = JSON.parse(saved);
+      /** @type {('right' | 'left' | 'up' | 'down')[]} */
+      const modes = ['right', 'left', 'up', 'down'];
+      /** @type {('top' | 'right' | 'bottom' | 'left')[]} */
+      const edges = ['top', 'right', 'bottom', 'left'];
+      for (const mode of modes) {
+        for (const edge of edges) {
+          const value = parsed?.[mode]?.[edge];
+          defaults[mode][edge] = Number.isFinite(value) && value >= 0 ? value : null;
+        }
+      }
+    } catch {
+      return defaults;
+    }
+    return defaults;
   }
 
   /**
@@ -474,6 +503,7 @@ export default class COB_Settings {
     settings['cfob_constrain_full_view'] = this.constrainFullView;
     settings['comfy_folder_browser_width'] = this.sidebarWidth;
     settings['comfy_folder_browser_height'] = this.sidebarHeight;
+    settings['cfob_panel_insets'] = this.panelInsets;
     settings['comfy_folder_browser_auto_hide'] = this.autoHide;
     settings['cfob_panel_offsets'] = this.panelOffsets;
     settings['cfob_launcher_placement'] = this.launcherPlacement;
@@ -504,6 +534,7 @@ export default class COB_Settings {
       if (Array.isArray(value)) localStorage.setItem(key, JSON.stringify(value));
       else if (typeof value === 'boolean') localStorage.setItem(key, value ? 'true' : 'false');
       else if (typeof value === 'number' || typeof value === 'string') localStorage.setItem(key, String(value));
+      else if (typeof value === 'object') localStorage.setItem(key, JSON.stringify(value));
     };
 
     set('cfob_sort', settings['cfob_sort']);
@@ -518,6 +549,7 @@ export default class COB_Settings {
     set('cfob_constrain_full_view', settings['cfob_constrain_full_view']);
     set('comfy_folder_browser_width', settings['comfy_folder_browser_width']);
     set('comfy_folder_browser_height', settings['comfy_folder_browser_height']);
+    set('cfob_panel_insets', settings['cfob_panel_insets']);
     set('comfy_folder_browser_auto_hide', settings['comfy_folder_browser_auto_hide']);
     set('cfob_panel_offsets', settings['cfob_panel_offsets']);
     set('cfob_launcher_placement', settings['cfob_launcher_placement']);
@@ -548,6 +580,10 @@ export default class COB_Settings {
     if (has('cfob_compact_offset')) this.compactSizeOffset = Number(settings['cfob_compact_offset'] || 180);
     if (has('comfy_folder_browser_width')) this.sidebarWidth = Number(settings['comfy_folder_browser_width'] || 450);
     if (has('comfy_folder_browser_height')) this.sidebarHeight = Number(settings['comfy_folder_browser_height'] || 350);
+    if (has('cfob_panel_insets')) {
+      this.panelInsets = this.loadPanelInsets();
+      this.setPanelOffsets(this.panelOffsets);
+    }
     if (has('comfy_folder_browser_mode')) this.browserMode = settings['comfy_folder_browser_mode'] || 'full';
 
     if (has('comfy_folder_browser_fields')) this.fieldConfigs = settings['comfy_folder_browser_fields'];
@@ -724,6 +760,7 @@ export default class COB_Settings {
 
     this.app.root.style.width = '';
     this.app.root.style.height = '';
+    this.setPanelOffsets(this.panelOffsets);
 
     if (mode === 'right' || mode === 'left') {
       this.app.root.style.width = `${this.sidebarWidth}px`;
@@ -731,6 +768,30 @@ export default class COB_Settings {
     } else if (mode === 'up' || mode === 'down') {
       this.app.root.style.height = `${this.sidebarHeight}px`;
       this.app.updateSidebarSize(null, this.sidebarHeight);
+    }
+  }
+
+  /** @param {'right' | 'left' | 'up' | 'down'} mode @param {'top' | 'right' | 'bottom' | 'left'} edge @param {number} value */
+  setPanelInset(mode, edge, value) {
+    this.panelInsets[mode][edge] = value;
+    if (mode === this.browserMode) {
+      this.app.root?.style.setProperty(`--cfob-offset-${edge}`, `${value}px`);
+    }
+  }
+
+  savePanelInsets() {
+    localStorage.setItem('cfob_panel_insets', JSON.stringify(this.panelInsets));
+  }
+
+  applyPanelInsets() {
+    if (!this.app.root) return;
+    if (this.browserMode !== 'right' && this.browserMode !== 'left' && this.browserMode !== 'up' && this.browserMode !== 'down') return;
+    const insets = this.panelInsets[this.browserMode];
+    /** @type {('top' | 'right' | 'bottom' | 'left')[]} */
+    const edges = ['top', 'right', 'bottom', 'left'];
+    for (const edge of edges) {
+      const value = insets[edge];
+      if (value !== null) this.app.root.style.setProperty(`--cfob-offset-${edge}`, `${value}px`);
     }
   }
 
@@ -821,6 +882,7 @@ export default class COB_Settings {
     for (const [key, value] of Object.entries(vars)) {
       this.app.root.style.setProperty(key, value);
     }
+    this.applyPanelInsets();
   }
 
   cycleBrowserMode() {

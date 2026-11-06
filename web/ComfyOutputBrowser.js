@@ -11,7 +11,10 @@ import { generateSelector, parseHookTarget, formatHookTarget } from "./CFOB_Sele
 import { setupFloatingDragFn } from "./CFOB_Drag.js";
 
 const BROWSER_HTML = `
-<div id="cfob-resizer"></div>
+<div class="cfob-resizer" data-edge="top"></div>
+<div class="cfob-resizer" data-edge="right"></div>
+<div class="cfob-resizer" data-edge="bottom"></div>
+<div class="cfob-resizer" data-edge="left"></div>
 
 <div class="top-bar">
   <div class="logo-group">
@@ -857,50 +860,71 @@ export default class ComfyOutputBrowser {
 
     document.addEventListener('keydown', (e) => this.handleDocumentKeydown(e), { capture: true });
 
-    const resizer = this.$("cfob-resizer");
-    let isResizing = false;
-    /** @type {number} */
-    let startX;
-    /** @type {number} */
-    let startY;
-    /** @type {number} */
-    let startWidth;
-    /** @type {number} */
-    let startHeight;
-
-    resizer.addEventListener('mousedown', (e) => {
-      isResizing = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      const bounds = this.root?.getBoundingClientRect();
-      startWidth = bounds?.width || 250;
-      startHeight = bounds?.height || 250;
-      resizer.classList.add('dragging');
-      document.body.style.userSelect = 'none';
+    /** @type {{edge: 'top' | 'right' | 'bottom' | 'left', mode: 'right' | 'left' | 'up' | 'down', startX: number, startY: number, offsets: {top: number, right: number, bottom: number, left: number}, width: number, height: number, handle: HTMLElement} | null} */
+    let resizeState = null;
+    this.root?.querySelectorAll('.cfob-resizer').forEach((handle) => {
+      handle.addEventListener('pointerdown', (event) => {
+        const e = /** @type {PointerEvent} */ (event);
+        const mode = this.settings.browserMode;
+        if (mode !== 'right' && mode !== 'left' && mode !== 'up' && mode !== 'down') return;
+        e.preventDefault();
+        const bounds = this.root?.getBoundingClientRect();
+        if (!bounds) return;
+        const readOffset = (/** @type {'top' | 'right' | 'bottom' | 'left'} */ side) => parseFloat(this.root?.style.getPropertyValue(`--cfob-offset-${side}`) || '0') || 0;
+        const edge = /** @type {'top' | 'right' | 'bottom' | 'left'} */ (/** @type {HTMLElement} */ (handle).dataset.edge);
+        resizeState = {
+          edge, mode, startX: e.clientX, startY: e.clientY,
+          offsets: { top: readOffset('top'), right: readOffset('right'), bottom: readOffset('bottom'), left: readOffset('left') },
+          width: bounds.width, height: bounds.height, handle: /** @type {HTMLElement} */ (handle),
+        };
+        resizeState.handle.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+      });
     });
 
-    window.addEventListener('mousemove', (e) => {
-      if (!isResizing) return;
-      if (this.settings.browserMode === 'right') {
-        this.updateSidebarSize(startWidth - (e.clientX - startX), null);
-      } else if (this.settings.browserMode === 'left') {
-        this.updateSidebarSize(startWidth + (e.clientX - startX), null);
-      } else if (this.settings.browserMode === 'down') {
-        this.updateSidebarSize(null, startHeight - (e.clientY - startY));
-      } else if (this.settings.browserMode === 'up') {
-        this.updateSidebarSize(null, startHeight + (e.clientY - startY));
+    window.addEventListener('pointermove', (event) => {
+      if (!resizeState) return;
+      const { edge, mode, startX, startY, offsets, width, height } = resizeState;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      const setInset = (/** @type {'top' | 'right' | 'bottom' | 'left'} */ side, /** @type {number} */ value, /** @type {number} */ max) => this.settings.setPanelInset(mode, side, Math.min(Math.max(0, value), Math.max(0, max)));
+      const maxVerticalInset = (/** @type {'top' | 'bottom'} */ opposite) => window.innerHeight - offsets[opposite] - 200;
+      const maxHorizontalInset = (/** @type {'left' | 'right'} */ opposite) => window.innerWidth - offsets[opposite] - 300;
+
+      if (mode === 'right') {
+        if (edge === 'left') this.updateSidebarSize(width - dx, null);
+        else if (edge === 'right') setInset('right', offsets.right - dx, window.innerWidth - width - 20);
+        else if (edge === 'top') setInset('top', offsets.top + dy, maxVerticalInset('bottom'));
+        else setInset('bottom', offsets.bottom - dy, maxVerticalInset('top'));
+      } else if (mode === 'left') {
+        if (edge === 'right') this.updateSidebarSize(width + dx, null);
+        else if (edge === 'left') setInset('left', offsets.left + dx, window.innerWidth - width - 20);
+        else if (edge === 'top') setInset('top', offsets.top + dy, maxVerticalInset('bottom'));
+        else setInset('bottom', offsets.bottom - dy, maxVerticalInset('top'));
+      } else if (mode === 'down') {
+        if (edge === 'top') this.updateSidebarSize(null, height - dy);
+        else if (edge === 'bottom') setInset('bottom', offsets.bottom - dy, window.innerHeight - height - 20);
+        else if (edge === 'left') setInset('left', offsets.left + dx, maxHorizontalInset('right'));
+        else setInset('right', offsets.right - dx, maxHorizontalInset('left'));
+      } else {
+        if (edge === 'bottom') this.updateSidebarSize(null, height + dy);
+        else if (edge === 'top') setInset('top', offsets.top + dy, window.innerHeight - height - 20);
+        else if (edge === 'left') setInset('left', offsets.left + dx, maxHorizontalInset('right'));
+        else setInset('right', offsets.right - dx, maxHorizontalInset('left'));
       }
     });
 
-    window.addEventListener('mouseup', () => {
-      if (isResizing) {
-        isResizing = false;
-        resizer.classList.remove('dragging');
-        document.body.style.userSelect = '';
-        localStorage.setItem('comfy_folder_browser_width', String(this.sidebarWidth || 250));
-        localStorage.setItem('comfy_folder_browser_height', String(this.sidebarHeight || 200));
-      }
-    });
+    const finishResize = () => {
+      if (!resizeState) return;
+      resizeState.handle.classList.remove('dragging');
+      resizeState = null;
+      document.body.style.userSelect = '';
+      localStorage.setItem('comfy_folder_browser_width', String(this.sidebarWidth || 250));
+      localStorage.setItem('comfy_folder_browser_height', String(this.sidebarHeight || 200));
+      this.settings.savePanelInsets();
+    };
+    window.addEventListener('pointerup', finishResize);
+    window.addEventListener('pointercancel', finishResize);
 
     window.addEventListener('resize', () => {
       if (this.settings.panelOffsets) this.settings.setPanelOffsets(true);
@@ -1261,9 +1285,6 @@ if (window.CFOB_STANDALONE) {
     browser.settings.setBrowserMode('full');
     browser.showWithTransition();
 
-    const resizer = document.getElementById("cfob-resizer");
-    if (resizer) resizer.style.display = 'none';
-    
     const closeButton = document.getElementById("cfobCloseBrowserBtn");
     if (closeButton) closeButton.style.display = 'none';
   });

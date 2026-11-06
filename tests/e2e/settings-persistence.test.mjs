@@ -163,5 +163,40 @@ test("settings: masonry and checkbox visibility persist across reloads", async (
   assert.equal(state.checkboxesVisible, true, "selection checkboxes must remain visible after reload");
   assert.equal(state.storedCheckboxes, "true", "checkbox setting must come back on reload");
 
+  await page.locator("#cfobMenuBtn").click();
+  await waitUntil(
+    evaluate,
+    "Boolean(document.getElementById('cfobOptionsModal').classList.contains('active'))",
+    "options modal to open"
+  );
+  await evaluate("window.__cfob.settings.setBrowserMode('right')");
+  await page.locator("#cfobCloseOptionsBtn").click();
+  const initialPanelWidth = await evaluate("document.getElementById('cfob-root').getBoundingClientRect().width");
+  const leftEdge = await page.locator('#cfob-root .cfob-resizer[data-edge="left"]').boundingBox();
+  assert.ok(leftEdge, "right drawer exposes its left resize edge");
+  await page.mouse.move(leftEdge.x + leftEdge.width / 2, leftEdge.y + leftEdge.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(leftEdge.x + leftEdge.width / 2 + 40, leftEdge.y + leftEdge.height / 2, { steps: 4 });
+  await page.mouse.up();
+  const resizedPanelWidth = await evaluate("window.__cfob.settings.sidebarWidth");
+  assert.equal(resizedPanelWidth, Math.round(initialPanelWidth) - 40, "dragging the drawer's left edge updates its width");
+  assert.equal(await evaluate("localStorage.getItem('comfy_folder_browser_width')"), String(resizedPanelWidth));
+
+  const topEdge = await page.locator('#cfob-root .cfob-resizer[data-edge="top"]').boundingBox();
+  assert.ok(topEdge, "right drawer exposes its top resize edge");
+  await page.mouse.move(topEdge.x + topEdge.width / 2, topEdge.y + topEdge.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(topEdge.x + topEdge.width / 2, topEdge.y + topEdge.height / 2 + 28, { steps: 4 });
+  await page.mouse.up();
+  assert.equal(await evaluate("document.getElementById('cfob-root').style.getPropertyValue('--cfob-offset-top')"), "28px");
+  assert.equal(JSON.parse(await evaluate("localStorage.getItem('cfob_panel_insets')")).right.top, 28);
+
+  await browser.page.reload();
+  await waitUntil(evaluate, "document.readyState === 'complete'", "page to finish reloading", 15000);
+  await evaluate(`(() => { window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); return true; })()`);
+  await evaluate("window.__cfob.settings.setBrowserMode('right')");
+  assert.equal(await evaluate("document.getElementById('cfob-root').style.getPropertyValue('--cfob-offset-top')"), "28px");
+  assert.equal(await evaluate("window.__cfob.settings.sidebarWidth"), resizedPanelWidth);
+
   assert.deepEqual(await evaluate("window.__errs"), [], "the page must not throw during any of this");
 });
