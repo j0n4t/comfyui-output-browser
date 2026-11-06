@@ -117,6 +117,25 @@ test("returns all eligible images for an empty filter", () => {
   ]);
 });
 
+test("not-listed paths require an explicit path filter unless showing all", () => {
+  const overrides = { notListedPaths: ["temp"], isImageInHiddenFolder: () => false };
+  assert.deepEqual(namesFor("cat", overrides), [
+    "animals/cat-red.png",
+    "animals/cat-blue.png"
+  ]);
+  assert.deepEqual(namesFor("path:temp", overrides), ["temp/cat-hidden.png"]);
+  assert.deepEqual(namesFor("name:cat", overrides), [
+    "animals/cat-red.png",
+    "animals/cat-blue.png"
+  ]);
+  assert.deepEqual(namesFor(". cat", overrides), [
+    "animals/cat-red.png",
+    "animals/cat-blue.png",
+    "temp/cat-hidden.png"
+  ]);
+  assert.deepEqual(namesFor("", { ...overrides, showHiddenFolders: true }), images.map(image => image.name));
+});
+
 test("blacklist excludes built-in keys from keyed search", () => {
   assert.deepEqual(namesFor("name:blue", { searchBlacklist: ["name"] }), []);
   assert.deepEqual(namesFor("prompt:\"blue sky\"", { searchBlacklist: ["prompt"] }), []);

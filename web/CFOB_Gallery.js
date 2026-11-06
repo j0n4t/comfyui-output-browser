@@ -188,6 +188,7 @@ export default class CFOB_Gallery {
       filterShortcuts: this.app.settings.filterShortcuts,
       searchBlacklist: this.app.settings.searchBlacklist,
       showHiddenFolders: this.app.settings.showHiddenFolders,
+      notListedPaths: this.app.settings.notListedPaths,
       isImageInHiddenFolder: name => this.app.isImageInHiddenFolder(name),
       resolveFieldValue: (img, paths) => this.app.resolveFieldValue(img, paths)
     });

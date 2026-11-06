@@ -33,6 +33,7 @@ test("serializeSettings returns version and every key with the correct type", ()
       "cfob_filter_shortcuts",
       JSON.stringify([{ keyword: "animals", filter: "dog, cat" }])
     );
+    store.set("cfob_not_listed_paths", JSON.stringify(["archive", "outputs/old"]));
     store.set("cfob_search_blacklist", JSON.stringify(["KSampler.seed"]));
     store.set("cfob_panel_insets", JSON.stringify({
       right: { top: 24, right: 12, bottom: null, left: null },
@@ -49,6 +50,7 @@ test("serializeSettings returns version and every key with the correct type", ()
     assert.equal(serialized.settings.comfy_folder_browser_width, 520);
     assert.equal(serialized.settings.cfob_ui_scale, 1.1);
     assert.equal(serialized.settings.cfob_filter_shortcuts[0].keyword, "animals");
+    assert.deepEqual(serialized.settings.cfob_not_listed_paths, ["archive", "outputs/old"]);
     assert.deepEqual(serialized.settings.cfob_search_blacklist, ["KSampler.seed"]);
     assert.equal(serialized.settings.cfob_panel_insets.right.top, 24);
   } finally {
@@ -79,6 +81,7 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
         cfob_sort: "name_desc",
         cfob_masonry_enabled: false,
         cfob_show_selection_checkboxes: false,
+        cfob_not_listed_paths: ["archive"],
         cfob_panel_insets: {
           right: { top: 36, right: 18, bottom: null, left: null },
         },
@@ -93,6 +96,8 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
     assert.equal(settings.currentSort, "name_desc");
     assert.equal(settings.masonryEnabled, false);
     assert.equal(settings.showSelectionCheckboxes, false);
+    assert.deepEqual(settings.notListedPaths, ["archive"]);
+    assert.equal(store.get("cfob_not_listed_paths"), JSON.stringify(["archive"]));
     assert.equal(settings.hideCardInfo, true);
     assert.equal(settings.fieldConfigs[0].paths, "Positive Prompt.text");
     assert.equal(settings.panelInsets.right.top, 36);

@@ -205,6 +205,15 @@ export const CFOB_SETTINGS_MODALS_HTML = `
             </div>
           </div>
           <div class="options-section">
+            <h4 class="options-section-title">Not Listed Paths</h4>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Keep matching paths out of the grid unless the filter explicitly includes them with <code>path:</code>. They are shown when Hidden Folders is on or the filter starts with <code>.</code>.</p>
+            <textarea id="cfobNotListedPathsInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="archive&#10;outputs/old"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+              <button class="btn btn-danger" id="cfobResetNotListedPathsBtn" type="button">Clear Paths</button>
+              <button class="btn btn-primary" id="cfobSaveNotListedPathsBtn" type="button">Save Not Listed Paths</button>
+            </div>
+          </div>
+          <div class="options-section">
             <h4 class="options-section-title">Filter Shortcuts</h4>
             <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define one shortcut per line as <code>keyword | filter</code>, then use it in search with <code>@keyword</code>. Filters can use commas for alternatives. Example: <code>animals | dog, cat, wolf</code>.</p>
             <textarea id="cfobFilterShortcutsInput" class="config-paths-textarea" style="height: 9em; width: 100%;" placeholder="animals | dog, cat, wolf"></textarea>
@@ -333,6 +342,7 @@ export default class COB_Settings {
     this.currentSort = localStorage.getItem('cfob_sort') || 'default';
     this.fieldConfigs = this.loadConfig();
     this.hiddenFolders = this.loadHiddenFoldersConfig();
+    this.notListedPaths = this.loadNotListedPaths();
     /** @type {string[]} */
     this.ignoredAutocompleteKeywords = this.loadIgnoredAutocompleteKeywords();
     /** @type {{keyword: string, filter: string}[]} */
@@ -443,6 +453,20 @@ export default class COB_Settings {
     localStorage.setItem('comfy_folder_browser_hidden_folders', JSON.stringify(folders));
   }
 
+  /** @returns {string[]} */
+  loadNotListedPaths() {
+    const saved = localStorage.getItem('cfob_not_listed_paths');
+    if (!saved) return [];
+    const paths = JSON.parse(saved);
+    return Array.isArray(paths) ? paths.filter(path => typeof path === 'string') : [];
+  }
+
+  /** @param {string[]} paths */
+  saveNotListedPaths(paths) {
+    this.notListedPaths = paths;
+    localStorage.setItem('cfob_not_listed_paths', JSON.stringify(paths));
+  }
+
   loadIgnoredAutocompleteKeywords() {
     const saved = localStorage.getItem('cfob_ignored_autocomplete_keywords');
     return saved ? JSON.parse(saved) : [];
@@ -495,6 +519,7 @@ export default class COB_Settings {
     settings['cfob_sort'] = this.currentSort;
     settings['comfy_folder_browser_fields'] = this.fieldConfigs;
     settings['comfy_folder_browser_hidden_folders'] = this.hiddenFolders;
+    settings['cfob_not_listed_paths'] = this.notListedPaths;
     settings['cfob_ignored_autocomplete_keywords'] = this.ignoredAutocompleteKeywords;
     settings['cfob_filter_shortcuts'] = this.filterShortcuts;
     settings['cfob_search_blacklist'] = this.searchBlacklist;
@@ -541,6 +566,7 @@ export default class COB_Settings {
     set('cfob_sort', settings['cfob_sort']);
     set('comfy_folder_browser_fields', settings['comfy_folder_browser_fields']);
     set('comfy_folder_browser_hidden_folders', settings['comfy_folder_browser_hidden_folders']);
+    set('cfob_not_listed_paths', settings['cfob_not_listed_paths']);
     set('cfob_ignored_autocomplete_keywords', settings['cfob_ignored_autocomplete_keywords']);
     set('cfob_filter_shortcuts', settings['cfob_filter_shortcuts']);
     set('cfob_search_blacklist', settings['cfob_search_blacklist']);
@@ -589,6 +615,9 @@ export default class COB_Settings {
 
     if (has('comfy_folder_browser_fields')) this.fieldConfigs = settings['comfy_folder_browser_fields'];
     if (has('comfy_folder_browser_hidden_folders')) this.hiddenFolders = settings['comfy_folder_browser_hidden_folders'];
+    if (has('cfob_not_listed_paths') && Array.isArray(settings['cfob_not_listed_paths'])) {
+      this.notListedPaths = settings['cfob_not_listed_paths'].filter((/** @type {unknown} */ path) => typeof path === 'string');
+    }
     if (has('cfob_ignored_autocomplete_keywords')) this.ignoredAutocompleteKeywords = settings['cfob_ignored_autocomplete_keywords'];
     if (has('cfob_filter_shortcuts')) this.filterShortcuts = settings['cfob_filter_shortcuts'];
     if (has('cfob_search_blacklist')) this.searchBlacklist = settings['cfob_search_blacklist'];
@@ -962,6 +991,16 @@ export default class COB_Settings {
       this.app.gallery.filterGallery();
       this.app.showToast("Saved hidden folders configuration");
     });
+    this.app.$("cfobResetNotListedPathsBtn").addEventListener('click', () => {
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobNotListedPathsInput")).value = "";
+    });
+    this.app.$("cfobSaveNotListedPathsBtn").addEventListener('click', () => {
+      const val = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobNotListedPathsInput")).value;
+      const paths = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ path) => path.trim().replace(/\\/g, '/')).filter(Boolean))];
+      this.saveNotListedPaths(paths);
+      this.app.gallery.filterGallery();
+      this.app.showToast("Saved not listed paths");
+    });
 
     this.app.$("cfobResetIgnoredKeywordsBtn").addEventListener('click', () => {
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value = "";
@@ -1097,6 +1136,7 @@ export default class COB_Settings {
       setStatus("cfobConstrainStatus", this.constrainFullView);
       setStatus("cfobHiddenStatus", this.showHiddenFolders, 'Shown', 'Hidden');
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobHiddenFoldersInput")).value = this.hiddenFolders.join("\n");
+      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobNotListedPathsInput")).value = this.notListedPaths.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value = this.ignoredAutocompleteKeywords.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchBlacklistInput")).value = this.searchBlacklist.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobFilterShortcutsInput")).value = this.filterShortcuts

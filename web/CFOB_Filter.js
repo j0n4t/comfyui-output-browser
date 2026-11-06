@@ -224,6 +224,7 @@ export function maskImageMetadata(img, blacklist) {
  *   fieldConfigs: CFOB_CardFieldSettings[];
  *   filterShortcuts: { keyword: string; filter: string }[];
  *   showHiddenFolders: boolean;
+ *   notListedPaths?: string[];
  *   searchBlacklist?: string[];
  *   isImageInHiddenFolder: (name: string) => boolean;
  *   resolveFieldValue: (img: CFOB_Image, paths: string) => unknown;
@@ -291,9 +292,20 @@ export function filterImages(images, query, options) {
     });
   }).filter(group => group.length > 0);
 
-  const eligibleImages = images.filter(img =>
-    effectiveShowHidden || !options.isImageInHiddenFolder(img.name)
+  const explicitPathTerms = parsedQuery.flat().filter(term =>
+    term.searchKey === 'path' && !term.isNot && term.searchValue
   );
+  const notListedPaths = (options.notListedPaths || [])
+    .map(path => path.trim().replace(/\\/g, '/').toLowerCase())
+    .filter(Boolean);
+  const eligibleImages = images.filter(img => {
+    if (effectiveShowHidden) return true;
+    if (options.isImageInHiddenFolder(img.name)) return false;
+    const imagePath = img.name.replace(/\\/g, '/').toLowerCase();
+    const isNotListed = notListedPaths.some(path => imagePath.includes(path));
+    if (!isNotListed) return true;
+    return explicitPathTerms.some(term => imagePath.includes(term.searchValue));
+  });
   /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null; fields: Map<string, string | null> }>} */
   const imageTextCache = new WeakMap();
   const blacklist = compileBlacklist(options.searchBlacklist);
