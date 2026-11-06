@@ -21,16 +21,12 @@ import PngMetadata from "./PngMetadata.js";
 let port = null;
 
 const init = async () => {
-  try {
-    // @ts-ignore - `node:worker_threads` is only resolvable inside a Node worker.
-    const mod = await import("node:worker_threads");
-    port = mod.parentPort;
-  } catch {
-    port = null;
-  }
+  const nodeProcess = /** @type {any} */ (globalThis).process;
+  if (!nodeProcess?.versions?.node) return;
+  // @ts-ignore - `node:worker_threads` is only resolvable inside a Node worker.
+  const mod = await import("node:worker_threads");
+  port = mod.parentPort;
 };
-
-init();
 
 const handle = (/** @type {any} */ e) => {
   // In Node the parentPort 'message' listener receives the message value directly;
