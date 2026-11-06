@@ -105,7 +105,7 @@ export default class ComfyOutputBrowser {
      *  Full view keeps the same state under the same name, so a view opened from a
      *  hidden panel starts hidden and `h` brings the chrome back after it closes. */
     this.uiHidden = false;
-    /** @type {{ uiVisible: boolean, placement: 'sidebar' | 'action-bar' | 'floating' | 'hook' } | null} */
+    /** @type {{ uiVisible: boolean, placement: CFOB_LauncherPlacementModes } | null} */
     this._pickRestore = null;
     this._pickCommit = false;
     // Set from window.CFOB_STANDALONE in init(); overridable so tests can exercise
@@ -346,6 +346,10 @@ export default class ComfyOutputBrowser {
       '[data-testid="action-bar"]',
       '.comfy-menu',
     ];
+    const SWITCH_BAR_SELECTORS = [
+      '[aria-label="Enter node graph"]',
+      '[aria-label="Enter app mode"]',
+    ];
 
     const findSidebarTarget = () => {
       for (const sel of SIDEBAR_SELECTORS) {
@@ -357,6 +361,14 @@ export default class ComfyOutputBrowser {
 
     const findActionBarTarget = () => {
       for (const sel of ACTION_BAR_SELECTORS) {
+        const el = document.querySelector(sel);
+        if (el) return el;
+      }
+      return null;
+    };
+
+    const findSwitchBarTarget = () => {
+      for (const sel of SWITCH_BAR_SELECTORS) {
         const el = document.querySelector(sel);
         if (el) return el;
       }
@@ -470,6 +482,23 @@ export default class ComfyOutputBrowser {
         }
       }
 
+      if (placement === 'switch') {
+        const hookTarget = findSwitchBarTarget();
+        if (hookTarget && hookTarget.parentElement) {
+          if (!launcherBtn.classList.contains('cfob-launcher-hook')) {
+            launcherBtn.className = "cfob-launcher-hook";
+          }
+          launcherBtn.style.border = "";
+          if (launcherBtn.innerHTML !== ICONS.logo) launcherBtn.innerHTML = ICONS.logo;
+          launcherBtn.classList.toggle("side-bar-button-selected", Boolean(this.isUiVisible));
+          const parent = hookTarget.parentElement;
+          if (launcherBtn.parentElement !== parent || launcherBtn.nextElementSibling !== hookTarget) {
+            parent.insertBefore(launcherBtn, hookTarget);
+          }
+          return;
+        }
+      }
+
       if (placement === 'hook') {
         const hook = parseHookTarget(localStorage.getItem('cfob_launcher_hook_element'));
         const hookTarget = hook ? document.querySelector(hook.selector) : null;
@@ -567,7 +596,7 @@ export default class ComfyOutputBrowser {
    * so the user can click the ComfyUI page underneath; a click only marks a
    * candidate. OK commits it as the hook target, Cancel reverts to the placement
    * the user had before, and either button restores the UI.
-   * @param {'sidebar' | 'action-bar' | 'floating' | 'hook'} [previousPlacement]
+   * @param {CFOB_LauncherPlacementModes} [previousPlacement]
    */
   startElementPicker(previousPlacement) {
     if (this.isPickingElement) return;

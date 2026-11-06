@@ -175,6 +175,7 @@ export const CFOB_SETTINGS_MODALS_HTML = `
             <h4 class="options-section-title">Launcher Button</h4>
             <div class="options-setting"><label for="cfobLauncherPlacement">Placement</label>
               <select class="options-control" id="cfobLauncherPlacement">
+                <option value="switch">Switch Bar</option>
                 <option value="sidebar">Sidebar</option>
                 <option value="action-bar">Action Bar</option>
                 <option value="floating">Floating (draggable)</option>
@@ -346,8 +347,8 @@ export default class COB_Settings {
     this.panelInsets = this.loadPanelInsets();
     this.autoHide = localStorage.getItem('comfy_folder_browser_auto_hide') === 'true';
     this.panelOffsets = localStorage.getItem('cfob_panel_offsets') === 'true';
-    /** @type {'sidebar' | 'action-bar' | 'floating' | 'hook'} */
-    this.launcherPlacement = /** @type {'sidebar' | 'action-bar' | 'floating' | 'hook'} */ (localStorage.getItem('cfob_launcher_placement') || 'sidebar');
+    /** @type {CFOB_LauncherPlacementModes} */
+    this.launcherPlacement = /** @type {CFOB_LauncherPlacementModes} */ (localStorage.getItem('cfob_launcher_placement') || 'sidebar');
     this.gridSize = Number(localStorage.getItem('cfob_grid_size') || 380);
     this.masonryEnabled = localStorage.getItem('cfob_masonry_enabled') !== 'false';
     this.hideCardInfo = localStorage.getItem('cfob_hide_card_info') === 'true';
@@ -809,7 +810,7 @@ export default class COB_Settings {
     this.app.root?.classList.toggle('constrain-full-view', this.constrainFullView);
   }
 
-  /** @param {'sidebar' | 'action-bar' | 'floating' | 'hook'} placement */
+  /** @param {CFOB_LauncherPlacementModes} placement */
   setLauncherPlacement(placement) {
     const previous = this.launcherPlacement;
     this.launcherPlacement = placement;
@@ -823,7 +824,7 @@ export default class COB_Settings {
   /**
    * Restores a placement without re-entering the picker — used when the user
    * cancels element picking.
-   * @param {'sidebar' | 'action-bar' | 'floating' | 'hook'} placement
+   * @param {CFOB_LauncherPlacementModes} placement
    */
   revertLauncherPlacement(placement) {
     this.launcherPlacement = placement;
@@ -1148,7 +1149,7 @@ export default class COB_Settings {
       syncSizeControls();
     });
     this.app.$("cfobLauncherPlacement").addEventListener('change', (event) => {
-      this.setLauncherPlacement(/** @type {"action-bar" | "floating" | "sidebar" | "hook"} */ (/** @type {HTMLSelectElement} */(event.target).value));
+      this.setLauncherPlacement(/** @type {CFOB_LauncherPlacementModes} */ (/** @type {HTMLSelectElement} */(event.target).value));
     });
     this.app.$("cfobRehookBtn").addEventListener('click', () => {
       this.app.startElementPicker();

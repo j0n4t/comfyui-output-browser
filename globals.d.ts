@@ -12,3 +12,10 @@ type CFOB_CardFieldSettings = {
   label: string;
   paths: string;
 };
+
+type CFOB_LauncherPlacementModes =
+  | "switch"
+  | "sidebar"
+  | "action-bar"
+  | "floating"
+  | "hook";

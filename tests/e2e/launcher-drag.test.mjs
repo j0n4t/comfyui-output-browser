@@ -210,4 +210,29 @@ test("dragging the floating launcher works with mouse and touch", async ({ clean
     "",
     "the drag must release the userSelect lock when it ends"
   );
+
+  await evaluate(`(() => {
+    const switchTarget = document.createElement('button');
+    switchTarget.setAttribute('aria-label', 'Enter node graph');
+    document.body.appendChild(switchTarget);
+    window.__cfob.settings.launcherPlacement = 'switch';
+    window.__cfob.injectLauncherButton();
+    return true;
+  })()`);
+  await delay(200);
+  const switchBarMoves = await evaluate(`new Promise(resolve => {
+    const launcher = document.querySelector('#cfob-launcher-btn');
+    let moves = 0;
+    const observer = new MutationObserver(records => {
+      for (const record of records) {
+        if ([...record.addedNodes, ...record.removedNodes].includes(launcher)) moves++;
+      }
+    });
+    observer.observe(launcher.parentElement, { childList: true });
+    setTimeout(() => {
+      observer.disconnect();
+      resolve(moves);
+    }, 250);
+  })`);
+  assert.equal(switchBarMoves, 0, "switch-bar placement must not repeatedly move the launcher");
 });
