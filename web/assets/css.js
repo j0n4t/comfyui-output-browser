@@ -120,6 +120,9 @@ export const CFOB_STYLES = /*css*/ `
 
   #cfob-root .top-bar { background: var(--color-bg-panel); border-bottom: 1px solid var(--color-border); padding: 0.3125em; display: flex; justify-content: space-between; align-items: center; gap: 0.9375em; flex-wrap: wrap; }
   #cfob-root .logo-group { display: flex; align-items: center; gap: 0.625em; }
+  #cfob-root .logo-toggle { display: inline-flex; align-items: center; gap: 0.625em; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+  #cfob-root .logo-toggle:hover { color: var(--color-accent); }
+  #cfob-root .logo-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
   #cfob-root .logo-group h1 { font-size: 1.125em; margin: 0; color: var(--color-text-inverse); white-space: nowrap; }
   #cfobImageCount { color: var(--color-text-muted); font-size: 0.8125em; font-weight: 600; margin-left: 0.375em; }
   #cfob-root .actions-group { display: flex; align-items: center; gap: 0.625em; flex-wrap: wrap; flex: 1; justify-content: flex-end; }

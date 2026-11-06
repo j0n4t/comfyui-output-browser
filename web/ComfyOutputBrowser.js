@@ -18,7 +18,9 @@ const BROWSER_HTML = `
 
 <div class="top-bar">
   <div class="logo-group">
-    ${ICONS.logo}
+    <button class="logo-toggle" id="cfobLogoToggle" type="button" title="Toggle Output Browser" aria-label="Toggle Output Browser">
+      ${ICONS.logo}
+    </button>
     <h1>ComfyUI Output Browser</h1>
     <span id="cfobImageCount"></span>
   </div>
@@ -796,6 +798,8 @@ export default class ComfyOutputBrowser {
 
   bindEvents() {
     this.$("cfobCloseBrowserBtn").addEventListener('click', () => this.hideWithTransition());
+    this.$("cfobLogoToggle").addEventListener('click', () => this.toggleUi());
+    this.$("cfobFullViewLogoToggle").addEventListener('click', () => this.toggleUi());
     this.$("cfobRefreshBtn").addEventListener('click', () => this.fetchServerImages());
     this.$("cfobMenuBtn").addEventListener('click', () => this.settings.toggleOptionsMenu());
     const searchInput = this.$("cfobSearchInput");

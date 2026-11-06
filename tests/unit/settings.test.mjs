@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import CFOB_Settings, { CFOB_SETTINGS_MODALS_HTML } from "../../web/CFOB_Settings.js";
+import { CFOB_FULL_VIEW_HTML } from "../../web/CFOB_FullView.js";
 
 /** Minimal app surface used by the new import/export methods only. */
 const mockApp = {
@@ -117,6 +118,10 @@ test("options modal contains the Import / Export tab and all its controls", () =
   assert.ok(html.includes('id="cfobImportSettingsBtn"'), "Import Settings button");
   assert.ok(html.includes('id="cfobImportFileInput"'), "Import file input");
   assert.ok(html.includes('id="cfobToggleSelectionCheckboxesBtn"'), "selection checkbox toggle");
+});
+
+test("browser headers expose the logo toggle", () => {
+  assert.ok(CFOB_FULL_VIEW_HTML.includes('id="cfobFullViewLogoToggle"'));
 });
 
 test("selection checkbox visibility persists and updates the gallery class", () => {

@@ -4,7 +4,10 @@ export const CFOB_FULL_VIEW_HTML = `
   <div class="modal-overlay" id="cfobFullViewModal">
     <div class="full-view-layout">
       <div class="full-view-top-bar">
-        <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
+        <div class="full-view-brand">
+          <button class="icon-btn full-view-logo-toggle" id="cfobFullViewLogoToggle" type="button" title="Toggle Output Browser" aria-label="Toggle Output Browser">${ICONS.logo}</button>
+          <button class="full-view-count" id="cfobFullViewCount" type="button" title="Go to image number">1 / 10</button>
+        </div>
         <div class="full-view-browser-controls" id="cfobFullViewBrowserControls"></div>
         <div style="display: flex; gap: 0.5em; align-items: center;">
           <div class="full-view-more-wrap">
@@ -82,6 +85,8 @@ export const CFOB_FULL_VIEW_STYLES = /*css*/ `
   #cfob-root .full-view-empty-state h3 { color: var(--color-text-inverse); }
 
   #cfob-root .full-view-top-bar { padding: 0.4em; background: rgba(39, 39, 42, 0.94); display: flex; justify-content: space-between; align-items: center; gap: 0.75em; color: var(--color-text-primary); z-index: 10; }
+  #cfob-root .full-view-brand { display: flex; align-items: center; gap: 0.5em; }
+  #cfob-root .full-view-logo-toggle { display: inline-flex; }
   #cfob-root .full-view-browser-controls { display: flex; align-items: center; gap: 0.5em; flex: 1; min-width: 0; }
   #cfob-root .full-view-browser-controls .search-wrapper { max-width: 24em; min-width: 8em; }
   #cfob-root .full-view-browser-controls .btn { font-size: 0.75em; }
