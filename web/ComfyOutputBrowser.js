@@ -416,7 +416,8 @@ export default class ComfyOutputBrowser {
         launcherBtn.id = "cfob-launcher-btn";
         launcherBtn.title = "Browse Outputs";
         launcherBtn.setAttribute("aria-label", "Browse Outputs");
-        launcherBtn.onclick = () => {
+        launcherBtn.onclick = (e) => {
+          e.stopPropagation();
           if (launcherBtn._cfobDragEndedAt && Date.now() - launcherBtn._cfobDragEndedAt < 300) return;
           this.toggleUi();
         };
