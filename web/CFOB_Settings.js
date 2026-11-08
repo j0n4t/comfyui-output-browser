@@ -1328,6 +1328,38 @@ export default class COB_Settings {
       let selectedFolder = null;
       /** @type {HTMLElement | null} */
       let newFolderEntry = null;
+
+      const cleanup = () => {
+        this.modals.close(modal);
+        thumbWrapper.classList.remove('active');
+        this.app.$("cfobPromptOkBtn").removeEventListener("click", onOk);
+        this.app.$("cfobPromptCancelBtn").removeEventListener("click", onCancel);
+        this.app.$("cfobPromptCloseBtn").removeEventListener("click", onCancel);
+        input.removeEventListener("keydown", onKey);
+      };
+
+      const onOk = () => {
+        if (folderPickerMode === 'move') {
+          if (selectedFolder === null) {
+            // Accept a typed new-folder name on Save.
+            const typedInput = /** @type {HTMLInputElement | null} */ (folderList.querySelector('.folder-new-entry input'));
+            const typedFolder = typedInput?.value.trim() || "";
+            if (typedFolder) selectedFolder = typedFolder;
+          }
+          if (selectedFolder === null) return;
+        }
+        cleanup();
+        resolve(folderPickerMode === 'move' ? selectedFolder : input.value);
+      };
+      const onCancel = () => { cleanup(); resolve(null); };
+      const onKey = (/** @type {KeyboardEvent} */ e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          onOk();
+        }
+      };
+
       if (folderPickerMode === 'move') {
         folderWrapper.style.display = "block";
         this.app.$("cfobPromptOkBtn").setAttribute("disabled", "");
@@ -1400,11 +1432,7 @@ export default class COB_Settings {
         newFolderInput.type = "text";
         newFolderInput.className = "config-input";
         newFolderInput.placeholder = "New folder name (or path)";
-        const useNewFolderButton = document.createElement("button");
-        useNewFolderButton.type = "button";
-        useNewFolderButton.className = "btn";
-        useNewFolderButton.innerText = "Use folder";
-        newFolderEntry.append(newFolderInput, useNewFolderButton);
+        newFolderEntry.append(newFolderInput);
         folderList.appendChild(newFolderEntry);
 
         newFolderChip.onclick = () => {
@@ -1418,49 +1446,30 @@ export default class COB_Settings {
 
         const selectNewFolder = () => {
           const folder = newFolderInput.value.trim();
-          if (!folder) return;
+          if (!folder) return false;
           selectedFolder = folder;
           input.value = folder;
           this.app.$("cfobPromptOkBtn").removeAttribute("disabled");
+          return true;
         };
-        useNewFolderButton.addEventListener("click", selectNewFolder);
         newFolderInput.addEventListener("input", () => {
           selectedFolder = null;
-          this.app.$("cfobPromptOkBtn").setAttribute("disabled", "");
+          if (newFolderInput.value.trim()) {
+            this.app.$("cfobPromptOkBtn").removeAttribute("disabled");
+          } else {
+            this.app.$("cfobPromptOkBtn").setAttribute("disabled", "");
+          }
         });
         newFolderInput.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
             e.preventDefault();
-            selectNewFolder();
+            if (selectNewFolder()) onOk();
           }
         });
       } else {
         folderWrapper.style.display = "none";
         this.app.$("cfobPromptOkBtn").removeAttribute("disabled");
       }
-
-      const cleanup = () => {
-        this.modals.close(modal);
-        thumbWrapper.classList.remove('active');
-        this.app.$("cfobPromptOkBtn").removeEventListener("click", onOk);
-        this.app.$("cfobPromptCancelBtn").removeEventListener("click", onCancel);
-        this.app.$("cfobPromptCloseBtn").removeEventListener("click", onCancel);
-        input.removeEventListener("keydown", onKey);
-      };
-
-      const onOk = () => {
-        if (folderPickerMode === 'move' && selectedFolder === null) return;
-        cleanup();
-        resolve(folderPickerMode === 'move' ? selectedFolder : input.value);
-      };
-      const onCancel = () => { cleanup(); resolve(null); };
-      const onKey = (/** @type {KeyboardEvent} */ e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          e.stopPropagation();
-          onOk();
-        }
-      };
 
       this.app.$("cfobPromptOkBtn").addEventListener("click", onOk);
       this.app.$("cfobPromptCancelBtn").addEventListener("click", onCancel);
