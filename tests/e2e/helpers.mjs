@@ -139,13 +139,14 @@ export function sweepStaleProfileDirs() {
  * Writes a solid PNG. The default 8x8 is what a fixture needs to decode; pass `width`
  * and `height` when a test depends on the image's own aspect ratio — the full view
  * fits the picture to its box, so an 8x8 image gives a near-zero box and no meaningful
- * geometry.
+ * geometry. `textChunks` adds tEXt chunks (keyword, text) after IHDR.
  * @param {string} path
  * @param {[number, number, number]} rgb
  * @param {number} [width]
  * @param {number} [height]
+ * @param {[string, string][]} [textChunks]
  */
-export function writeSolidPng(path, rgb, width = 8, height = 8) {
+export function writeSolidPng(path, rgb, width = 8, height = 8, textChunks = []) {
   const raw = Buffer.concat(
     Array.from({ length: height }, () => Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: width }, () => rgb).flat())]))
   );
@@ -161,9 +162,12 @@ export function writeSolidPng(path, rgb, width = 8, height = 8) {
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8; ihdr[9] = 2; // 8-bit truecolour
+  const textParts = textChunks.map(([keyword, text]) =>
+    chunk("tEXt", Buffer.concat([Buffer.from(keyword, "latin1"), Buffer.from([0]), Buffer.from(text, "latin1")])));
   const png = Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", ihdr),
+    ...textParts,
     chunk("IDAT", deflateSync(raw)),
     chunk("IEND", Buffer.alloc(0)),
   ]);

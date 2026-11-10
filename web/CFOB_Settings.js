@@ -1,5 +1,6 @@
 import ICONS from "./assets/icons.js";
 import CFOB_Modal from "./CFOB_Modal.js";
+import PngMetadata from "./PngMetadata.js";
 export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .field-row { display: flex; flex-direction: column; gap: 0.25em; background: var(--color-bg-surface); border: 1px solid var(--color-border-dark); padding: 0.5em 0.625em; border-radius: var(--radius-md); }
   #cfob-root .field-label { font-size: 0.6875em; font-weight: 700; color: var(--color-syntax-key); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
@@ -48,6 +49,8 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .inspector-json-actions { display: none; position: sticky; top: -0.75em; z-index: 1; align-items: center; gap: 0.5em; background: var(--color-bg-input); border-bottom: 1px solid var(--color-border); margin: -0.75em -0.75em 0.5em; padding: 0.5em 0.75em; }
   #cfob-root .inspector-json-actions.active { display: flex; }
   #cfob-root .inspector-json-selected-path { color: var(--color-text-muted); font-family: var(--font-mono); font-size: 0.75em; overflow-wrap: anywhere; }
+  #cfob-root .inspector-tab-link { color: var(--color-accent); cursor: pointer; }
+  #cfob-root .inspector-tab-link:focus-visible { outline: 1px solid var(--color-accent); }
 
   #cfob-root .popover-menu { position: fixed; background: var(--color-bg-popover); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: 0 0.625em 1.5625em rgba(0,0,0,0.6); padding: 0.5em; z-index: var(--z-popover); display: flex; flex-direction: column; gap: 0.5em; min-width: 15em; max-width: 20em; }
   #cfob-root .popover-header { font-size: 0.625em; font-weight: 700; color: var(--color-text-muted); padding: 0.125em 0.25em; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -232,7 +235,7 @@ export const CFOB_SETTINGS_MODALS_HTML = `
           </div>
           <div class="options-section">
             <h4 class="options-section-title">Search Blacklist</h4>
-            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Exclude content from search (one per line or comma-separated). Use a built-in key (<code>name</code>, <code>path</code>, <code>prompt</code>, <code>workflow</code>) to hide that whole target, or a node path from the metadata inspector to hide one property. Prompt and workflow paths are separate: <code>KSampler.inputs.seed</code> hides the API prompt value, <code>KSampler.seed</code> the workflow value, <code>KSampler.widget[0]</code> the positional workflow value. Add both if you want the widget hidden everywhere.</p>
+            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Exclude content from search (one per line or comma-separated). Use a built-in key (<code>name</code>, <code>path</code>, <code>prompt</code>, <code>workflow</code>, <code>text</code>) to hide that whole target, or a path from the metadata inspector to hide one property. Prompt and workflow paths are separate: <code>KSampler.inputs.seed</code> hides the API prompt value, <code>KSampler.seed</code> the workflow value, <code>KSampler.widget[0]</code> the positional workflow value. Add both if you want the widget hidden everywhere. The Other Metadata tab also exposes <code>@file.name</code>, <code>@file.mtime</code>, and <code>@textChunks.&lt;keyword&gt;</code> paths.</p>
             <textarea id="cfobSearchBlacklistInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No blacklisted fields"></textarea>
             <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
               <button class="btn btn-danger" id="cfobResetSearchBlacklistBtn" type="button">Clear Blacklist</button>
@@ -278,10 +281,12 @@ export const CFOB_SETTINGS_MODALS_HTML = `
           <div class="tab active" data-target="cfobInsNodes" tabindex="0">Visual Nodes View</div>
           <div class="tab" data-target="cfobInsPrompt" tabindex="0">API Prompt (JSON)</div>
           <div class="tab" data-target="cfobInsWorkflow" tabindex="0">UI Workflow (JSON)</div>
+          <div class="tab" data-target="cfobInsOther" tabindex="0">Other Metadata</div>
         </div>
         <div class="tab-content active" id="cfobInsNodes"><div class="nodes-grid" id="cfobInsNodesGrid"></div></div>
         <div class="tab-content" id="cfobInsPrompt"><div class="inspector-json-view" id="cfobInsPromptView"></div></div>
         <div class="tab-content" id="cfobInsWorkflow"><div class="inspector-json-view" id="cfobInsWorkflowView"></div></div>
+        <div class="tab-content" id="cfobInsOther"><div class="inspector-json-view" id="cfobInsOtherView"></div></div>
       </div>
     </div>
   </div>
@@ -1628,48 +1633,116 @@ export default class COB_Settings {
   }
 
   /**
+   * Map a path inside one metadata blob to the spelling card fields and the search
+   * blacklist use.
+   * @param {'prompt' | 'workflow'} source
+   * @param {string[]} parentPath
+   * @param {string} key
+   * @param {any} img
+   * @returns {string}
+   */
+  getInspectorPath(source, parentPath, key, img) {
+    if (source === 'prompt' && parentPath.length > 0 && img.prompt?.[parentPath[0]]) {
+      const node = img.prompt[parentPath[0]];
+      const nodeName = node?._meta?.title || node?.class_type || parentPath[0];
+      const propertyPath = [...parentPath.slice(1), key]
+        .map((part, index) => /^\d+$/.test(part) ? `[${part}]` : `${index && !/^\d+$/.test(part) ? '.' : ''}${part}`)
+        .join('');
+      const nodePropertyPath = propertyPath.startsWith('inputs.') || propertyPath === 'inputs'
+        ? propertyPath
+        : `node.${propertyPath || '__self__'}`;
+      return `${nodeName}.${nodePropertyPath}`;
+    }
+
+    if (source === 'workflow') {
+      const nodesIndex = parentPath.indexOf('nodes');
+      if (nodesIndex >= 0 && parentPath.length > nodesIndex + 1) {
+        const nodeIndex = Number(parentPath[nodesIndex + 1]);
+        const node = img.workflow?.nodes?.[nodeIndex];
+        if (!node) return `@workflow.${[...parentPath, key].join('.')}`;
+        const nodeName = node?.title || node?.type || node?.id;
+        const nodePath = [...parentPath.slice(nodesIndex + 2), key];
+        if (nodePath[0] === 'widgets_values_named' && nodePath.length === 2) return `${nodeName}.${nodePath[1]}`;
+        if (nodePath[0] === 'widgets_values' && nodePath.length === 2 && /^\d+$/.test(nodePath[1])) return `${nodeName}.widget[${nodePath[1]}]`;
+        const propertyPath = nodePath
+          .map((part, index) => /^\d+$/.test(part) ? `[${part}]` : `${index && !/^\d+$/.test(part) ? '.' : ''}${part}`)
+          .join('');
+        return `${nodeName}.${propertyPath || '__self__'}`;
+      }
+      return `@workflow.${[...parentPath, key].join('.')}`;
+    }
+
+    return `@prompt.${[...parentPath, key].join('.')}`;
+  }
+
+  /**
    * @param {HTMLElement} panel
    * @param {any} value
    * @param {'prompt' | 'workflow'} source
    * @param {any} img
    */
   renderInspectorJson(panel, value, source, img) {
-    const getPath = (/** @type {string[]} */ parentPath, /** @type {string} */ key, /** @type {any} */ _propertyValue) => {
-      if (source === 'prompt' && parentPath.length > 0 && img.prompt?.[parentPath[0]]) {
-        const node = img.prompt[parentPath[0]];
-        const nodeName = node?._meta?.title || node?.class_type || parentPath[0];
-        const propertyPath = [...parentPath.slice(1), key]
-          .map((part, index) => /^\d+$/.test(part) ? `[${part}]` : `${index && !/^\d+$/.test(part) ? '.' : ''}${part}`)
-          .join('');
-        const nodePropertyPath = propertyPath.startsWith('inputs.') || propertyPath === 'inputs'
-          ? propertyPath
-          : `node.${propertyPath || '__self__'}`;
-        return `${nodeName}.${nodePropertyPath}`;
-      }
+    this.renderInspectorJsonValue(panel, value, (parentPath, key) => this.getInspectorPath(source, parentPath, key, img));
+  }
 
-      if (source === 'workflow') {
-        const nodesIndex = parentPath.indexOf('nodes');
-        if (nodesIndex >= 0 && parentPath.length > nodesIndex + 1) {
-          const nodeIndex = Number(parentPath[nodesIndex + 1]);
-          const node = img.workflow?.nodes?.[nodeIndex];
-          if (!node) return `@workflow.${[...parentPath, key].join('.')}`;
-          const nodeName = node?.title || node?.type || node?.id;
-          const nodePath = [...parentPath.slice(nodesIndex + 2), key];
-          if (nodePath[0] === 'widgets_values_named' && nodePath.length === 2) return `${nodeName}.${nodePath[1]}`;
-          if (nodePath[0] === 'widgets_values' && nodePath.length === 2 && /^\d+$/.test(nodePath[1])) return `${nodeName}.widget[${nodePath[1]}]`;
-          const propertyPath = nodePath
-            .map((part, index) => /^\d+$/.test(part) ? `[${part}]` : `${index && !/^\d+$/.test(part) ? '.' : ''}${part}`)
-            .join('');
-          return `${nodeName}.${propertyPath || '__self__'}`;
-        }
-        return `@workflow.${[...parentPath, key].join('.')}`;
+  /**
+   * Other metadata view: file info and every PNG text chunk in one pretty-printed
+   * tree. The raw prompt/workflow chunks link to their dedicated tabs instead of
+   * repeating the JSON.
+   * @param {HTMLElement} panel
+   * @param {any} img
+   */
+  renderInspectorOther(panel, img) {
+    /** @type {Record<string, any>} */
+    const textChunks = {};
+    for (const [keyword, text] of Object.entries(img.textChunks || {})) {
+      if (keyword === 'prompt') {
+        textChunks[keyword] = { __link: 'cfobInsPrompt', label: 'Open API Prompt (JSON) tab' };
+      } else if (keyword === 'workflow') {
+        textChunks[keyword] = { __link: 'cfobInsWorkflow', label: 'Open UI Workflow (JSON) tab' };
+      } else {
+        textChunks[keyword] = PngMetadata.parseChunkText(text);
       }
+    }
 
-      return `@prompt.${[...parentPath, key].join('.')}`;
+    const value = {
+      file: {
+        name: img.name,
+        path: img.name.replace(/\\/g, '/').split('/').slice(0, -1).join('/'),
+        mtime: img.mtime
+      },
+      textChunks
     };
 
+    const getPath = (/** @type {string[]} */ parentPath, /** @type {string} */ key) => {
+      if (parentPath.length === 0) return '';
+      const root = parentPath[0];
+      if (root === 'file') return `@file.${[...parentPath.slice(1), key].join('.')}`;
+      if (root === 'textChunks') {
+        // The raw prompt/workflow chunks only link to their tab, so they have no path.
+        if (parentPath.length === 1 && (key === 'prompt' || key === 'workflow')) return '';
+        return `@textChunks.${[parentPath[1], ...parentPath.slice(2), key].filter(Boolean).join('.')}`;
+      }
+      return '';
+    };
+
+    this.renderInspectorJsonValue(panel, value, getPath);
+  }
+
+  /**
+   * Render pretty-printed JSON whose keys are selectable. `getPath` maps a JSON path
+   * to the spelling used by card fields and the search blacklist; an empty result
+   * renders a plain, non-selectable key.
+   * @param {HTMLElement} panel
+   * @param {any} value
+   * @param {(parentPath: string[], key: string) => string} getPath
+   */
+  renderInspectorJsonValue(panel, value, getPath) {
     /** @type {(current: any, depth: number, path: string[]) => string} */
     const renderValue = (/** @type {any} */ current, /** @type {number} */ depth, /** @type {string[]} */ path) => {
+      if (current && typeof current === 'object' && !Array.isArray(current) && current.__link) {
+        return `<a class="inspector-tab-link" href="#" data-tab="${this.app.escapeHtml(String(current.__link))}">${this.app.escapeHtml(String(current.label || 'Open tab'))}</a>`;
+      }
       if (Array.isArray(current)) {
         if (!current.length) return '[]';
         const entries = current.map((item, index) => `${'  '.repeat(depth + 1)}${renderValue(item, depth + 1, [...path, String(index)])}`);
@@ -1677,7 +1750,7 @@ export default class COB_Settings {
       }
       if (current && typeof current === 'object') {
         const entries = Object.entries(current).map(([key, child]) => {
-          const nodePath = getPath(path, key, child);
+          const nodePath = getPath(path, key);
           const escapedKey = this.app.escapeHtml(JSON.stringify(key));
           const renderedKey = nodePath
             ? `<button class="inspector-json-key" type="button" data-path="${encodeURIComponent(nodePath)}" aria-label="Select property">${escapedKey}</button>`
@@ -1722,6 +1795,15 @@ export default class COB_Settings {
     addButton.addEventListener('click', event => this.openAddPathMenu(event, addButton.dataset.path || ''));
     const blacklistButton = /** @type {HTMLElement} */ (panel.querySelector('.inspector-json-blacklist'));
     blacklistButton.addEventListener('click', event => this.openAddBlacklistMenu(event, addButton.dataset.path || ''));
+    panel.querySelectorAll('.inspector-tab-link').forEach(link => {
+      /** @type {HTMLElement} */ (link).addEventListener('click', (/** @type {MouseEvent} */ event) => {
+        event.preventDefault();
+        const target = /** @type {HTMLElement} */ (link).dataset.tab;
+        this.app.root?.querySelectorAll('#cfobInspectorTabs .tab').forEach(tab => {
+          if (/** @type {HTMLElement} */ (tab).dataset.target === target) /** @type {HTMLElement} */ (tab).click();
+        });
+      });
+    });
   }
 
   /** @param {number} idx */
@@ -1738,6 +1820,7 @@ export default class COB_Settings {
     this.app.$("cfobInspectorTitle").innerText = `Metadata: ${img.name}`;
     this.renderInspectorJson(this.app.$("cfobInsPromptView"), img.prompt || 'No API Prompt Metadata', 'prompt', img);
     this.renderInspectorJson(this.app.$("cfobInsWorkflowView"), img.workflow || 'No UI Workflow Metadata', 'workflow', img);
+    this.renderInspectorOther(this.app.$("cfobInsOtherView"), img);
 
     const grid = this.app.$("cfobInsNodesGrid");
     grid.innerHTML = '';

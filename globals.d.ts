@@ -4,6 +4,7 @@ type CFOB_Image = {
   url: string;
   prompt: Record<string, any> | null;
   workflow: Record<string, any> | null;
+  textChunks: Record<string, string> | null;
   isParsed: boolean;
   isParsing?: boolean;
 };

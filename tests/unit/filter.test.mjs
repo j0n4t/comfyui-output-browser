@@ -43,6 +43,9 @@ const options = {
 const namesFor = (query, overrides = {}) =>
   filterImages(images, query, { ...options, ...overrides }).map(image => image.name);
 
+const namesIn = (list, query, overrides = {}) =>
+  filterImages(list, query, { ...options, ...overrides }).map(image => image.name);
+
 test("matches all space-separated terms and combines comma groups as OR", () => {
   assert.deepEqual(namesFor("cat red"), ["animals/cat-red.png"]);
   assert.deepEqual(namesFor("cat, dog"), [
@@ -169,5 +172,25 @@ test("bare text search respects blacklist on built-in keys", () => {
 
 test("blacklist does not affect unblacklisted fields", () => {
   assert.deepEqual(namesFor("2:202", { searchBlacklist: ["model"] }), ["animals/cat-blue.png"]);
-  assert.deepEqual(namesFor("prompt:\"blue sky\"", { searchBlacklist: ["name"] }), ["animals/cat-red.png"]);
+  assert.deepEqual(namesFor('prompt:"blue sky"', { searchBlacklist: ["name"] }), ["animals/cat-red.png"]);
+});
+
+test("indexes PNG text chunks and masks them by path", () => {
+  const list = [
+    { ...images[0], textChunks: { parameters: JSON.stringify({ seed: 1234, steps: 20 }), Dream: "aurora borealis" } },
+    { ...images[1], textChunks: { parameters: JSON.stringify({ seed: 5678, steps: 30 }) } }
+  ];
+  assert.deepEqual(namesIn(list, "aurora"), ["animals/cat-red.png"]);
+  assert.deepEqual(namesIn(list, "5678"), ["animals/cat-blue.png"]);
+  assert.deepEqual(namesIn(list, "aurora", { searchBlacklist: ["@textChunks.Dream"] }), []);
+  assert.deepEqual(namesIn(list, "5678", { searchBlacklist: ["@textChunks.parameters.seed"] }), []);
+  assert.deepEqual(namesIn(list, "20", { searchBlacklist: ["@textChunks.parameters"] }), []);
+  assert.deepEqual(namesIn(list, "aurora", { searchBlacklist: ["text"] }), []);
+});
+
+test("blacklist @file entries hide the file name from search", () => {
+  assert.deepEqual(namesFor("name:blue", { searchBlacklist: ["@file.name"] }), []);
+  assert.deepEqual(namesFor("path:animals", { searchBlacklist: ["@file.path"] }), []);
+  // mtime is not searched, so blacklisting it must not hide the name
+  assert.deepEqual(namesFor("name:blue", { searchBlacklist: ["@file.mtime"] }), ["animals/cat-blue.png"]);
 });

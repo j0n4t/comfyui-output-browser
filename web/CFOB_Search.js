@@ -19,7 +19,7 @@ export default class CFOB_Search {
     this.removeImageKeywords(img.name, false);
     const keywords = new Set();
     const masked = maskImageMetadata(img, this.app.settings.searchBlacklist);
-    const values = [masked.name, masked.prompt, masked.workflow];
+    const values = [masked.name, masked.prompt, masked.workflow, masked.textChunks];
     while (values.length) {
       const value = values.pop();
       if (typeof value === 'string') {

@@ -9,6 +9,7 @@ import CFOB_ImageActions from "./CFOB_ImageActions.js";
 import CFOB_Selection from "./CFOB_Selection.js";
 import { generateSelector, parseHookTarget, formatHookTarget } from "./CFOB_Selector.js";
 import { setupFloatingDragFn } from "./CFOB_Drag.js";
+import PngMetadata from "./PngMetadata.js";
 
 const BROWSER_HTML = `
 <div class="cfob-resizer" data-edge="top"></div>
@@ -1115,6 +1116,7 @@ export default class ComfyOutputBrowser {
               image.isParsed = false;
               image.prompt = null;
               image.workflow = null;
+              image.textChunks = null;
               image.url = this.api.getImageUrl(fileObj.name) + (fileObj.mtime ? `&t=${fileObj.mtime}` : '');
               this.gallery.invalidateCard(image.name);
               existingImagesChanged = true;
@@ -1129,7 +1131,7 @@ export default class ComfyOutputBrowser {
       const newImages = newFilesToFetch.map((fileObj) => {
         let url = this.api.getImageUrl(fileObj.name);
         if (fileObj.mtime) url += `&t=${fileObj.mtime}`;
-        return { name: fileObj.name, mtime: fileObj.mtime, url, prompt: null, workflow: null, isParsed: false, isParsing: false };
+        return { name: fileObj.name, mtime: fileObj.mtime, url, prompt: null, workflow: null, textChunks: null, isParsed: false, isParsing: false };
       });
 
       if (newImages.length > 0 || validImages.length !== this.loadedImages.length || existingImagesChanged) {
@@ -1199,6 +1201,23 @@ export default class ComfyOutputBrowser {
 
       if (targetName === '@prompt' || targetName === '@workflow') {
         const value = getNestedValue(targetName === '@prompt' ? prompt : workflow, prop);
+        if (value !== undefined && value !== null && value !== '') return value;
+        continue;
+      }
+
+      if (targetName === '@file' || targetName === '@textChunks') {
+        /** @type {Record<string, any>} */
+        const file = {
+          name: imgData.name,
+          path: imgData.name.replace(/\\/g, '/').split('/').slice(0, -1).join('/'),
+          mtime: imgData.mtime
+        };
+        /** @type {Record<string, any>} */
+        const chunks = {};
+        for (const [keyword, text] of Object.entries(imgData.textChunks || {})) {
+          chunks[keyword] = PngMetadata.parseChunkText(text);
+        }
+        const value = getNestedValue(targetName === '@file' ? file : chunks, prop);
         if (value !== undefined && value !== null && value !== '') return value;
         continue;
       }

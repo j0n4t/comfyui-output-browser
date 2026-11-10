@@ -222,6 +222,19 @@ const PngMetadata = {
   },
 
   /**
+   * Parse a text chunk's text as JSON when possible, otherwise return it unchanged.
+   * @param {string} text
+   * @returns {any}
+   */
+  parseChunkText(text) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  },
+
+  /**
    * Extract the Preset Gallery node's own widget values from the embedded workflow.
    * Searches the prompt JSON (flat map with class_type/inputs).
    * @param {PngMetadata} metadata

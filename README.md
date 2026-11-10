@@ -30,7 +30,7 @@ Yet Another Output Image and Metadata Browser for ComfyUI, designed to help you 
 ### 3. Metadata Extraction
 
 - **Quick-Copy Fields:** Press any number key from **`1` to `9**` while viewing an image (in grid or full-screen mode) to instantly copy the 1st through 9th metadata field values to your clipboard.
-- **Inspector:** Press **`I`** to open a detailed metadata inspector popup.
+- **Inspector:** Press **`I`** to open a detailed metadata inspector popup. Its **Other Metadata** tab shows the file info and every PNG text chunk in one tree (the raw prompt/workflow chunks link to their own tabs); the other tabs show the visual node list and each JSON blob on its own.
 - **Blacklist:** Hide specific metadata fields from search results under **Options → Folders & Search → Blacklist**. Enter paths like `Node.inputs.seed` to exclude matching values from search. This is useful for keeping sensitive or noisy metadata out of your search index.
 
 Use **Options → Sort By** to order images by server order, filename, modification time (**Older First** or **Newer First**).

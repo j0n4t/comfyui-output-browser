@@ -45,7 +45,7 @@ export default class COB_API {
 
   /**
    * @param {string} key
-   * @param {{ prompt: Record<string,any>; workflow: Record<string,any>; }} val
+   * @param {{ prompt: Record<string,any>; workflow: Record<string,any>; textChunks?: Record<string,string>; }} val
    * @param {number} [mtime]
    */
   async cacheSet(key, val, mtime = 0) {
@@ -108,6 +108,7 @@ export default class COB_API {
       }
       img.prompt = meta.promptJson;
       img.workflow = meta.workflowJson;
+      img.textChunks = meta.textChunks || null;
       img.isParsed = true;
       this.app.search.indexImageKeywords(img);
     } catch (e) {

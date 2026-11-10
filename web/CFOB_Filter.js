@@ -2,6 +2,7 @@
  * @typedef {{ kind: 'index'; index: number } | { kind: 'slice'; start?: number; end?: number }} CFOB_SearchRange
  * @typedef {{ isNot: boolean; searchKey: string | null; searchValue: string; fieldIdx: number; fieldMatch: CFOB_CardFieldSettings | null; range: CFOB_SearchRange | null }} CFOB_SearchTerm
  */
+import PngMetadata from "./PngMetadata.js";
 
 /**
  * Split a blacklist entry into the node it targets, the property within it, and which
@@ -16,7 +17,7 @@
  * They are matched separately because the same widget can hold different values in each.
  *
  * @param {string} entry
- * @returns {{ node: string; prop: string; scope: 'prompt' | 'workflow' | 'any' } | null}
+ * @returns {{ node: string; prop: string; scope: 'prompt' | 'workflow' | 'text' | 'file' | 'any' } | null}
  */
 const parseEntry = (entry) => {
   const dot = entry.indexOf('.');
@@ -27,6 +28,8 @@ const parseEntry = (entry) => {
   if (dot < 0) return { node: name, prop: '', scope: 'any' }; // whole node, both blobs
 
   const prop = entry.slice(dot + 1).trim().toLowerCase();
+  if (name === '@textchunks') return { node: name, prop, scope: 'text' };
+  if (name === '@file') return { node: name, prop, scope: 'file' };
   if (prop === 'inputs' || prop.startsWith('inputs.')) return { node: name, prop, scope: 'prompt' };
   if (prop === 'node') return { node: name, prop: '', scope: 'prompt' };
   if (prop.startsWith('node.')) return { node: name, prop: prop.slice('node.'.length), scope: 'prompt' };
@@ -38,7 +41,7 @@ const parseEntry = (entry) => {
  * applies to that blob, names the node, and its property equals the blacklisted one
  * (an empty property matches the whole node).
  * @param {{ node: string; prop: string; scope: string }[]} entries
- * @param {'prompt' | 'workflow'} scope
+ * @param {'prompt' | 'workflow' | 'text' | 'file'} scope
  * @returns {(nodeNames: string[], props: string[]) => boolean}
  */
 const makeIsBlocked = (entries, scope) => (nodeNames, props) => {
@@ -177,13 +180,43 @@ const maskWorkflow = (workflow, isBlocked) => {
 };
 
 /**
+ * Mask the PNG text chunks. A chunk's text is parsed as JSON when possible so its
+ * properties can be blocked by path (`@textChunks.parameters.seed`); otherwise the
+ * raw string is kept and only the whole chunk can be blocked.
+ * @param {Record<string, string>} chunks
+ * @param {(nodeNames: string[], props: string[]) => boolean} isBlocked
+ * @returns {Record<string, any>}
+ */
+const maskTextChunks = (chunks, isBlocked) => {
+  if (!chunks || typeof chunks !== 'object') return chunks;
+  /** @type {Record<string, any>} */
+  const masked = {};
+  for (const [keyword, value] of Object.entries(chunks)) {
+    if (isBlocked(['@textchunks'], [keyword])) continue;
+    masked[keyword] = maskValue(PngMetadata.parseChunkText(value), [keyword], props => isBlocked(['@textchunks'], props));
+  }
+  return masked;
+};
+
+/**
+ * The file-info property a blacklist entry targets, or null when the entry is not a
+ * `@file` entry. `@file` alone yields '' (the whole file info).
+ * @param {string} entry
+ * @returns {string | null}
+ */
+const fileBlacklistProp = (entry) => {
+  const match = entry.trim().match(/^@file(?:\.(.+))?$/i);
+  return match ? (match[1] ?? '').toLowerCase() : null;
+};
+
+/**
  * Blacklist entries, split into whole built-in keys (`name`, `prompt`, `workflow`, ...)
  * and node paths (`KSampler.inputs.seed`).
  * @param {string[]} [blacklist]
  * @returns {{
  *   entries: string[];
  *   keySet: Set<string>;
- *   pathEntries: { node: string; prop: string; scope: 'prompt' | 'workflow' | 'any' }[];
+ *   pathEntries: { node: string; prop: string; scope: 'prompt' | 'workflow' | 'text' | 'file' | 'any' }[];
  *   isFieldBlacklisted: (paths: string) => boolean;
  * }}
  */
@@ -192,7 +225,7 @@ const compileBlacklist = (blacklist) => {
   return {
     entries,
     keySet: new Set(entries.map(entry => entry.toLowerCase())),
-    pathEntries: /** @type {{ node: string; prop: string; scope: 'prompt' | 'workflow' | 'any' }[]} */ (entries.map(parseEntry).filter(Boolean)),
+    pathEntries: /** @type {{ node: string; prop: string; scope: 'prompt' | 'workflow' | 'text' | 'file' | 'any' }[]} */ (entries.map(parseEntry).filter(Boolean)),
     isFieldBlacklisted: (/** @type {string} */ paths) => {
       const lower = paths.toLowerCase();
       return entries.some(entry => lower.includes(entry.toLowerCase()));
@@ -205,15 +238,20 @@ const compileBlacklist = (blacklist) => {
  * searchable keywords. Mirrors what `filterImages` can actually match.
  * @param {CFOB_Image} img
  * @param {string[]} [blacklist]
- * @returns {{ name: string; prompt: Record<string, any> | null; workflow: Record<string, any> | null }}
+ * @returns {{ name: string; prompt: Record<string, any> | null; workflow: Record<string, any> | null; textChunks: Record<string, any> | null }}
  */
 export function maskImageMetadata(img, blacklist) {
-  const { keySet, pathEntries } = compileBlacklist(blacklist);
-  const nameHidden = keySet.has('name') || keySet.has('path');
+  const { entries, keySet, pathEntries } = compileBlacklist(blacklist);
+  let nameHidden = keySet.has('name') || keySet.has('path');
+  for (const entry of entries) {
+    const fileProp = fileBlacklistProp(entry);
+    if (fileProp !== null && (fileProp === '' || fileProp === 'name' || fileProp === 'path')) nameHidden = true;
+  }
   return {
     name: nameHidden ? '' : (img.name || ''),
     prompt: keySet.has('prompt') || !img.prompt ? null : maskPrompt(img.prompt, makeIsBlocked(pathEntries, 'prompt')),
-    workflow: keySet.has('workflow') || !img.workflow ? null : maskWorkflow(img.workflow, makeIsBlocked(pathEntries, 'workflow'))
+    workflow: keySet.has('workflow') || !img.workflow ? null : maskWorkflow(img.workflow, makeIsBlocked(pathEntries, 'workflow')),
+    textChunks: keySet.has('text') || !img.textChunks ? null : maskTextChunks(img.textChunks, makeIsBlocked(pathEntries, 'text'))
   };
 }
 
@@ -306,7 +344,7 @@ export function filterImages(images, query, options) {
     if (!isNotListed) return true;
     return explicitPathTerms.some(term => imagePath.includes(term.searchValue));
   });
-  /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null; fields: Map<string, string | null> }>} */
+  /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null; textChunks: string; fields: Map<string, string | null> }>} */
   const imageTextCache = new WeakMap();
   const blacklist = compileBlacklist(options.searchBlacklist);
   const matchesTerm = (/** @type {CFOB_Image} */ img, /** @type {CFOB_SearchTerm} */ term) => {
@@ -317,6 +355,7 @@ export function filterImages(images, query, options) {
         name: (masked.name || "").toLowerCase(),
         prompt: masked.prompt ? (JSON.stringify(masked.prompt) || "").toLowerCase() : "",
         workflow: masked.workflow ? (JSON.stringify(masked.workflow) || "").toLowerCase() : "",
+        textChunks: masked.textChunks ? (JSON.stringify(masked.textChunks) || "").toLowerCase() : "",
         fields: new Map()
       };
       imageTextCache.set(img, text);
@@ -343,7 +382,7 @@ export function filterImages(images, query, options) {
         match = matchesField(term.fieldMatch.paths);
       }
     } else {
-      match = text.name.includes(term.searchValue) || (text.prompt || '').includes(term.searchValue) || (text.workflow || '').includes(term.searchValue);
+      match = text.name.includes(term.searchValue) || (text.prompt || '').includes(term.searchValue) || (text.workflow || '').includes(term.searchValue) || (text.textChunks || '').includes(term.searchValue);
     }
     return term.isNot ? !match : match;
   };
