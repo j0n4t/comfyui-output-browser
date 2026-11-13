@@ -6,6 +6,13 @@ export default class COB_API {
     this.app = app;
     this.dbPromise = this.initDB();
     this._idleParsingActive = false;
+    /** @type {CFOB_Image[]} */
+    this._idleParsingQueue = [];
+    this._idleParsingCursor = 0;
+    /** @type {Set<CFOB_Image>} */
+    this._idleParsingQueued = new Set();
+    /** @type {Set<CFOB_Image>} */
+    this._idleParsingImages = new Set();
 
     /** @type {Worker | null} */
     this._metadataWorker = null;
@@ -127,18 +134,35 @@ export default class COB_API {
     // have delivered fresh files while a previous session was already running.
     this.app.setIdleParsingActive(true);
 
+    this._idleParsingImages = new Set(this.app.loadedImages);
+    for (const img of this.app.loadedImages) {
+      if (!img.isParsed && !this._idleParsingQueued.has(img)) {
+        this._idleParsingQueue.push(img);
+        this._idleParsingQueued.add(img);
+      }
+    }
+
     // Only one parse loop should run at a time.
     if (this._idleParsingActive) return;
     this._idleParsingActive = true;
 
     const parseNext = async () => {
-      // Skip images currently being fetched by the intersection observer; they
-      // will be caught on the next tick once isParsing clears.
-      const hasPending = this.app.loadedImages.some((/** @type {CFOB_Image} */ i) => !i.isParsed);
-      const img = this.app.loadedImages.find((/** @type {CFOB_Image} */ i) => !i.isParsed && !i.isParsing);
+      /** @type {CFOB_Image[]} */
+      const deferred = [];
+      while (this._idleParsingCursor < this._idleParsingQueue.length) {
+        const img = this._idleParsingQueue[this._idleParsingCursor++];
+        if (!this._idleParsingImages.has(img) || img.isParsed) {
+          this._idleParsingQueued.delete(img);
+          continue;
+        }
+        if (img.isParsing) {
+          deferred.push(img);
+          continue;
+        }
 
-      if (img) {
+        // eslint-disable-next-line no-await-in-loop
         await this.loadMetadata(img);
+        this._idleParsingQueued.delete(img);
 
         const card = this.app.root?.querySelector(`.image-card[data-name="${CSS.escape(img.name)}"]`);
         if (card) {
@@ -148,16 +172,24 @@ export default class COB_API {
           }
         }
 
+        this._idleParsingQueue.push(...deferred);
         if ('requestIdleCallback' in window) {
           requestIdleCallback(parseNext, { timeout: 2000 });
         } else {
           setTimeout(parseNext, 50);
         }
-      } else if (hasPending) {
-        // Some images are still being fetched (isParsing=true); retry shortly.
+        return;
+      }
+
+      this._idleParsingQueue.push(...deferred);
+      if (deferred.length) {
         setTimeout(parseNext, 100);
       } else {
         this._idleParsingActive = false;
+        this._idleParsingQueue = [];
+        this._idleParsingCursor = 0;
+        this._idleParsingQueued.clear();
+        this._idleParsingImages.clear();
         this.app.setIdleParsingActive(false);
       }
     };

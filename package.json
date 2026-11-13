@@ -2,6 +2,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/unit/*.test.mjs\"",
+    "test:perf": "node --test \"tests/perf/*.test.mjs\"",
     "test:mutation": "node tests/mutation/probe-grid-navigation.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint web/**/*.js tests/**/*.mjs",

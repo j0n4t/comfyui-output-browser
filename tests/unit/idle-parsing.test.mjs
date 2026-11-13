@@ -1,11 +1,4 @@
-/**
- * Unit tests for CFOB_API.startIdleParsing and the IntersectionObserver-based
- * on-demand metadata loading introduced to fix two bugs:
- *
- *   1. The sync/refresh button stopped spinning during idle parsing.
- *   2. Parsing new files blocked the browser from showing (all visible cards
- *      fired simultaneous fetch() calls via the intersection observer).
- */
+/** Unit tests for the CFOB_API.startIdleParsing lifecycle. */
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -46,6 +39,10 @@ function makeApi(appOverrides = {}) {
   const api = Object.create(CFOB_API.prototype);
   api.app = app;
   api._idleParsingActive = false;
+  api._idleParsingQueue = [];
+  api._idleParsingCursor = 0;
+  api._idleParsingQueued = new Set();
+  api._idleParsingImages = new Set();
   api._metadataWorker = null;
   api._metadataToken = 0;
   api._metadataPending = new Map();
@@ -147,6 +144,27 @@ test("startIdleParsing calls loadMetadata for each unparsed image", async (t) =>
   assert.deepEqual(loaded.sort(), ["a.png", "b.png"], "should load metadata for every unparsed image");
 });
 
+test("startIdleParsing queues new files and skips files removed during the loop", async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+
+  const loaded = [];
+  const removed = makeImg("removed.png");
+  const added = makeImg("added.png");
+  const api = makeApi({ setIdleParsingActive: () => {} });
+  api.app.loadedImages = [removed];
+  api.loadMetadata = async (img) => {
+    loaded.push(img.name);
+    img.isParsed = true;
+  };
+
+  api.startIdleParsing();
+  api.app.loadedImages = [added];
+  api.startIdleParsing();
+  await drainTimers(t.mock.timers);
+
+  assert.deepEqual(loaded, ["added.png"]);
+});
+
 test("startIdleParsing skips images that are already parsed", async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
 
@@ -232,95 +250,6 @@ test("startIdleParsing keeps the button active when called while loop is running
   const lastTrueIdx = calls.lastIndexOf(true);
   assert.ok(lastTrueIdx > lastFalseIdx || lastFalseIdx === -1,
     "button should still be spinning after the second call");
-});
-
-// ---------------------------------------------------------------------------
-// Intersection observer guard: on-demand load only fires when loop is idle
-// ---------------------------------------------------------------------------
-
-/** Reproduces the observer callback logic from ComfyOutputBrowser.js. */
-function simulateObserverEntry(entry, { api, loadedImages, observer }) {
-  if (!entry.isIntersecting) return;
-  const idx = entry.target.dataset.index;
-  const img = idx !== undefined ? loadedImages[Number(idx)] : null;
-  if (img && !img.isParsed) {
-    if (!api._idleParsingActive) {
-      api.loadMetadata(img).then(() => {
-        const cardBody = entry.target.querySelector('.card-body');
-        if (cardBody) cardBody.innerHTML = "...";
-      });
-    }
-    observer.unobserve(entry.target);
-  }
-}
-
-function makeCard(index) {
-  return { dataset: { index: String(index) }, querySelector: () => null };
-}
-
-test("intersection observer skips loadMetadata while _idleParsingActive is true", () => {
-  let metadataLoaded = false;
-  const img = makeImg("x.png");
-  const api = { _idleParsingActive: true, loadMetadata: async () => { metadataLoaded = true; } };
-  const unobserved = [];
-  const observer = { unobserve: (c) => unobserved.push(c) };
-
-  simulateObserverEntry(
-    { isIntersecting: true, target: makeCard(0) },
-    { api, loadedImages: [img], observer }
-  );
-
-  assert.equal(metadataLoaded, false, "should NOT call loadMetadata while idle parsing is active");
-  assert.equal(unobserved.length, 1, "should still unobserve the card to avoid re-firing");
-});
-
-test("intersection observer calls loadMetadata when the idle loop is not running", async () => {
-  let metadataLoaded = false;
-  const img = makeImg("y.png");
-  const api = {
-    _idleParsingActive: false,
-    loadMetadata: async (i) => { metadataLoaded = true; i.isParsed = true; },
-  };
-  const observer = { unobserve: () => {} };
-
-  simulateObserverEntry(
-    { isIntersecting: true, target: makeCard(0) },
-    { api, loadedImages: [img], observer }
-  );
-  // Flush the microtask queue so the promise resolves.
-  await new Promise(resolve => setImmediate(resolve));
-
-  assert.equal(metadataLoaded, true, "should call loadMetadata when idle loop is not running");
-});
-
-test("intersection observer skips already-parsed images", () => {
-  let metadataLoaded = false;
-  const img = makeImg("z.png", { isParsed: true });
-  const api = { _idleParsingActive: false, loadMetadata: async () => { metadataLoaded = true; } };
-  const unobserved = [];
-  const observer = { unobserve: (c) => unobserved.push(c) };
-
-  simulateObserverEntry(
-    { isIntersecting: true, target: makeCard(0) },
-    { api, loadedImages: [img], observer }
-  );
-
-  assert.equal(metadataLoaded, false, "should not reload metadata for already-parsed images");
-  assert.equal(unobserved.length, 0, "should not unobserve if image was already parsed");
-});
-
-test("intersection observer does not load non-intersecting entries", () => {
-  let metadataLoaded = false;
-  const img = makeImg("w.png");
-  const api = { _idleParsingActive: false, loadMetadata: async () => { metadataLoaded = true; } };
-  const observer = { unobserve: () => {} };
-
-  simulateObserverEntry(
-    { isIntersecting: false, target: makeCard(0) },
-    { api, loadedImages: [img], observer }
-  );
-
-  assert.equal(metadataLoaded, false, "non-intersecting entry should not trigger a load");
 });
 
 // ---------------------------------------------------------------------------

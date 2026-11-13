@@ -4,6 +4,9 @@
  */
 import PngMetadata from "./PngMetadata.js";
 
+/** @type {WeakMap<CFOB_Image, { name: string; promptRef: CFOB_Image['prompt']; workflowRef: CFOB_Image['workflow']; textChunksRef: CFOB_Image['textChunks']; cacheKey: string; text: { name: string; prompt: string; workflow: string; textChunks: string } }>} */
+const searchableTextCache = new WeakMap();
+
 /**
  * Split a blacklist entry into the node it targets, the property within it, and which
  * metadata blob it applies to.
@@ -349,19 +352,49 @@ export function filterImages(images, query, options) {
   /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null; textChunks: string; fields: Map<string, string | null> }>} */
   const imageTextCache = new WeakMap();
   const blacklist = compileBlacklist(options.searchBlacklist);
+  const hasBlacklist = (options.searchBlacklist || []).some(entry => entry.trim());
   const whitelist = new Set((options.searchWhitelist || []).map(entry => entry.trim().toLowerCase()).filter(Boolean));
+  const whitelistMode = options.searchContentMode === 'whitelist';
+  const textCacheKey = JSON.stringify([whitelistMode, options.searchBlacklist || []]);
   const isWhitelistedMetadata = (/** @type {string} */ key) =>
     whitelist.has(key) || whitelist.has('@textchunks') || whitelist.has(`@textchunks.${key}`);
-  const whitelistMode = options.searchContentMode === 'whitelist';
   const matchesTerm = (/** @type {CFOB_Image} */ img, /** @type {CFOB_SearchTerm} */ term) => {
     let text = imageTextCache.get(img);
     if (!text) {
-      const masked = maskImageMetadata(img, whitelistMode ? [] : options.searchBlacklist);
+      let cachedText = searchableTextCache.get(img);
+      if (!cachedText || cachedText.name !== img.name || cachedText.promptRef !== img.prompt ||
+          cachedText.workflowRef !== img.workflow || cachedText.textChunksRef !== img.textChunks ||
+          cachedText.cacheKey !== textCacheKey) {
+        let name = img.name;
+        let prompt = img.prompt;
+        let workflow = img.workflow;
+        let textChunks = img.textChunks;
+        if (whitelistMode || !hasBlacklist) {
+          if (img.textChunks) textChunks = maskImageMetadata(img, []).textChunks;
+        } else {
+          const masked = maskImageMetadata(img, options.searchBlacklist);
+          name = masked.name;
+          prompt = masked.prompt;
+          workflow = masked.workflow;
+          textChunks = masked.textChunks;
+        }
+        cachedText = {
+          name: img.name,
+          promptRef: img.prompt,
+          workflowRef: img.workflow,
+          textChunksRef: img.textChunks,
+          cacheKey: textCacheKey,
+          text: {
+            name: (name || "").toLowerCase(),
+            prompt: prompt ? (JSON.stringify(prompt) || "").toLowerCase() : "",
+            workflow: workflow ? (JSON.stringify(workflow) || "").toLowerCase() : "",
+            textChunks: textChunks ? (JSON.stringify(textChunks) || "").toLowerCase() : ""
+          }
+        };
+        searchableTextCache.set(img, cachedText);
+      }
       text = {
-        name: (masked.name || "").toLowerCase(),
-        prompt: masked.prompt ? (JSON.stringify(masked.prompt) || "").toLowerCase() : "",
-        workflow: masked.workflow ? (JSON.stringify(masked.workflow) || "").toLowerCase() : "",
-        textChunks: masked.textChunks ? (JSON.stringify(masked.textChunks) || "").toLowerCase() : "",
+        ...cachedText.text,
         fields: new Map()
       };
       imageTextCache.set(img, text);

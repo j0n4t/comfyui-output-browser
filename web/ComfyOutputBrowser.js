@@ -181,30 +181,27 @@ export default class ComfyOutputBrowser {
     this.settings.setHideCardInfo(this.settings.hideCardInfo);
     this.settings.setShowSelectionCheckboxes(this.settings.showSelectionCheckboxes);
     this.observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const card = /** @type {HTMLElement} */ (entry.target);
-          const idx = card.dataset.index;
-          // @ts-ignore
-          const img = idx ? this.loadedImages[idx] : null;
-          if (img && !img.isParsed) {
-            // If the idle-parsing loop is already running it will reach this
-            // image naturally; don't fire a competing fetch here. Only kick off
-            // an on-demand load when the loop is idle (e.g. the user scrolled to
-            // a card long after the initial parse cycle finished).
-            if (!this.api._idleParsingActive) {
-              this.api.loadMetadata(img).then(() => {
-                const cardBody = card.querySelector('.card-body');
-                if (cardBody) {
-                  cardBody.innerHTML = this.getCardFieldsHtml(img);
-                }
-              });
-            }
-            this.observer?.unobserve(card);
-          }
-        }
-      });
+      entries.forEach(entry => this.handleImageIntersection(entry));
     }, { root: this.$("cfobMainContainer"), rootMargin: "200px" });
+  }
+
+  /** @param {IntersectionObserverEntry} entry */
+  handleImageIntersection(entry) {
+    if (!entry.isIntersecting) return;
+    const card = /** @type {HTMLElement} */ (entry.target);
+    const index = card.dataset.index;
+    const img = index !== undefined ? this.loadedImages[Number(index)] : null;
+    if (!img || img.isParsed) return;
+
+    // The idle-parsing loop owns initial parsing; the observer handles images
+    // that become visible after that loop has finished.
+    if (!this.api._idleParsingActive) {
+      this.api.loadMetadata(img).then(() => {
+        const cardBody = card.querySelector('.card-body');
+        if (cardBody) cardBody.innerHTML = this.getCardFieldsHtml(img);
+      });
+    }
+    this.observer?.unobserve(card);
   }
 
   /**

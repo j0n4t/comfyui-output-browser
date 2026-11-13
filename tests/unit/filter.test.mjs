@@ -139,6 +139,29 @@ test("returns all eligible images for an empty filter", () => {
   ]);
 });
 
+test("refreshes cached searchable metadata when an image or blacklist changes", () => {
+  const image = {
+    name: "cache-test.png",
+    prompt: { text: "first value" },
+    workflow: null,
+    textChunks: null,
+    fields: {}
+  };
+  const list = [image];
+  const resolveFieldValue = () => null;
+  const filter = (query, searchBlacklist = []) => filterImages(list, query, {
+    ...options,
+    searchBlacklist,
+    resolveFieldValue
+  });
+
+  assert.deepEqual(filter("first"), [image]);
+  image.prompt = { text: "second value" };
+  assert.deepEqual(filter("first"), []);
+  assert.deepEqual(filter("second"), [image]);
+  assert.deepEqual(filter("second", ["prompt"]), []);
+});
+
 test("not-listed paths require an explicit path filter unless showing all", () => {
   const overrides = { notListedPaths: ["temp"], isImageInHiddenFolder: () => false };
   assert.deepEqual(namesFor("cat", overrides), [
