@@ -18,8 +18,24 @@ export default class CFOB_Search {
   indexImageKeywords(img, refreshSuggestions = true) {
     this.removeImageKeywords(img.name, false);
     const keywords = new Set();
-    const masked = maskImageMetadata(img, this.app.settings.searchBlacklist);
-    const values = [masked.name, masked.prompt, masked.workflow, masked.textChunks];
+    const whitelistMode = this.app.settings.searchContentMode === 'whitelist';
+    const masked = maskImageMetadata(img, whitelistMode ? [] : this.app.settings.searchBlacklist);
+    const whitelist = new Set((this.app.settings.searchWhitelist || []).map(path => path.trim().toLowerCase()));
+    /** @type {unknown[]} */
+    let values;
+    if (whitelistMode) {
+      values = [masked.name];
+      if (whitelist.has('prompt')) values.push(masked.prompt);
+      if (whitelist.has('workflow')) values.push(masked.workflow);
+      if (whitelist.has('text') || whitelist.has('@textchunks')) values.push(masked.textChunks);
+      for (const path of whitelist) {
+        if (!['prompt', 'workflow', 'text', 'name', 'path', '@textchunks'].includes(path) && !path.startsWith('@textchunks.')) {
+          values.push(this.app.resolveFieldValue(img, path));
+        }
+      }
+    } else {
+      values = [masked.name, masked.prompt, masked.workflow, masked.textChunks];
+    }
     while (values.length) {
       const value = values.pop();
       if (typeof value === 'string') {

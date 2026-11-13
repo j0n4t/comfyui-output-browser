@@ -68,6 +68,13 @@ export const CFOB_SETTINGS_MODALS_STYLES = /*css*/ `
   #cfob-root .options-tab-panel.active { display: flex; }
   #cfob-root .options-section { display: flex; flex-direction: column; gap: 0.5em; }
   #cfob-root .options-section-title { margin: 0; color: var(--color-text-muted); font-size: 0.75em; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  #cfob-root .options-accordion { display: block; padding: 0; overflow: hidden; }
+  #cfob-root .options-accordion > summary { display: flex; align-items: center; justify-content: space-between; padding: 0.75em; cursor: pointer; list-style: none; user-select: none; }
+  #cfob-root .options-accordion > summary::-webkit-details-marker { display: none; }
+  #cfob-root .options-accordion > summary::after { content: ""; width: 0.625em; height: 0.625em; background: linear-gradient(var(--color-text-muted),var(--color-text-muted)) center/100% 1px no-repeat, linear-gradient(var(--color-text-muted),var(--color-text-muted)) center/1px 100% no-repeat; transition: transform 0.15s; }
+  #cfob-root .options-accordion[open] > summary { border-bottom: 1px solid var(--color-border); }
+  #cfob-root .options-accordion[open] > summary::after { transform: rotate(45deg); }
+  #cfob-root .options-accordion-content { display: flex; flex-direction: column; gap: 0.75em; padding: 0.75em; }
   #cfob-root .options-setting { display: flex; align-items: center; justify-content: space-between; gap: 1em; padding: 0.625em 0.75em; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-surface); font-size: 0.8125em; }
   #cfob-root .options-setting > label:first-child { color: var(--color-text-primary); }
   #cfob-root .options-slider-setting { align-items: stretch; flex-direction: column; gap: 0.5em; }
@@ -198,50 +205,66 @@ export const CFOB_SETTINGS_MODALS_HTML = `
           </div>
         </section>
         <section class="options-tab-panel" id="cfobOptionsFolders" role="tabpanel" aria-labelledby="cfobFoldersTab">
-          <div class="options-section">
-            <h4 class="options-section-title">Hidden Paths</h4>
-            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Specify folder names or path keywords to hide (one per line or comma-separated). Folders starting with <code>.</code> are automatically hidden when hidden folders are toggled off.</p>
-            <textarea id="cfobHiddenFoldersInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="temp&#10;trash&#10;drafts"></textarea>
-            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
-              <button class="btn btn-danger" id="cfobResetHiddenFoldersBtn" type="button">Reset Defaults</button>
-              <button class="btn btn-primary" id="cfobSaveHiddenFoldersBtn" type="button">Save Hidden Paths</button>
+          <details class="options-section options-accordion" open>
+            <summary class="options-section-title">Hidden Paths</summary>
+            <div class="options-accordion-content">
+              <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Specify folder names or path keywords to hide (one per line or comma-separated). Folders starting with <code>.</code> are automatically hidden when hidden folders are toggled off.</p>
+              <textarea id="cfobHiddenFoldersInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="temp&#10;trash&#10;drafts"></textarea>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+                <button class="btn btn-danger" id="cfobResetHiddenFoldersBtn" type="button">Reset Defaults</button>
+                <button class="btn btn-primary" id="cfobSaveHiddenFoldersBtn" type="button">Save Hidden Paths</button>
+              </div>
             </div>
-          </div>
-          <div class="options-section">
-            <h4 class="options-section-title">Not Listed Paths</h4>
-            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Keep matching paths out of the grid unless the filter explicitly includes them with <code>path:</code>. They are shown when Hidden Folders is on or the filter starts with <code>.</code>.</p>
-            <textarea id="cfobNotListedPathsInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="archive&#10;outputs/old"></textarea>
-            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
-              <button class="btn btn-danger" id="cfobResetNotListedPathsBtn" type="button">Clear Paths</button>
-              <button class="btn btn-primary" id="cfobSaveNotListedPathsBtn" type="button">Save Not Listed Paths</button>
+          </details>
+          <details class="options-section options-accordion">
+            <summary class="options-section-title">Not Listed Paths</summary>
+            <div class="options-accordion-content">
+              <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Keep matching paths out of the grid unless the filter explicitly includes them with <code>path:</code>. They are shown when Hidden Folders is on or the filter starts with <code>.</code>.</p>
+              <textarea id="cfobNotListedPathsInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="archive&#10;outputs/old"></textarea>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+                <button class="btn btn-danger" id="cfobResetNotListedPathsBtn" type="button">Clear Paths</button>
+                <button class="btn btn-primary" id="cfobSaveNotListedPathsBtn" type="button">Save Not Listed Paths</button>
+              </div>
             </div>
-          </div>
-          <div class="options-section">
-            <h4 class="options-section-title">Filter Shortcuts</h4>
-            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define one shortcut per line as <code>keyword | filter</code>, then use it in search with <code>@keyword</code>. Filters can use commas for alternatives. Example: <code>animals | dog, cat, wolf</code>.</p>
-            <textarea id="cfobFilterShortcutsInput" class="config-paths-textarea" style="height: 9em; width: 100%;" placeholder="animals | dog, cat, wolf"></textarea>
-            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
-              <button class="btn btn-primary" id="cfobSaveFilterShortcutsBtn" type="button">Save Shortcuts</button>
+          </details>
+          <details class="options-section options-accordion">
+            <summary class="options-section-title">Filter Shortcuts</summary>
+            <div class="options-accordion-content">
+              <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Define one shortcut per line as <code>keyword | filter</code>, then use it in search with <code>@keyword</code>. Filters can use commas for alternatives. Example: <code>animals | dog, cat, wolf</code>.</p>
+              <textarea id="cfobFilterShortcutsInput" class="config-paths-textarea" style="height: 9em; width: 100%;" placeholder="animals | dog, cat, wolf"></textarea>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+                <button class="btn btn-primary" id="cfobSaveFilterShortcutsBtn" type="button">Save Shortcuts</button>
+              </div>
             </div>
-          </div>
-          <div class="options-section">
-            <h4 class="options-section-title">Autocomplete Keywords to Ignore</h4>
-            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Hide exact keywords from search autocomplete (one per line or comma-separated). This does not affect filtering.</p>
-            <textarea id="cfobIgnoredKeywordsInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No ignored keywords"></textarea>
-            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
-              <button class="btn btn-danger" id="cfobResetIgnoredKeywordsBtn" type="button">Clear Keywords</button>
-              <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn" type="button">Save Keywords</button>
+          </details>
+          <details class="options-section options-accordion">
+            <summary class="options-section-title">Autocomplete Keywords to Ignore</summary>
+            <div class="options-accordion-content">
+              <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Hide exact keywords from search autocomplete (one per line or comma-separated). This does not affect filtering.</p>
+              <textarea id="cfobIgnoredKeywordsInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No ignored keywords"></textarea>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+                <button class="btn btn-danger" id="cfobResetIgnoredKeywordsBtn" type="button">Clear Keywords</button>
+                <button class="btn btn-primary" id="cfobSaveIgnoredKeywordsBtn" type="button">Save Keywords</button>
+              </div>
             </div>
-          </div>
-          <div class="options-section">
-            <h4 class="options-section-title">Search Blacklist</h4>
-            <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Exclude content from search (one per line or comma-separated). Use a built-in key (<code>name</code>, <code>path</code>, <code>prompt</code>, <code>workflow</code>, <code>text</code>) to hide that whole target, or a path from the metadata inspector to hide one property. Prompt and workflow paths are separate: <code>KSampler.inputs.seed</code> hides the API prompt value, <code>KSampler.seed</code> the workflow value, <code>KSampler.widget[0]</code> the positional workflow value. Add both if you want the widget hidden everywhere. The Other Metadata tab also exposes <code>@file.name</code>, <code>@file.mtime</code>, and <code>@textChunks.&lt;keyword&gt;</code> paths.</p>
-            <textarea id="cfobSearchBlacklistInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No blacklisted fields"></textarea>
-            <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
-              <button class="btn btn-danger" id="cfobResetSearchBlacklistBtn" type="button">Clear Blacklist</button>
-              <button class="btn btn-primary" id="cfobSaveSearchBlacklistBtn" type="button">Save Blacklist</button>
+          </details>
+          <details class="options-section options-accordion">
+            <summary class="options-section-title">Search Content</summary>
+            <div class="options-accordion-content">
+              <div class="options-setting"><label for="cfobSearchContentMode">Content mode</label>
+                <select class="options-control" id="cfobSearchContentMode">
+                  <option value="blacklist">Blacklist</option>
+                  <option value="whitelist">Whitelist</option>
+                </select>
+              </div>
+              <p style="font-size: 0.8125em; color: var(--color-text-muted); margin: 0;">Blacklist excludes matching content; whitelist searches only matching fields. File names and paths remain searchable. Enter one field path per line or comma-separated. Prompt and workflow paths are separate: <code>KSampler.inputs.seed</code> targets the API prompt, while <code>KSampler.seed</code> targets the workflow. Use built-in keys such as <code>prompt</code>, <code>workflow</code>, or <code>text</code> to include those complete content sources in whitelist mode.</p>
+              <textarea id="cfobSearchContentInput" class="config-paths-textarea" style="height: 7em; width: 100%;" placeholder="No search rules"></textarea>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5em;">
+                <button class="btn btn-danger" id="cfobResetSearchContentBtn" type="button">Clear Rules</button>
+                <button class="btn btn-primary" id="cfobSaveSearchContentBtn" type="button">Save Rules</button>
+              </div>
             </div>
-          </div>
+          </details>
         </section>
         <section class="options-tab-panel" id="cfobOptionsFields" role="tabpanel" aria-labelledby="cfobFieldsTab">
           <div class="options-section">
@@ -339,6 +362,10 @@ export const DEFAULT_FIELDS = [
   { label: "Model", paths: "CheckpointLoaderSimple.ckpt_name, DualCLIPLoader.ckpt_name, 4.inputs.ckpt_name, UNETLoader.unet_name" }
 ];
 
+export const DEFAULT_SEARCH_WHITELIST = [...new Set(DEFAULT_FIELDS.flatMap(field =>
+  field.paths.split(',').map(path => path.trim()).filter(Boolean)
+))];
+
 export default class COB_Settings {
   /** @param {import("./ComfyOutputBrowser.js").default} app  */
   constructor(app) {
@@ -353,6 +380,9 @@ export default class COB_Settings {
     /** @type {{keyword: string, filter: string}[]} */
     this.filterShortcuts = this.loadFilterShortcuts();
     this.searchBlacklist = this.loadSearchBlacklist();
+    this.searchWhitelist = this.loadSearchWhitelist();
+    /** @type {'blacklist' | 'whitelist'} */
+    this.searchContentMode = localStorage.getItem('cfob_search_content_mode') === 'whitelist' ? 'whitelist' : 'blacklist';
     this.showHiddenFolders = localStorage.getItem('comfy_folder_browser_show_hidden') === 'true';
     this.browserMode = localStorage.getItem('comfy_folder_browser_mode') || 'full';
     this.fullViewMode = localStorage.getItem('comfy_folder_browser_view') === 'full';
@@ -515,6 +545,20 @@ export default class COB_Settings {
     localStorage.setItem('cfob_search_blacklist', JSON.stringify(entries));
   }
 
+  /** @returns {string[]} */
+  loadSearchWhitelist() {
+    const saved = localStorage.getItem('cfob_search_whitelist');
+    if (!saved) return [...DEFAULT_SEARCH_WHITELIST];
+    const list = JSON.parse(saved);
+    return Array.isArray(list) ? list.filter(item => typeof item === 'string') : [...DEFAULT_SEARCH_WHITELIST];
+  }
+
+  /** @param {string[]} entries */
+  saveSearchWhitelist(entries) {
+    this.searchWhitelist = entries;
+    localStorage.setItem('cfob_search_whitelist', JSON.stringify(entries));
+  }
+
   /**
    * Collects all current settings into a serializable object.
    * @returns {{version: number, settings: Object}}
@@ -528,6 +572,8 @@ export default class COB_Settings {
     settings['cfob_ignored_autocomplete_keywords'] = this.ignoredAutocompleteKeywords;
     settings['cfob_filter_shortcuts'] = this.filterShortcuts;
     settings['cfob_search_blacklist'] = this.searchBlacklist;
+    settings['cfob_search_whitelist'] = this.searchWhitelist;
+    settings['cfob_search_content_mode'] = this.searchContentMode;
     settings['comfy_folder_browser_show_hidden'] = this.showHiddenFolders;
     settings['comfy_folder_browser_mode'] = this.browserMode;
     settings['comfy_folder_browser_view'] = this.fullViewMode ? 'full' : 'grid';
@@ -575,6 +621,8 @@ export default class COB_Settings {
     set('cfob_ignored_autocomplete_keywords', settings['cfob_ignored_autocomplete_keywords']);
     set('cfob_filter_shortcuts', settings['cfob_filter_shortcuts']);
     set('cfob_search_blacklist', settings['cfob_search_blacklist']);
+    set('cfob_search_whitelist', settings['cfob_search_whitelist']);
+    set('cfob_search_content_mode', settings['cfob_search_content_mode']);
     set('comfy_folder_browser_show_hidden', settings['comfy_folder_browser_show_hidden']);
     set('comfy_folder_browser_mode', settings['comfy_folder_browser_mode']);
     set('comfy_folder_browser_view', settings['comfy_folder_browser_view']);
@@ -626,9 +674,16 @@ export default class COB_Settings {
     if (has('cfob_ignored_autocomplete_keywords')) this.ignoredAutocompleteKeywords = settings['cfob_ignored_autocomplete_keywords'];
     if (has('cfob_filter_shortcuts')) this.filterShortcuts = settings['cfob_filter_shortcuts'];
     if (has('cfob_search_blacklist')) this.searchBlacklist = settings['cfob_search_blacklist'];
+    if (has('cfob_search_whitelist') && Array.isArray(settings['cfob_search_whitelist'])) {
+      this.searchWhitelist = settings['cfob_search_whitelist'].filter((/** @type {unknown} */ entry) => typeof entry === 'string');
+    }
+    if (has('cfob_search_content_mode')) {
+      this.searchContentMode = settings['cfob_search_content_mode'] === 'whitelist' ? 'whitelist' : 'blacklist';
+    }
 
     this.app.applySort();
     this.app.gallery.filterGallery();
+    this.app.search?.rebuildKeywordDictionary();
   }
 
   /**
@@ -1017,15 +1072,26 @@ export default class COB_Settings {
       this.app.search.updateSearchSuggestions(true);
       this.app.showToast("Saved ignored autocomplete keywords");
     });
-    this.app.$("cfobResetSearchBlacklistBtn").addEventListener('click', () => {
-      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchBlacklistInput")).value = "";
-    });
-    this.app.$("cfobSaveSearchBlacklistBtn").addEventListener('click', () => {
-      const val = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchBlacklistInput")).value;
-      const entries = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean))];
-      this.saveSearchBlacklist(entries);
+    const searchContentMode = /** @type {HTMLSelectElement} */ (this.app.$("cfobSearchContentMode"));
+    const searchContentInput = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchContentInput"));
+    searchContentMode.addEventListener('change', () => {
+      this.searchContentMode = searchContentMode.value === 'whitelist' ? 'whitelist' : 'blacklist';
+      localStorage.setItem('cfob_search_content_mode', this.searchContentMode);
+      searchContentInput.value = (this.searchContentMode === 'whitelist' ? this.searchWhitelist : this.searchBlacklist).join("\n");
       this.app.gallery.filterGallery();
-      this.app.showToast("Saved search blacklist");
+      this.app.search.rebuildKeywordDictionary();
+    });
+    this.app.$("cfobResetSearchContentBtn").addEventListener('click', () => {
+      searchContentInput.value = "";
+    });
+    this.app.$("cfobSaveSearchContentBtn").addEventListener('click', () => {
+      const val = searchContentInput.value;
+      const entries = [...new Set(val.split(/[\n,]+/).map((/** @type {string} */ s) => s.trim()).filter(Boolean))];
+      if (this.searchContentMode === 'whitelist') this.saveSearchWhitelist(entries);
+      else this.saveSearchBlacklist(entries);
+      this.app.gallery.filterGallery();
+      this.app.search.rebuildKeywordDictionary();
+      this.app.showToast(`Saved search ${this.searchContentMode}`);
     });
     this.app.$("cfobSaveFilterShortcutsBtn").addEventListener('click', () => {
       const text = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobFilterShortcutsInput")).value;
@@ -1060,6 +1126,8 @@ export default class COB_Settings {
 
   bindOptionsModal() {
     const modal = this.app.$("cfobOptionsModal");
+    const searchContentMode = /** @type {HTMLSelectElement} */ (this.app.$("cfobSearchContentMode"));
+    const searchContentInput = /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchContentInput"));
     const tablist = this.app.$("cfobOptionsTabs");
     const tabs = /** @type {HTMLElement[]} */ (Array.from(tablist.querySelectorAll('.options-tab')));
     const activateTab = (/** @type {HTMLElement} */ tab, focus = false) => {
@@ -1143,7 +1211,8 @@ export default class COB_Settings {
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobHiddenFoldersInput")).value = this.hiddenFolders.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobNotListedPathsInput")).value = this.notListedPaths.join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobIgnoredKeywordsInput")).value = this.ignoredAutocompleteKeywords.join("\n");
-      /** @type {HTMLTextAreaElement} */ (this.app.$("cfobSearchBlacklistInput")).value = this.searchBlacklist.join("\n");
+      searchContentMode.value = this.searchContentMode;
+      searchContentInput.value = (this.searchContentMode === 'whitelist' ? this.searchWhitelist : this.searchBlacklist).join("\n");
       /** @type {HTMLTextAreaElement} */ (this.app.$("cfobFilterShortcutsInput")).value = this.filterShortcuts
         .map(shortcut => `${shortcut.keyword} | ${shortcut.filter}`).join("\n");
       this.renderConfigFields();
@@ -1565,11 +1634,11 @@ export default class COB_Settings {
   }
 
   /**
-   * Opens the popover menu to add a path to the search blacklist.
+   * Opens the popover menu to add or remove a search content rule.
    * @param {Event} e
    * @param {string} safePath
    */
-  openAddBlacklistMenu(e, safePath) {
+  openAddSearchContentMenu(e, safePath) {
     e.stopPropagation();
     if (this.activePopover) this.activePopover.remove();
 
@@ -1581,16 +1650,18 @@ export default class COB_Settings {
 
     const path = String(safePath || '');
     const encodedPath = encodeURIComponent(path);
-    const current = this.searchBlacklist.map(entry => entry.toLowerCase());
+    const mode = this.searchContentMode;
+    const entries = mode === 'whitelist' ? this.searchWhitelist : this.searchBlacklist;
+    const current = entries.map(entry => entry.toLowerCase());
     const isDuplicate = current.includes(path.toLowerCase());
 
-    let html = '<div class="popover-header">Blacklist Options:</div>';
+    let html = `<div class="popover-header">${mode === 'whitelist' ? 'Whitelist' : 'Blacklist'} Options:</div>`;
     if (isDuplicate) {
-      html += '<button class="popover-item blacklist-remove" data-path="' + encodedPath + '"><span>Remove from blacklist</span></button>';
+      html += `<button class="popover-item search-rule-remove" data-path="${encodedPath}"><span>Remove from ${mode}</span></button>`;
     } else {
-      html += '<button class="popover-item blacklist-add" data-path="' + encodedPath + '"><span>Add to blacklist</span></button>';
+      html += `<button class="popover-item search-rule-add" data-path="${encodedPath}"><span>Add to ${mode}</span></button>`;
     }
-    html += '<button class="popover-item blacklist-new" data-path="' + encodedPath + '"><span style="color: var(--link);">+ Blacklist custom value...</span></button>';
+    html += `<button class="popover-item search-rule-new" data-path="${encodedPath}"><span style="color: var(--link);">+ Add custom ${mode} value...</span></button>`;
 
     menu.innerHTML = html;
     this.app.root?.appendChild(menu);
@@ -1598,34 +1669,38 @@ export default class COB_Settings {
 
     const currentPath = path;
 
-    menu.querySelector('.blacklist-add')?.addEventListener('click', () => {
-      const entry = decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.blacklist-add'))?.dataset.path || '');
-      if (entry && !this.searchBlacklist.some(item => item.toLowerCase() === entry.toLowerCase())) {
-        this.saveSearchBlacklist([...this.searchBlacklist, entry]);
-        this.app.gallery.filterGallery();
-        this.app.showToast(`Added '${entry}' to search blacklist`);
+    const saveEntries = (/** @type {string[]} */ nextEntries) => {
+      if (mode === 'whitelist') this.saveSearchWhitelist(nextEntries);
+      else this.saveSearchBlacklist(nextEntries);
+      this.app.gallery.filterGallery();
+      this.app.search.rebuildKeywordDictionary();
+    };
+
+    menu.querySelector('.search-rule-add')?.addEventListener('click', () => {
+      const entry = decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.search-rule-add'))?.dataset.path || '');
+      if (entry && !entries.some(item => item.toLowerCase() === entry.toLowerCase())) {
+        saveEntries([...entries, entry]);
+        this.app.showToast(`Added '${entry}' to search ${mode}`);
       }
       this.activePopover?.remove(); this.activePopover = null;
     });
 
-    menu.querySelector('.blacklist-remove')?.addEventListener('click', () => {
-      const entry = decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.blacklist-remove'))?.dataset.path || '');
-      this.saveSearchBlacklist(this.searchBlacklist.filter(item => item.toLowerCase() !== entry.toLowerCase()));
-      this.app.gallery.filterGallery();
-      this.app.showToast(`Removed '${entry}' from search blacklist`);
+    menu.querySelector('.search-rule-remove')?.addEventListener('click', () => {
+      const entry = decodeURIComponent(/** @type {HTMLElement} */ (menu.querySelector('.search-rule-remove'))?.dataset.path || '');
+      saveEntries(entries.filter(item => item.toLowerCase() !== entry.toLowerCase()));
+      this.app.showToast(`Removed '${entry}' from search ${mode}`);
       this.activePopover?.remove(); this.activePopover = null;
     });
 
-    menu.querySelector('.blacklist-new')?.addEventListener('click', async () => {
-      const val = await this.customPrompt("Enter a path to blacklist (e.g. KSampler.seed):", currentPath);
+    menu.querySelector('.search-rule-new')?.addEventListener('click', async () => {
+      const val = await this.customPrompt(`Enter a path to ${mode} (e.g. KSampler.seed):`, currentPath);
       if (val && val.trim()) {
         const entry = val.trim();
-        if (this.searchBlacklist.some(item => item.toLowerCase() === entry.toLowerCase())) {
-          this.app.showToast(`'${entry}' is already blacklisted`);
+        if (entries.some(item => item.toLowerCase() === entry.toLowerCase())) {
+          this.app.showToast(`'${entry}' is already in the search ${mode}`);
         } else {
-          this.saveSearchBlacklist([...this.searchBlacklist, entry]);
-          this.app.gallery.filterGallery();
-          this.app.showToast(`Added '${entry}' to search blacklist`);
+          saveEntries([...entries, entry]);
+          this.app.showToast(`Added '${entry}' to search ${mode}`);
         }
       }
       this.activePopover?.remove(); this.activePopover = null;
@@ -1767,7 +1842,7 @@ export default class COB_Settings {
       <div class="inspector-json-actions">
         <span class="inspector-json-selected-path"></span>
         <button class="btn btn-primary btn-xs inspector-json-add" type="button">Add node path to fields</button>
-        <button class="btn btn-xs inspector-json-blacklist" type="button">Add path to blacklist</button>
+        <button class="btn btn-xs inspector-json-blacklist" type="button">Add search rule</button>
       </div>
       <pre>${renderValue(value, 0, [])}</pre>`;
 
@@ -1793,8 +1868,8 @@ export default class COB_Settings {
       });
     });
     addButton.addEventListener('click', event => this.openAddPathMenu(event, addButton.dataset.path || ''));
-    const blacklistButton = /** @type {HTMLElement} */ (panel.querySelector('.inspector-json-blacklist'));
-    blacklistButton.addEventListener('click', event => this.openAddBlacklistMenu(event, addButton.dataset.path || ''));
+    const searchRuleButton = /** @type {HTMLElement} */ (panel.querySelector('.inspector-json-blacklist'));
+    searchRuleButton.addEventListener('click', event => this.openAddSearchContentMenu(event, addButton.dataset.path || ''));
     panel.querySelectorAll('.inspector-tab-link').forEach(link => {
       /** @type {HTMLElement} */ (link).addEventListener('click', (/** @type {MouseEvent} */ event) => {
         event.preventDefault();
@@ -1841,7 +1916,7 @@ export default class COB_Settings {
           w.forEach(({ key, val }) => {
             const pPath = encodeURIComponent(`${titleText}.${key}`);
             const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
-            html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button><button class="btn btn-xs field-blacklist" data-path="${pPath}">Blacklist</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+            html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button><button class="btn btn-xs field-search-rule" data-path="${pPath}">Search Rule</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
           });
         } else {
           html += `<i style="color:#666">No widgets</i>`;
@@ -1860,7 +1935,7 @@ export default class COB_Settings {
               html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span></div><span style="color: var(--link); font-style: italic; font-size: 11px;">➔ Connected to #${val[0]}</span></div>`;
             } else {
               const sVal = encodeURIComponent(typeof val === 'object' ? JSON.stringify(val) : String(val));
-              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button><button class="btn btn-xs field-blacklist" data-path="${pPath}">Blacklist</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
+              html += `<div class="input-row"><div class="input-header"><span class="input-name">${this.app.escapeHtml(key)}</span><div class="input-actions"><button class="btn btn-xs cp-val" data-val="${sVal}">${ICONS.copy}</button><button class="btn btn-xs btn-primary field-add" data-path="${pPath}">+ Field</button><button class="btn btn-xs field-search-rule" data-path="${pPath}">Search Rule</button></div></div><div class="input-value-wrapper"><div class="input-value-text">${this.app.escapeHtml(decodeURIComponent(sVal))}</div></div></div>`;
             }
           }
         } else {
@@ -1872,7 +1947,7 @@ export default class COB_Settings {
 
     grid.querySelectorAll('.cp-val').forEach(b => b.addEventListener('click', (e) => this.app.actions.copyValue(/** @type {HTMLElement} */(e.currentTarget), /** @type {HTMLElement} */(e.currentTarget).dataset.val)));
     grid.querySelectorAll('.field-add').forEach(b => b.addEventListener('click', (e) => this.openAddPathMenu(e, decodeURIComponent(/** @type {HTMLElement} */(e.currentTarget)?.dataset.path || ''))));
-    grid.querySelectorAll('.field-blacklist').forEach(b => b.addEventListener('click', (e) => this.openAddBlacklistMenu(e, decodeURIComponent(/** @type {HTMLElement} */(e.currentTarget)?.dataset.path || ''))));
+    grid.querySelectorAll('.field-search-rule').forEach(b => b.addEventListener('click', (e) => this.openAddSearchContentMenu(e, decodeURIComponent(/** @type {HTMLElement} */(e.currentTarget)?.dataset.path || ''))));
 
     this.modals.open(inspectorModal, this.app.$("cfobCloseInspectorBtn"));
   }

@@ -52,6 +52,10 @@ test("serializeSettings returns version and every key with the correct type", ()
     assert.equal(serialized.settings.cfob_filter_shortcuts[0].keyword, "animals");
     assert.deepEqual(serialized.settings.cfob_not_listed_paths, ["archive", "outputs/old"]);
     assert.deepEqual(serialized.settings.cfob_search_blacklist, ["KSampler.seed"]);
+    assert.equal(settings.searchContentMode, "blacklist");
+    assert.ok(settings.searchWhitelist.includes("Positive Prompt.text"));
+    assert.deepEqual(serialized.settings.cfob_search_whitelist, settings.searchWhitelist);
+    assert.equal(serialized.settings.cfob_search_content_mode, "blacklist");
     assert.equal(serialized.settings.cfob_panel_insets.right.top, 24);
   } finally {
     globalThis.localStorage = null;
@@ -82,6 +86,8 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
         cfob_masonry_enabled: false,
         cfob_show_selection_checkboxes: false,
         cfob_not_listed_paths: ["archive"],
+        cfob_search_content_mode: "whitelist",
+        cfob_search_whitelist: ["Positive Prompt.text"],
         cfob_panel_insets: {
           right: { top: 36, right: 18, bottom: null, left: null },
         },
@@ -97,6 +103,8 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
     assert.equal(settings.masonryEnabled, false);
     assert.equal(settings.showSelectionCheckboxes, false);
     assert.deepEqual(settings.notListedPaths, ["archive"]);
+    assert.equal(settings.searchContentMode, "whitelist");
+    assert.deepEqual(settings.searchWhitelist, ["Positive Prompt.text"]);
     assert.equal(store.get("cfob_not_listed_paths"), JSON.stringify(["archive"]));
     assert.equal(settings.hideCardInfo, true);
     assert.equal(settings.fieldConfigs[0].paths, "Positive Prompt.text");
@@ -105,6 +113,8 @@ test("deserializeSettings applies values and leaves missing keys untouched", () 
       right: { top: 36, right: 18, bottom: null, left: null },
     }));
     assert.equal(store.get("cfob_sort"), "name_desc");
+    assert.equal(store.get("cfob_search_content_mode"), "whitelist");
+    assert.equal(store.get("cfob_search_whitelist"), JSON.stringify(["Positive Prompt.text"]));
     assert.equal(store.get("cfob_masonry_enabled"), "false");
     assert.equal(store.get("cfob_show_selection_checkboxes"), "false");
     // Not present in the import: untouched.
@@ -123,6 +133,9 @@ test("options modal contains the Import / Export tab and all its controls", () =
   assert.ok(html.includes('id="cfobImportSettingsBtn"'), "Import Settings button");
   assert.ok(html.includes('id="cfobImportFileInput"'), "Import file input");
   assert.ok(html.includes('id="cfobToggleSelectionCheckboxesBtn"'), "selection checkbox toggle");
+  assert.ok(html.includes('id="cfobSearchContentMode"'), "search content mode selector");
+  assert.ok(html.includes('id="cfobSearchContentInput"'), "search content rules input");
+  assert.ok(html.includes('class="options-section options-accordion"'), "folder and search settings use accordions");
 });
 
 test("browser headers expose the logo toggle", () => {

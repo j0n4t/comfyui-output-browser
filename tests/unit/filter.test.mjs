@@ -79,6 +79,25 @@ test("searches name, path, prompt, workflow, custom labels, and field indexes", 
   assert.deepEqual(namesFor("2:202"), ["animals/cat-blue.png"]);
 });
 
+test("whitelist mode searches only allowed content fields while keeping filenames searchable", () => {
+  const overrides = { searchContentMode: "whitelist", searchWhitelist: ["model"] };
+  assert.deepEqual(namesFor("fox", overrides), []);
+  assert.deepEqual(namesFor("sdxl", overrides), [
+    "animals/cat-red.png",
+    "animals/dog.png"
+  ]);
+  assert.deepEqual(namesFor("name:blue", overrides), ["animals/cat-blue.png"]);
+  assert.deepEqual(namesFor("model:sdxl", overrides), [
+    "animals/cat-red.png",
+    "animals/dog.png"
+  ]);
+  assert.deepEqual(namesFor('prompt:"blue sky"', overrides), []);
+  assert.deepEqual(namesFor('prompt:"blue sky"', {
+    searchContentMode: "whitelist",
+    searchWhitelist: ["prompt"]
+  }), ["animals/cat-red.png"]);
+});
+
 test("expands saved filter shortcuts, including alternatives combined with other terms", () => {
   assert.deepEqual(namesFor("@FELINES"), [
     "animals/cat-red.png",

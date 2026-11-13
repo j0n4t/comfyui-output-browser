@@ -264,6 +264,8 @@ export function maskImageMetadata(img, blacklist) {
  *   showHiddenFolders: boolean;
  *   notListedPaths?: string[];
  *   searchBlacklist?: string[];
+ *   searchWhitelist?: string[];
+ *   searchContentMode?: 'blacklist' | 'whitelist';
  *   isImageInHiddenFolder: (name: string) => boolean;
  *   resolveFieldValue: (img: CFOB_Image, paths: string) => unknown;
  * }} options
@@ -347,10 +349,14 @@ export function filterImages(images, query, options) {
   /** @type {WeakMap<CFOB_Image, { name: string; prompt: string | null; workflow: string | null; textChunks: string; fields: Map<string, string | null> }>} */
   const imageTextCache = new WeakMap();
   const blacklist = compileBlacklist(options.searchBlacklist);
+  const whitelist = new Set((options.searchWhitelist || []).map(entry => entry.trim().toLowerCase()).filter(Boolean));
+  const isWhitelistedMetadata = (/** @type {string} */ key) =>
+    whitelist.has(key) || whitelist.has('@textchunks') || whitelist.has(`@textchunks.${key}`);
+  const whitelistMode = options.searchContentMode === 'whitelist';
   const matchesTerm = (/** @type {CFOB_Image} */ img, /** @type {CFOB_SearchTerm} */ term) => {
     let text = imageTextCache.get(img);
     if (!text) {
-      const masked = maskImageMetadata(img, options.searchBlacklist);
+      const masked = maskImageMetadata(img, whitelistMode ? [] : options.searchBlacklist);
       text = {
         name: (masked.name || "").toLowerCase(),
         prompt: masked.prompt ? (JSON.stringify(masked.prompt) || "").toLowerCase() : "",
@@ -360,29 +366,51 @@ export function filterImages(images, query, options) {
       };
       imageTextCache.set(img, text);
     }
-    const matchesField = (/** @type {string} */ paths) => {
-      if (blacklist.isFieldBlacklisted(paths)) return false;
+    const matchesFieldPath = (/** @type {string} */ paths) => {
       if (!text.fields.has(paths)) {
         const value = options.resolveFieldValue(img, paths);
         text.fields.set(paths, value === null ? null : String(value).toLowerCase());
       }
       return text.fields.get(paths)?.includes(term.searchValue) || false;
     };
+    const matchesField = (/** @type {string} */ paths) => {
+      if (whitelistMode) {
+        return paths.split(/[,\n]+/)
+          .map(path => path.trim())
+          .filter(path => whitelist.has(path.toLowerCase()))
+          .some(path => matchesFieldPath(path));
+      }
+      return blacklist.isFieldBlacklisted(paths) ? false : matchesFieldPath(paths);
+    };
     let match = false;
     if (term.searchKey) {
       if (term.searchKey === 'name' || term.searchKey === 'path') {
         match = text.name.includes(term.searchValue);
       } else if (term.searchKey === 'prompt') {
-        match = (text.prompt || '').includes(term.searchValue);
+        match = (!whitelistMode || whitelist.has('prompt')) && (text.prompt || '').includes(term.searchValue);
       } else if (term.searchKey === 'workflow') {
-        match = (text.workflow || '').includes(term.searchValue);
+        match = (!whitelistMode || whitelist.has('workflow')) && (text.workflow || '').includes(term.searchValue);
       } else if (!isNaN(term.fieldIdx) && term.fieldIdx > 0 && term.fieldIdx <= options.fieldConfigs.length) {
         match = matchesField(options.fieldConfigs[term.fieldIdx - 1].paths);
       } else if (term.fieldMatch) {
         match = matchesField(term.fieldMatch.paths);
       }
     } else {
-      match = text.name.includes(term.searchValue) || (text.prompt || '').includes(term.searchValue) || (text.workflow || '').includes(term.searchValue) || (text.textChunks || '').includes(term.searchValue);
+      match = text.name.includes(term.searchValue);
+      if (whitelistMode) {
+        if (whitelist.has('prompt')) match ||= (text.prompt || '').includes(term.searchValue);
+        if (whitelist.has('workflow')) match ||= (text.workflow || '').includes(term.searchValue);
+        if (isWhitelistedMetadata('text')) match ||= (text.textChunks || '').includes(term.searchValue);
+        for (const path of whitelist) {
+          if (!['prompt', 'workflow', 'text', 'name', 'path', '@textchunks'].includes(path) && !path.startsWith('@textchunks.')) {
+            match ||= matchesField(path);
+          }
+        }
+      } else {
+        match ||= (text.prompt || '').includes(term.searchValue) ||
+          (text.workflow || '').includes(term.searchValue) ||
+          (text.textChunks || '').includes(term.searchValue);
+      }
     }
     return term.isNot ? !match : match;
   };
