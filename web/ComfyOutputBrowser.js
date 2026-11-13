@@ -188,12 +188,18 @@ export default class ComfyOutputBrowser {
           // @ts-ignore
           const img = idx ? this.loadedImages[idx] : null;
           if (img && !img.isParsed) {
-            this.api.loadMetadata(img).then(() => {
-              const cardBody = card.querySelector('.card-body');
-              if (cardBody) {
-                cardBody.innerHTML = this.getCardFieldsHtml(img);
-              }
-            });
+            // If the idle-parsing loop is already running it will reach this
+            // image naturally; don't fire a competing fetch here. Only kick off
+            // an on-demand load when the loop is idle (e.g. the user scrolled to
+            // a card long after the initial parse cycle finished).
+            if (!this.api._idleParsingActive) {
+              this.api.loadMetadata(img).then(() => {
+                const cardBody = card.querySelector('.card-body');
+                if (cardBody) {
+                  cardBody.innerHTML = this.getCardFieldsHtml(img);
+                }
+              });
+            }
             this.observer?.unobserve(card);
           }
         }

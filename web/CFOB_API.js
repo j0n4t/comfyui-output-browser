@@ -123,22 +123,28 @@ export default class COB_API {
   }
 
   startIdleParsing() {
-    if (this._idleParsingActive) return;
-    this._idleParsingActive = true;
+    // Always ensure the UI reflects that parsing is active; a new fetch may
+    // have delivered fresh files while a previous session was already running.
     this.app.setIdleParsingActive(true);
 
+    // Only one parse loop should run at a time.
+    if (this._idleParsingActive) return;
+    this._idleParsingActive = true;
+
     const parseNext = async () => {
+      // Skip images currently being fetched by the intersection observer; they
+      // will be caught on the next tick once isParsing clears.
+      const hasPending = this.app.loadedImages.some((/** @type {CFOB_Image} */ i) => !i.isParsed);
       const img = this.app.loadedImages.find((/** @type {CFOB_Image} */ i) => !i.isParsed && !i.isParsing);
 
       if (img) {
         await this.loadMetadata(img);
 
-        const cards = Array.from(this.app.root?.querySelectorAll('.image-card') || []);
-        const card = cards.find(c => /** @type {HTMLElement} */(c).dataset.name === img.name);
+        const card = this.app.root?.querySelector(`.image-card[data-name="${CSS.escape(img.name)}"]`);
         if (card) {
           const cardBody = card.querySelector('.card-body');
           if (cardBody && cardBody.innerHTML.includes('Loading...')) {
-            cardBody.innerHTML = this.app.getCardFieldsHtml(img);
+            /** @type {HTMLElement} */ (cardBody).innerHTML = this.app.getCardFieldsHtml(img);
           }
         }
 
@@ -147,6 +153,9 @@ export default class COB_API {
         } else {
           setTimeout(parseNext, 50);
         }
+      } else if (hasPending) {
+        // Some images are still being fetched (isParsing=true); retry shortly.
+        setTimeout(parseNext, 100);
       } else {
         this._idleParsingActive = false;
         this.app.setIdleParsingActive(false);
