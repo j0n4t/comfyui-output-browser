@@ -322,3 +322,47 @@ test("intersection observer does not load non-intersecting entries", () => {
 
   assert.equal(metadataLoaded, false, "non-intersecting entry should not trigger a load");
 });
+
+// ---------------------------------------------------------------------------
+// parsePngBuffer – Worker availability & main-thread fallback
+// ---------------------------------------------------------------------------
+
+test("parsePngBuffer falls back to main-thread PngMetadata.extract when Worker is unavailable", async () => {
+  const api = makeApi();
+  api._metadataWorker = null;
+  // Ensure _initMetadataWorker returns null (simulating restricted renderer)
+  api._initMetadataWorker = () => null;
+
+  // Build a minimal PNG with prompt text chunk
+  const enc = new TextEncoder();
+  const chunkData = new Uint8Array(8 + 1 + 2);
+  chunkData.set(enc.encode("prompt"), 0);
+  chunkData[6] = 0; // null separator
+  chunkData.set(enc.encode("{}"), 7);
+
+  const pngBuf = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+  const result = await api.parsePngBuffer(pngBuf.buffer);
+  assert.ok(result, "should return a parsed metadata object");
+  assert.deepEqual(result.promptJson, null);
+  assert.deepEqual(result.workflowJson, null);
+});
+
+test("parsePngBuffer falls back to main-thread parse when worker postMessage throws (transfer error)", async () => {
+  const api = makeApi();
+  const failingWorker = {
+    postMessage: () => {
+      throw new Error("DataCloneError: ArrayBuffer could not be cloned/transferred");
+    },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  api._metadataWorker = failingWorker;
+  api._metadataToken = 1;
+  api._metadataPending = new Map();
+
+  const pngBuf = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+  const result = await api.parsePngBuffer(pngBuf.buffer);
+  assert.ok(result, "should catch postMessage error and fallback to main-thread extraction");
+});
