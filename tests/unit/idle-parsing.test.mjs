@@ -9,7 +9,6 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mock } from "node:test";
 
 // ---------------------------------------------------------------------------
 // Browser-global stubs (must come before any source import that reads `window`)
